@@ -1,0 +1,496 @@
+const logo = "/logo.png";
+
+/* ===== HERO IMAGES ===== */
+const heroImages = [
+  "/hero/hero1.jpg",
+  "/hero/hero2.jpg",
+  "/hero/hero3.jpg",
+  "/hero/hero4.jpg",
+  "/hero/hero5.jpg",
+];
+
+export default function Home() {
+  return (
+    <div style={styles.page}>
+      <style>{globalCSS}</style>
+
+      <Navbar />
+      <Hero />
+      <Trust />
+      <Guests />
+      <Organizers />
+      <HowItWorks />
+      <Pricing />
+      <CTA />
+      <Footer />
+    </div>
+  );
+}
+
+/* ================= NAVBAR ================= */
+function Navbar() {
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <header style={styles.header}>
+      <div style={styles.container}>
+        <nav style={styles.nav}>
+          <img
+            src={logo}
+            alt="Tictify"
+            style={styles.logo}
+            onClick={() => scrollTo("home")}
+          />
+
+          <div style={styles.navLinks}>
+            <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
+              Home
+            </button>
+            <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
+              Discover
+            </button>
+            <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
+              Pricing
+            </button>
+            <button
+              style={styles.outlineBtn}
+              onClick={() => (window.location.href = "/login")}
+            >
+              Login
+            </button>
+            <button
+              style={styles.primaryBtn}
+              onClick={() => (window.location.href = "/register")}
+            >
+              Sign Up
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+/* ================= HERO ================= */
+function Hero() {
+  return (
+    <section id="home" style={styles.hero}>
+      <div style={styles.container}>
+        <div style={styles.heroContent}>
+          <span style={styles.badge}>🎟️ Event Ticketing Platform</span>
+
+          <h1 style={styles.heroTitle}>
+            Sell Event Tickets <br /> The Smart Way
+          </h1>
+
+          <p style={styles.heroText}>
+            Create events, sell tickets, and manage entry with secure QR codes —
+            built for both organizers and guests.
+          </p>
+
+          <div style={styles.heroButtons}>
+            <button
+              style={styles.primaryBtn}
+              onClick={() => (window.location.href = "/login")}
+            >
+              Create an Event
+            </button>
+            <button
+              style={styles.secondaryBtn}
+              onClick={() => (window.location.href = "/events")}
+            >
+              Browse Events
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== IMAGE MARQUEE (CORRECT IMPLEMENTATION) ===== */}
+      <div style={styles.marqueeViewport}>
+        <div style={styles.marqueeTrack}>
+          {[...heroImages, ...heroImages].map((img, i) => (
+            <div key={i} style={styles.marqueeItem}>
+              <img src={img} alt="Event" style={styles.marqueeImage} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================= TRUST ================= */
+function Trust() {
+  return (
+    <section style={styles.trust}>
+      <div style={styles.container}>
+        <p style={styles.trustText}>
+          Trusted by campus promoters, communities, and event organizers across
+          Nigeria.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ================= GUESTS ================= */
+function Guests() {
+  return (
+    <section id="guests" style={styles.sectionAlt}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>For Guests</h2>
+
+        <div style={styles.grid}>
+          <Card
+            title="Instant Tickets"
+            text="Receive your e-ticket immediately after payment."
+          />
+          <Card
+            title="QR Code Entry"
+            text="Fast, secure entry using scannable QR codes."
+          />
+          <Card
+            title="Stress-Free Access"
+            text="No printing, no queues, no confusion."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================= ORGANIZERS ================= */
+function Organizers() {
+  return (
+    <section style={styles.section}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>For Organizers</h2>
+
+        <div style={styles.grid}>
+          <Card
+            title="Create Events Easily"
+            text="Set up events, ticket types, and prices in minutes."
+          />
+          <Card
+            title="Secure Payments"
+            text="Powered by ErcasPay with fast settlements."
+          />
+          <Card
+            title="Live Analytics"
+            text="Track ticket sales and attendance in real time."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================= HOW IT WORKS ================= */
+function HowItWorks() {
+  return (
+    <section style={styles.sectionAlt}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>How It Works</h2>
+
+        <div style={styles.grid}>
+          <Step
+            number="01"
+            title="Create Event"
+            text="Add event details and ticket options."
+          />
+          <Step
+            number="02"
+            title="Sell Tickets"
+            text="Guests pay and receive QR tickets instantly."
+          />
+          <Step
+            number="03"
+            title="Scan & Admit"
+            text="Scan tickets at the venue to prevent fraud."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================= PRICING ================= */
+function Pricing() {
+  return (
+    <section id="pricing" style={styles.section}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>Simple Pricing</h2>
+
+        <div style={styles.grid}>
+          <PriceCard title="Free" price="₦0" text="Perfect for free events." />
+          <PriceCard
+            title="Pro"
+            price="3% + ₦80"
+            text="Only pay when you sell tickets."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================= CTA ================= */
+function CTA() {
+  return (
+    <section style={styles.cta}>
+      <div style={styles.container}>
+        <h2>Start Selling Tickets Today</h2>
+        <p style={styles.mutedText}>
+          Create your first event in minutes and manage it with confidence.
+        </p>
+        <button style={styles.primaryBtn}>Get Started</button>
+      </div>
+    </section>
+  );
+}
+
+/* ================= FOOTER ================= */
+function Footer() {
+  return (
+    <footer style={styles.footer}>
+      <div style={styles.container}>
+        <img src={logo} alt="Tictify" style={styles.logo} />
+        <p style={styles.mutedText}>
+          © {new Date().getFullYear()} Tictify. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+/* ================= REUSABLE ================= */
+function Card({ title, text }) {
+  return (
+    <div style={styles.card}>
+      <h3>{title}</h3>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
+  );
+}
+
+function Step({ number, title, text }) {
+  return (
+    <div style={styles.card}>
+      <span style={styles.stepNumber}>{number}</span>
+      <h3>{title}</h3>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
+  );
+}
+
+function PriceCard({ title, price, text }) {
+  return (
+    <div style={{ ...styles.card, textAlign: "center" }}>
+      <h3>{title}</h3>
+      <h2 style={{ color: "#22F2A6", margin: "12px 0" }}>{price}</h2>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
+  );
+}
+
+/* ================= STYLES ================= */
+const styles = {
+  page: {
+    background: "#0F0618",
+    color: "#FFFFFF",
+    fontFamily: "Inter, system-ui, sans-serif",
+    overflowX: "hidden",
+  },
+
+  container: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "0 20px",
+  },
+
+  header: {
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+  },
+
+  nav: {
+    height: 72,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+
+  navLinks: {
+    display: "flex",
+    gap: 16,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+
+  logo: { height: 34, cursor: "pointer" },
+
+  hero: {
+    padding: "96px 0 64px",
+  },
+
+  heroContent: {
+    maxWidth: 600,
+  },
+
+  heroTitle: {
+    fontSize: "clamp(32px,5vw,48px)",
+    margin: "16px 0",
+  },
+
+  heroText: {
+    color: "#CFC9D6",
+    marginBottom: 28,
+  },
+
+  heroButtons: {
+    display: "flex",
+    gap: 14,
+    flexWrap: "wrap",
+  },
+
+  badge: {
+    color: "#22F2A6",
+    fontSize: 14,
+  },
+
+  marqueeViewport: {
+    marginTop: 72,
+    overflow: "hidden",
+    width: "100%",
+  },
+
+  marqueeTrack: {
+    display: "flex",
+    width: "200%",
+    animation: "marquee 40s linear infinite",
+  },
+
+  marqueeItem: {
+    flex: "0 0 33.3333%",
+    padding: "0 12px",
+    boxSizing: "border-box",
+  },
+
+  marqueeImage: {
+    width: "100%",
+    height: 220,
+    objectFit: "cover",
+    borderRadius: 18,
+  },
+
+  trust: {
+    padding: "32px 0",
+    textAlign: "center",
+  },
+
+  trustText: {
+    color: "#9F97B2",
+  },
+
+  section: {
+    padding: "88px 0",
+  },
+
+  sectionAlt: {
+    padding: "88px 0",
+    background: "#170A25",
+  },
+
+  sectionTitle: {
+    textAlign: "center",
+    marginBottom: 48,
+    fontSize: 32,
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+    gap: 28,
+  },
+
+  card: {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    padding: 28,
+  },
+
+  stepNumber: {
+    color: "#22F2A6",
+    fontWeight: 600,
+  },
+
+  cta: {
+    padding: "96px 0",
+    textAlign: "center",
+  },
+
+  footer: {
+    padding: "40px 0",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+  },
+
+  primaryBtn: {
+    background: "#22F2A6",
+    border: "none",
+    padding: "12px 26px",
+    borderRadius: 999,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  secondaryBtn: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "12px 26px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
+  outlineBtn: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "10px 22px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#FFFFFF",
+    cursor: "pointer",
+  },
+
+  mutedText: { color: "#CFC9D6" },
+};
+
+/* ================= GLOBAL CSS ================= */
+const globalCSS = `
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+section {
+  scroll-margin-top: 80px;
+}
+
+@media (max-width: 768px) {
+  .marqueeItem {
+    flex: 0 0 100%;
+  }
+}
+`;
