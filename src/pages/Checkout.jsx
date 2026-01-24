@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { id } = useParams(); // ✅ FIXED
+  const { id } = useParams();
   const [searchParams] = useSearchParams();
 
   const email = searchParams.get("email");
@@ -55,7 +55,7 @@ export default function Checkout() {
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
-    if (!email || !ticket || processing) return;
+    if (processing || !ticket) return;
 
     setProcessing(true);
     setError("");
@@ -67,7 +67,7 @@ export default function Checkout() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            eventId: id, // ✅ ALWAYS VALID NOW
+            eventId: id,
             email,
             ticketType: ticket.name,
           }),
@@ -77,11 +77,15 @@ export default function Checkout() {
       const data = await res.json();
 
       if (!res.ok || !data.paymentUrl) {
-        throw new Error(data.message || "Payment initialization failed");
+        throw new Error(data.message || "Unable to start payment");
       }
 
-      // External redirect to ERCASPAY
-      window.location.assign(data.paymentUrl);
+      /**
+       * 🔐 IMPORTANT:
+       * We redirect ONLY to ERCASPAY.
+       * Ticket is created ONLY via webhook.
+       */
+      window.location.href = data.paymentUrl;
     } catch (err) {
       setError(err.message || "Payment failed");
       setProcessing(false);
@@ -156,6 +160,7 @@ export default function Checkout() {
               style={{
                 ...styles.payBtn,
                 opacity: processing ? 0.6 : 1,
+                cursor: processing ? "not-allowed" : "pointer",
               }}
               disabled={processing}
               onClick={handlePayment}
@@ -163,12 +168,12 @@ export default function Checkout() {
               {processing
                 ? "Redirecting to payment…"
                 : ticket.price > 0
-                  ? "Proceed to Payment"
+                  ? "Proceed to Secure Payment"
                   : "Confirm Free Ticket"}
             </button>
 
             <p style={styles.secureText}>
-              🔒 Secure payment powered by ERCASPAY
+              🔒 You’ll be redirected to ERCASPAY to complete payment
             </p>
           </div>
         </aside>
