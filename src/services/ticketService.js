@@ -1,6 +1,6 @@
 import { getToken } from "./authService";
 
-const API = "http://localhost:5000/api/tickets";
+const API = "https://tictify-backend.onrender.com/api/tickets";
 
 export async function scanTicket(code) {
   const token = getToken();

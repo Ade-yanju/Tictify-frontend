@@ -1,4 +1,4 @@
-const API = "http://localhost:5000/api/auth";
+const API = "https://tictify-backend.onrender.com/api/auth";
 
 /* ================= REGISTER (ORGANIZER ONLY) ================= */
 export async function register(data) {
