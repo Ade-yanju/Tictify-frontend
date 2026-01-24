@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function EventDetails() {
-  const { eventId } = useParams();
+  const { id } = useParams(); // ✅ FIXED
   const navigate = useNavigate();
 
   const [event, setEvent] = useState(null);
@@ -11,19 +11,28 @@ export default function EventDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /* ================= RESPONSIVE ================= */
+  const isDesktop = window.innerWidth >= 768;
+
   /* ================= LOAD EVENT ================= */
   useEffect(() => {
+    if (!id) {
+      setError("Invalid event link.");
+      setLoading(false);
+      return;
+    }
+
     async function loadEvent() {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
+          `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
         );
 
         if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
         setEvent(data);
-      } catch (err) {
+      } catch {
         setError("Unable to load this event.");
       } finally {
         setLoading(false);
@@ -31,7 +40,7 @@ export default function EventDetails() {
     }
 
     loadEvent();
-  }, [eventId]);
+  }, [id]);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -52,7 +61,12 @@ export default function EventDetails() {
         <img src={event.banner} alt={event.title} style={styles.banner} />
       </div>
 
-      <div style={styles.container}>
+      <div
+        style={{
+          ...styles.container,
+          gridTemplateColumns: isDesktop ? "2fr 1fr" : "1fr",
+        }}
+      >
         {/* EVENT INFO */}
         <section style={styles.eventCard}>
           <h1 style={styles.title}>{event.title}</h1>
@@ -81,8 +95,7 @@ export default function EventDetails() {
                 onChange={() => setSelectedTicket(ticket)}
               />
               <span>
-                {ticket.name} —{" "}
-                {ticket.price > 0 ? `₦${ticket.price}` : "Free"}
+                {ticket.name} — {ticket.price > 0 ? `₦${ticket.price}` : "Free"}
               </span>
             </label>
           ))}
@@ -103,8 +116,7 @@ export default function EventDetails() {
             style={{
               ...styles.buyBtn,
               opacity: emailValid && selectedTicket ? 1 : 0.5,
-              cursor:
-                emailValid && selectedTicket ? "pointer" : "not-allowed",
+              cursor: emailValid && selectedTicket ? "pointer" : "not-allowed",
             }}
             disabled={!emailValid || !selectedTicket}
             onClick={() =>
@@ -155,10 +167,6 @@ const styles = {
     padding: "32px 20px",
     display: "grid",
     gap: 32,
-    gridTemplateColumns: "1fr",
-    "@media (min-width: 768px)": {
-      gridTemplateColumns: "2fr 1fr",
-    },
   },
 
   eventCard: {
