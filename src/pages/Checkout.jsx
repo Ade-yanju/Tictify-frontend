@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { eventId } = useParams();
+  const { id } = useParams(); // ✅ FIXED
   const [searchParams] = useSearchParams();
 
   const email = searchParams.get("email");
@@ -17,17 +17,23 @@ export default function Checkout() {
 
   /* ================= LOAD EVENT ================= */
   useEffect(() => {
+    if (!id || !email || !ticketName) {
+      setError("Invalid checkout link.");
+      setLoading(false);
+      return;
+    }
+
     async function loadEvent() {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
+          `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
         );
 
         if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
 
-        const selectedTicket = data.ticketTypes.find(
+        const selectedTicket = data.ticketTypes?.find(
           (t) => t.name === ticketName,
         );
 
@@ -45,7 +51,7 @@ export default function Checkout() {
     }
 
     loadEvent();
-  }, [eventId, ticketName]);
+  }, [id, email, ticketName]);
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
@@ -61,28 +67,23 @@ export default function Checkout() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            eventId,
+            eventId: id, // ✅ ALWAYS VALID NOW
             email,
             ticketType: ticket.name,
           }),
         },
       );
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Payment failed");
-      }
-
       const data = await res.json();
 
-      if (!data.paymentUrl) {
-        throw new Error("Invalid payment response");
+      if (!res.ok || !data.paymentUrl) {
+        throw new Error(data.message || "Payment initialization failed");
       }
 
-      // External redirect (payment gateway)
+      // External redirect to ERCASPAY
       window.location.assign(data.paymentUrl);
     } catch (err) {
-      setError(err.message || "Payment initialization failed");
+      setError(err.message || "Payment failed");
       setProcessing(false);
     }
   }
@@ -92,14 +93,20 @@ export default function Checkout() {
     return <div style={styles.loading}>Preparing checkout…</div>;
   }
 
-  if (error || !event || !ticket) {
-    return <div style={styles.error}>{error}</div>;
+  if (error) {
+    return (
+      <div style={styles.error}>
+        <p>{error}</p>
+        <button style={styles.backBtn} onClick={() => navigate(-1)}>
+          ← Go Back
+        </button>
+      </div>
+    );
   }
 
   /* ================= UI ================= */
   return (
     <div style={styles.page}>
-      {/* BANNER */}
       <div
         style={{
           ...styles.banner,
@@ -108,7 +115,6 @@ export default function Checkout() {
       />
 
       <div style={styles.container}>
-        {/* EVENT DETAILS */}
         <section style={styles.left}>
           <h1 style={styles.title}>{event.title}</h1>
 
@@ -123,7 +129,6 @@ export default function Checkout() {
           </p>
         </section>
 
-        {/* CHECKOUT */}
         <aside style={styles.right}>
           <div style={styles.card}>
             <h2 style={styles.heading}>Order Summary</h2>
@@ -151,7 +156,6 @@ export default function Checkout() {
               style={{
                 ...styles.payBtn,
                 opacity: processing ? 0.6 : 1,
-                cursor: processing ? "not-allowed" : "pointer",
               }}
               disabled={processing}
               onClick={handlePayment}
@@ -174,6 +178,7 @@ export default function Checkout() {
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -181,14 +186,12 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
-
   banner: {
     height: "35vh",
     minHeight: 240,
     backgroundSize: "cover",
     backgroundPosition: "center",
   },
-
   container: {
     maxWidth: 1200,
     margin: "-70px auto 0",
@@ -197,76 +200,61 @@ const styles = {
     gap: 32,
     gridTemplateColumns: "1fr",
   },
-
   left: {
     background: "rgba(255,255,255,0.08)",
     padding: 28,
     borderRadius: 24,
   },
-
   title: {
     fontSize: "clamp(22px, 4vw, 32px)",
     marginBottom: 12,
   },
-
   meta: {
     display: "flex",
-    flexWrap: "wrap",
     gap: 14,
+    flexWrap: "wrap",
     color: "#CFC9D6",
     fontSize: 14,
     marginBottom: 18,
   },
-
   description: {
     lineHeight: 1.6,
     color: "#CFC9D6",
-    fontSize: 15,
   },
-
   right: {
     display: "flex",
     justifyContent: "center",
   },
-
   card: {
     width: "100%",
     maxWidth: 420,
     background: "rgba(255,255,255,0.08)",
     padding: 28,
     borderRadius: 24,
-    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
-
   heading: {
     fontSize: 20,
     marginBottom: 20,
   },
-
   row: {
     display: "flex",
     justifyContent: "space-between",
     marginBottom: 14,
-    fontSize: 14,
   },
-
   divider: {
     height: 1,
     background: "rgba(255,255,255,0.15)",
     margin: "16px 0",
   },
-
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
     marginBottom: 20,
   },
-
   total: {
     fontSize: 22,
     color: "#22F2A6",
   },
-
   payBtn: {
     width: "100%",
     padding: 14,
@@ -274,35 +262,38 @@ const styles = {
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
+    cursor: "pointer",
   },
-
   secureText: {
     marginTop: 14,
     fontSize: 13,
     textAlign: "center",
     color: "#CFC9D6",
   },
-
+  backBtn: {
+    marginTop: 16,
+    padding: "10px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "#22F2A6",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
   loading: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
   },
-
   error: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
+    textAlign: "center",
     color: "#ff4d4f",
   },
-
-  /* ===== RESPONSIVE DESKTOP ===== */
-  "@media (min-width: 900px)": {
-    container: {
-      gridTemplateColumns: "2fr 1fr",
-    },
-  },
 };
+
+/* ===== RESPONSIVE ===== */
+if (window.innerWidth >= 900) {
+  styles.container.gridTemplateColumns = "2fr 1fr";
+}
