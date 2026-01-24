@@ -37,41 +37,39 @@ export default function AdminDashboard() {
       {/* HEADER */}
       <header style={styles.header}>
         <h1>Admin Dashboard</h1>
-        <p style={styles.muted}>Platform overview & controls</p>
+        <p style={styles.muted}>Platform overview & financial insights</p>
       </header>
 
-      {/* QUICK NAVIGATION */}
+      {/* QUICK NAV */}
       <section style={styles.navGrid}>
         <NavCard
           title="Withdrawals"
-          desc="Approve & manage payouts"
+          desc="Approve payouts"
           link="/admin/withdrawals"
         />
         <NavCard
           title="Organizers"
-          desc="View organizers & top performers"
+          desc="Top performers"
           link="/admin/organizers"
         />
+        <NavCard title="Events" desc="All hosted events" link="/admin/events" />
         <NavCard
-          title="Events"
-          desc="All events on the platform"
-          link="/admin/events"
-        />
-        <NavCard
-          title="Tickets & Sales Analytics"
-          desc="Ticket sales, revenue & Charts & performance insights"
+          title="Sales & Revenue"
+          desc="Tickets & analytics"
           link="/admin/sales"
         />
-        {/* <NavCard
-          title="Admin Withdrawals and Audits Logs"
-          desc="Charts & performance insights"
-          link="/admin/analytics"
-        /> */}
       </section>
 
       {/* KPI */}
       <section style={styles.grid}>
-        <KPI label="Total Revenue" value={`₦${data.stats.revenue}`} />
+        <KPI
+          label="Total Revenue"
+          value={`₦${data.stats.revenue.toLocaleString()}`}
+        />
+        <KPI
+          label="Platform Fees"
+          value={`₦${data.stats.platformFees.toLocaleString()}`}
+        />
         <KPI label="Tickets Sold" value={data.stats.ticketsSold} />
         <KPI label="Events Hosted" value={data.stats.events} />
         <KPI
@@ -82,13 +80,24 @@ export default function AdminDashboard() {
 
       {/* CHART */}
       <section style={styles.card}>
-        <h3>Monthly Revenue</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <h3>Monthly Revenue vs Platform Fees</h3>
+        <ResponsiveContainer width="100%" height={320}>
           <LineChart data={analytics.monthlyRevenue}>
             <XAxis dataKey="_id" />
             <YAxis />
             <Tooltip />
-            <Line type="monotone" dataKey="total" stroke="#22F2A6" />
+            <Line
+              type="monotone"
+              dataKey="totalRevenue"
+              stroke="#22F2A6"
+              name="Revenue"
+            />
+            <Line
+              type="monotone"
+              dataKey="platformFees"
+              stroke="#facc15"
+              name="Platform Fees"
+            />
           </LineChart>
         </ResponsiveContainer>
       </section>
@@ -127,9 +136,7 @@ const styles = {
     fontFamily: "Inter, system-ui",
   },
 
-  header: {
-    marginBottom: 32,
-  },
+  header: { marginBottom: 32 },
 
   navGrid: {
     display: "grid",
@@ -144,7 +151,6 @@ const styles = {
     borderRadius: 20,
     cursor: "pointer",
     boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
-    transition: "transform 0.2s ease",
   },
 
   grid: {
@@ -166,10 +172,7 @@ const styles = {
     borderRadius: 24,
   },
 
-  muted: {
-    color: "#CFC9D6",
-    fontSize: 14,
-  },
+  muted: { color: "#CFC9D6", fontSize: 14 },
 
   loading: {
     minHeight: "100vh",
