@@ -223,9 +223,12 @@ export default function AdminWithdrawals() {
 
   async function load() {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/withdrawals", {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/withdrawals`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
 
       if (!res.ok) throw new Error("Failed to fetch withdrawals");
 
@@ -243,10 +246,13 @@ export default function AdminWithdrawals() {
   }, []);
 
   async function handleAction(id, action) {
-    await fetch(`http://localhost:5000/api/admin/withdrawals/${id}/${action}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
+    await fetch(
+      `${import.meta.env.VITE_API_URL}/api/admin/withdrawals/${id}/${action}`,
+      {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      },
+    );
     load();
   }
 

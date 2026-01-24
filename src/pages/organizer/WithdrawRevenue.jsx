@@ -22,7 +22,7 @@ export default function WithdrawRevenue() {
     async function loadBalance() {
       try {
         const res = await fetch(
-          "http://localhost:5000/api/dashboard/organizer",
+          `${import.meta.env.VITE_API_URL}/api/dashboard/organizer`,
           {
             headers: {
               Authorization: `Bearer ${getToken()}`,
@@ -72,21 +72,24 @@ export default function WithdrawRevenue() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/withdrawals/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          amount,
-          bankDetails: {
-            bankName: form.bankName,
-            accountNumber: form.accountNumber,
-            accountName: form.accountName,
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/withdrawals/request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
           },
-        }),
-      });
+          body: JSON.stringify({
+            amount,
+            bankDetails: {
+              bankName: form.bankName,
+              accountNumber: form.accountNumber,
+              accountName: form.accountName,
+            },
+          }),
+        },
+      );
 
       if (!res.ok) throw new Error("Withdrawal request failed");
 
@@ -167,7 +170,7 @@ export default function WithdrawRevenue() {
         <input
           style={styles.input}
           name="accountName"
-          placeholder="John Doe"
+          placeholder="Your name"
           value={form.accountName}
           onChange={updateField}
         />

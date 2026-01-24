@@ -39,7 +39,7 @@ export default function AppRoutes() {
         <Route path="/events" element={<PublicEvents />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/checkout/:id" element={<Checkout />} />
-        <Route path="/ticket/success" element={<TicketSuccess />} />
+        <Route path="/success" element={<TicketSuccess />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />

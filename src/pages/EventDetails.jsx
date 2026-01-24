@@ -13,7 +13,7 @@ export default function EventDetails() {
     async function loadEvent() {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/events/view/${eventId}`,
+          `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
         );
         if (!res.ok) throw new Error("Event not found");
         const data = await res.json();

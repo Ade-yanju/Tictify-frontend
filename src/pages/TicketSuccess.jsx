@@ -1,57 +1,95 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function TicketSuccess() {
+  const params = new URLSearchParams(window.location.search);
+  const reference = params.get("ref");
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    // Prevent going back to checkout accidentally
-    window.history.replaceState(null, "", window.location.href);
-  }, []);
+    if (!reference) {
+      setError("Invalid ticket reference.");
+      setLoading(false);
+      return;
+    }
+
+    async function loadTicket() {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
+        );
+
+        if (!res.ok) throw new Error();
+
+        const result = await res.json();
+        setData(result);
+      } catch {
+        setError("Unable to load ticket. Please contact support.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTicket();
+  }, [reference]);
+
+  function downloadQR() {
+    const link = document.createElement("a");
+    link.href = data.ticket.qrImage;
+    link.download = `ticket-${reference}.png`;
+    link.click();
+  }
+
+  if (loading) {
+    return <div style={styles.loading}>Preparing your ticket…</div>;
+  }
+
+  if (error) {
+    return <div style={styles.error}>{error}</div>;
+  }
+
+  const { event, ticket } = data;
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        {/* ICON */}
-        <div style={styles.iconWrap}>✅</div>
+        <div style={styles.icon}>🎟️</div>
 
-        {/* TITLE */}
-        <h1 style={styles.title}>Payment Successful!</h1>
-
-        {/* MESSAGE */}
-        <p style={styles.text}>
-          Your ticket has been successfully generated and sent to your email.
+        <h1 style={styles.title}>Your Ticket Is Ready</h1>
+        <p style={styles.subtitle}>
+          Payment confirmed. Present this QR code at the event entrance.
         </p>
 
-        <p style={styles.subText}>
-          Please check your inbox (and spam folder) for your QR code ticket.
-          You’ll need it for entry at the event.
-        </p>
+        <div style={styles.info}>
+          <strong>{event.title}</strong>
+          <p>{new Date(event.date).toDateString()}</p>
+          <p>{event.location}</p>
+          <p>
+            Ticket Type: <strong>{ticket.ticketType}</strong>
+          </p>
+        </div>
 
-        {/* ACTIONS */}
+        <img src={ticket.qrImage} alt="QR Code" style={styles.qr} />
+
         <div style={styles.actions}>
-          <button
-            style={styles.primaryBtn}
-            onClick={() => (window.location.href = "/events")}
-          >
-            Browse More Events
+          <button style={styles.primaryBtn} onClick={downloadQR}>
+            Download QR Code
           </button>
-
-          <button
-            style={styles.secondaryBtn}
-            onClick={() => (window.location.href = "/")}
-          >
-            Back to Home
+          <button style={styles.secondaryBtn} onClick={() => window.print()}>
+            Print Ticket
           </button>
         </div>
 
-        {/* FOOTER NOTE */}
-        <p style={styles.footerNote}>
-          Need help? Contact the event organizer or support.
-        </p>
+        <p style={styles.ref}>Reference: {reference}</p>
       </div>
     </div>
   );
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -62,71 +100,82 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
-
   card: {
+    maxWidth: 520,
     width: "100%",
-    maxWidth: 480,
     background: "rgba(255,255,255,0.08)",
-    backdropFilter: "blur(16px)",
     padding: "40px 32px",
     borderRadius: 24,
-    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
     textAlign: "center",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
-
-  iconWrap: {
-    fontSize: 48,
-    marginBottom: 16,
+  icon: {
+    fontSize: 56,
+    marginBottom: 12,
   },
-
   title: {
-    fontSize: 26,
-    marginBottom: 12,
+    fontSize: 28,
+    marginBottom: 8,
   },
-
-  text: {
-    fontSize: 15,
-    color: "#E5E1F0",
-    marginBottom: 12,
-  },
-
-  subText: {
+  subtitle: {
     fontSize: 14,
     color: "#CFC9D6",
-    marginBottom: 28,
-    lineHeight: 1.5,
+    marginBottom: 24,
   },
-
+  info: {
+    fontSize: 14,
+    color: "#E5E1F0",
+    marginBottom: 20,
+    lineHeight: 1.6,
+  },
+  qr: {
+    width: 240,
+    margin: "20px auto",
+    padding: 14,
+    background: "#fff",
+    borderRadius: 14,
+  },
   actions: {
     display: "flex",
     gap: 12,
+    marginTop: 20,
     flexWrap: "wrap",
-    justifyContent: "center",
-    marginBottom: 24,
   },
-
   primaryBtn: {
-    padding: "12px 22px",
+    flex: 1,
+    padding: "14px 22px",
     borderRadius: 999,
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
     cursor: "pointer",
-    minWidth: 160,
   },
-
   secondaryBtn: {
-    padding: "12px 22px",
+    flex: 1,
+    padding: "14px 22px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.2)",
+    border: "1px solid rgba(255,255,255,0.25)",
     background: "transparent",
     color: "#fff",
     cursor: "pointer",
-    minWidth: 160,
   },
-
-  footerNote: {
+  ref: {
+    marginTop: 20,
     fontSize: 12,
     color: "#9F97B2",
+  },
+  loading: {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
+    color: "#fff",
+  },
+  error: {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
+    color: "#ff4d4f",
   },
 };

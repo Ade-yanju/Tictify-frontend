@@ -23,9 +23,12 @@ export default function AdminSalesAnalytics() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/analytics", {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/analytics`,
+          {
+            headers: { Authorization: `Bearer ${getToken()}` },
+          },
+        );
 
         if (!res.ok) throw new Error("Failed to load analytics");
 

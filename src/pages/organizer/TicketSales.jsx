@@ -14,12 +14,12 @@ export default function TicketSales() {
     async function loadSales() {
       try {
         const res = await fetch(
-          "http://localhost:5000/api/tickets/sales/organizer",
+          `${import.meta.env.VITE_API_URL}/api/tickets/sales/organizer`,
           {
             headers: {
               Authorization: `Bearer ${getToken()}`,
             },
-          }
+          },
         );
 
         if (!res.ok) throw new Error("Failed to load ticket sales");
@@ -198,8 +198,8 @@ const styles = {
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-        ? "#ff4d4f"
-        : "#fadb14",
+          ? "#ff4d4f"
+          : "#fadb14",
   }),
 
   muted: {

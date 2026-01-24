@@ -16,10 +16,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       const [dash, charts] = await Promise.all([
-        fetch("http://localhost:5000/api/admin/dashboard", {
+        fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         }).then((r) => r.json()),
-        fetch("http://localhost:5000/api/admin/analytics", {
+        fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
           headers: { Authorization: `Bearer ${getToken()}` },
         }).then((r) => r.json()),
       ]);

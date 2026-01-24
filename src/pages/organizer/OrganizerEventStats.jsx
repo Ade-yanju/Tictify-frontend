@@ -10,7 +10,7 @@ export default function OrganizerEventStats() {
     async function loadStats() {
       try {
         const res = await fetch(
-          "http://localhost:5000/api/organizer/events/stats",
+          `${import.meta.env.VITE_API_URL}/api/organizer/events/stats`,
           {
             headers: {
               Authorization: `Bearer ${getToken()}`,

@@ -9,11 +9,14 @@ export default function AdminOrganizers() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/organizers", {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/organizers`,
+          {
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+            },
           },
-        });
+        );
 
         if (!res.ok) throw new Error("Failed to load organizers");
 

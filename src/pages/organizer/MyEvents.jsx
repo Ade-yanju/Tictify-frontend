@@ -6,11 +6,14 @@ export default function MyEvents() {
   const [loading, setLoading] = useState(true);
 
   async function fetchEvents() {
-    const res = await fetch("http://localhost:5000/api/events/organizer", {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/events/organizer`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
       },
-    });
+    );
 
     const data = await res.json();
     setEvents(data);
@@ -18,7 +21,7 @@ export default function MyEvents() {
   }
 
   async function updateStatus(id, action) {
-    await fetch(`http://localhost:5000/api/events/${action}/${id}`, {
+    await fetch(`${import.meta.env.VITE_API_URL}/api/events/${action}/${id}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
@@ -132,8 +135,8 @@ const styles = {
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-        ? "#ff4d4f"
-        : "#fadb14",
+          ? "#ff4d4f"
+          : "#fadb14",
   }),
 
   actions: {

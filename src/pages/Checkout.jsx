@@ -17,8 +17,9 @@ export default function Checkout() {
     async function loadEvent() {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/events/view/${eventId}`,
+          `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
         );
+
         if (!res.ok) throw new Error();
 
         const data = await res.json();
@@ -45,27 +46,40 @@ export default function Checkout() {
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
-    if (!email || !ticket) return;
+    if (!email || !ticket || processing) return;
 
     setProcessing(true);
+    setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/payments/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          email,
-          ticketType: ticket.name,
-        }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            email,
+            ticketType: ticket.name,
+          }),
+        },
+      );
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Payment failed");
+      }
 
       const data = await res.json();
+
+      if (!data.paymentUrl) {
+        throw new Error("Invalid payment response");
+      }
+
+      // Redirect to ERCASPAY checkout or success page
       window.location.href = data.paymentUrl;
-    } catch {
-      setError("Payment initialization failed. Please retry.");
+    } catch (err) {
+      setError(err.message || "Payment initialization failed");
       setProcessing(false);
     }
   }
@@ -139,11 +153,15 @@ export default function Checkout() {
               disabled={processing}
               onClick={handlePayment}
             >
-              {processing ? "Redirecting…" : "Pay Securely"}
+              {processing
+                ? "Redirecting to payment…"
+                : ticket.price > 0
+                  ? "Proceed to Payment"
+                  : "Confirm Free Ticket"}
             </button>
 
             <p style={styles.secureText}>
-              🔒 Secured payment • QR ticket via email
+              🔒 Secure payment powered by ERCASPAY
             </p>
           </div>
         </aside>
@@ -151,6 +169,8 @@ export default function Checkout() {
     </div>
   );
 }
+
+/* ================= STYLES ================= */
 const styles = {
   page: {
     minHeight: "100vh",

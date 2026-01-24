@@ -7,7 +7,7 @@ export default function BuyTicket({ event }) {
   async function handlePay() {
     setLoading(true);
 
-    const res = await fetch("http://localhost:5000/api/pay", {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/pay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
