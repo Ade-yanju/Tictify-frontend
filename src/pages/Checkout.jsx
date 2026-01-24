@@ -62,7 +62,7 @@ export default function Checkout() {
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
+        `${import.meta.env.VITE_API_URL}/api/payment/initiate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
