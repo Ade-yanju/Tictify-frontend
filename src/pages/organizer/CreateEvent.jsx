@@ -11,7 +11,7 @@ export default function CreateEvent() {
     location: "",
     date: "",
     capacity: "",
-    ticketTypes: [{ name: "Regular", price: "", quantity: "" }],
+    ticketTypes: [{ name: "Regular", price: 0, quantity: "" }],
   });
 
   const [banner, setBanner] = useState(null);
@@ -26,10 +26,7 @@ export default function CreateEvent() {
 
     const res = await fetch(
       `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_KEY}`,
-      {
-        method: "POST",
-        body: formData,
-      },
+      { method: "POST", body: formData },
     );
 
     const data = await res.json();
@@ -37,7 +34,7 @@ export default function CreateEvent() {
     return data.data.url;
   };
 
-  /* ================= FORM HELPERS ================= */
+  /* ================= HELPERS ================= */
   const updateField = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -51,19 +48,25 @@ export default function CreateEvent() {
   const addTicket = () => {
     setForm({
       ...form,
-      ticketTypes: [...form.ticketTypes, { name: "", price: "", quantity: "" }],
+      ticketTypes: [...form.ticketTypes, { name: "", price: 0, quantity: "" }],
     });
   };
 
   const validate = () => {
     if (!banner) return "Event banner is required";
-    if (!form.title || !form.date || !form.location)
+    if (!form.title || !form.date || !form.location || !form.capacity) {
       return "All event fields are required";
+    }
 
     for (const t of form.ticketTypes) {
-      if (!t.name || t.price === "" || t.quantity === "")
-        return "All ticket fields are required";
+      if (!t.name || t.quantity === "") {
+        return "Each ticket must have a name and quantity";
+      }
+      if (Number(t.price) < 0) {
+        return "Ticket price cannot be negative";
+      }
     }
+
     return null;
   };
 
@@ -91,13 +94,16 @@ export default function CreateEvent() {
           capacity: Number(form.capacity),
           status,
           banner: bannerUrl,
+          ticketTypes: form.ticketTypes.map((t) => ({
+            ...t,
+            price: Number(t.price),
+            quantity: Number(t.quantity),
+          })),
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to create event");
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create event");
 
       setModal({
         type: "success",
@@ -107,10 +113,7 @@ export default function CreateEvent() {
             : "Event saved as draft",
       });
     } catch (err) {
-      setModal({
-        type: "error",
-        message: err.message || "Something went wrong",
-      });
+      setModal({ type: "error", message: err.message });
     } finally {
       setLoading(false);
     }
@@ -124,9 +127,7 @@ export default function CreateEvent() {
           {...modal}
           onClose={() => {
             setModal(null);
-            if (modal.type === "success") {
-              navigate("/organizer/dashboard");
-            }
+            if (modal.type === "success") navigate("/organizer/dashboard");
           }}
         />
       )}
@@ -134,12 +135,12 @@ export default function CreateEvent() {
       <div style={styles.card}>
         <h1>Create Event</h1>
 
-        {/* Banner Upload */}
+        {/* BANNER */}
         <label style={styles.banner}>
           {preview ? (
             <img src={preview} alt="Banner Preview" style={styles.bannerImg} />
           ) : (
-            <span>Click to upload event banner</span>
+            <span style={styles.bannerText}>Click to upload event banner</span>
           )}
           <input
             type="file"
@@ -191,17 +192,20 @@ export default function CreateEvent() {
               onChange={(e) => updateTicket(i, "name", e.target.value)}
             />
             <input
-              placeholder="Price"
               type="number"
+              placeholder="Price (₦0 = Free)"
               value={t.price}
               onChange={(e) => updateTicket(i, "price", e.target.value)}
             />
             <input
-              placeholder="Quantity"
               type="number"
+              placeholder="Quantity"
               value={t.quantity}
               onChange={(e) => updateTicket(i, "quantity", e.target.value)}
             />
+            {Number(t.price) === 0 && (
+              <span style={styles.freeBadge}>FREE</span>
+            )}
           </div>
         ))}
 

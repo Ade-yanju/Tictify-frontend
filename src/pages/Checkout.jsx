@@ -61,8 +61,35 @@ export default function Checkout() {
     setError("");
 
     try {
+      /* ================= FREE TICKET ================= */
+      if (ticket.price === 0) {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/tickets/free`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              eventId: id,
+              email,
+              ticketType: ticket.name,
+            }),
+          },
+        );
+
+        const data = await res.json();
+
+        if (!res.ok || !data.reference) {
+          throw new Error(data.message || "Unable to issue free ticket");
+        }
+
+        // ✅ Direct success (no payment gateway)
+        window.location.href = `/success?ref=${data.reference}`;
+        return;
+      }
+
+      /* ================= PAID TICKET ================= */
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payment/initiate`,
+        `${import.meta.env.VITE_API_URL}/api/payments/initiate`, // ✅ FIXED
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -80,11 +107,7 @@ export default function Checkout() {
         throw new Error(data.message || "Unable to start payment");
       }
 
-      /**
-       * 🔐 IMPORTANT:
-       * We redirect ONLY to ERCASPAY.
-       * Ticket is created ONLY via webhook.
-       */
+      // 🔐 Redirect ONLY to ERCASPAY
       window.location.href = data.paymentUrl;
     } catch (err) {
       setError(err.message || "Payment failed");
