@@ -40,7 +40,7 @@ export default function AdminSalesAnalytics() {
           topEvents: json.topEvents || [],
           topOrganizers: json.topOrganizers || [],
         });
-      } catch (err) {
+      } catch {
         setError("Unable to load analytics data.");
       } finally {
         setLoading(false);
@@ -50,14 +50,17 @@ export default function AdminSalesAnalytics() {
     load();
   }, []);
 
-  if (loading) return <p style={styles.loading}>Loading analytics…</p>;
-  if (error) return <p style={styles.error}>{error}</p>;
+  if (loading) return <div style={styles.loading}>Loading analytics…</div>;
+  if (error) return <div style={styles.error}>{error}</div>;
 
   return (
     <div style={styles.page}>
-      <h1>Sales & Revenue Analytics</h1>
+      <header style={styles.header}>
+        <h1>Sales & Revenue Analytics</h1>
+        <p style={styles.muted}>Insights across events & organizers</p>
+      </header>
 
-      {/* ===== CHARTS ===== */}
+      {/* CHARTS */}
       <div style={styles.grid}>
         <Chart
           title="Monthly Revenue"
@@ -71,23 +74,22 @@ export default function AdminSalesAnalytics() {
         />
       </div>
 
-      {/* ===== TOP EVENTS ===== */}
+      {/* TABLES */}
       <Table
         title="Top Events"
         rows={data.topEvents.map((e) => ({
           name: e.event?.title || "Unknown",
-          sold: e.sold,
-          revenue: `₦${e.revenue}`,
+          sold: e.sold || 0,
+          revenue: `₦${(e.revenue || 0).toLocaleString()}`,
         }))}
       />
 
-      {/* ===== TOP ORGANIZERS ===== */}
       <Table
         title="Top Organizers"
         rows={data.topOrganizers.map((o) => ({
           name: o.organizer?.name || "Unknown",
-          sold: o.sold,
-          revenue: `₦${o.revenue}`,
+          sold: o.sold || 0,
+          revenue: `₦${(o.revenue || 0).toLocaleString()}`,
         }))}
       />
     </div>
@@ -103,12 +105,17 @@ function Chart({ title, data, dataKey }) {
       {data.length === 0 ? (
         <p style={styles.muted}>No data available</p>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={280}>
           <LineChart data={data}>
             <XAxis dataKey="_id" />
             <YAxis />
             <Tooltip />
-            <Line dataKey={dataKey} stroke="#22F2A6" />
+            <Line
+              type="monotone"
+              dataKey={dataKey}
+              stroke="#22F2A6"
+              strokeWidth={2}
+            />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -140,16 +147,21 @@ function Table({ title, rows }) {
 
 const styles = {
   page: {
-    padding: 32,
+    padding: "clamp(16px,4vw,32px)",
     minHeight: "100vh",
     background: "#0F0618",
     color: "#fff",
+    fontFamily: "Inter, system-ui",
+  },
+
+  header: {
+    marginBottom: 32,
   },
 
   grid: {
     display: "grid",
     gap: 24,
-    gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
     marginBottom: 32,
   },
 
@@ -160,10 +172,11 @@ const styles = {
   },
 
   row: {
-    display: "flex",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "2fr 1fr 1fr",
     padding: "12px 0",
     borderBottom: "1px solid rgba(255,255,255,0.1)",
+    gap: 12,
   },
 
   muted: {
@@ -172,13 +185,18 @@ const styles = {
   },
 
   loading: {
-    padding: 60,
-    textAlign: "center",
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
+    color: "#fff",
   },
 
   error: {
-    padding: 60,
-    textAlign: "center",
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
     color: "#ff4d4f",
   },
 };

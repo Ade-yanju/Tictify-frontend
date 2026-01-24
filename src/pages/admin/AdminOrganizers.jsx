@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminOrganizers() {
+  const navigate = useNavigate();
   const [organizers, setOrganizers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -12,9 +14,7 @@ export default function AdminOrganizers() {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/admin/organizers`,
           {
-            headers: {
-              Authorization: `Bearer ${getToken()}`,
-            },
+            headers: { Authorization: `Bearer ${getToken()}` },
           },
         );
 
@@ -22,8 +22,8 @@ export default function AdminOrganizers() {
 
         const data = await res.json();
         setOrganizers(data);
-      } catch (err) {
-        setError(err.message || "Unable to load organizers");
+      } catch {
+        setError("Unable to load organizers");
       } finally {
         setLoading(false);
       }
@@ -35,8 +35,11 @@ export default function AdminOrganizers() {
   if (loading) return <div style={styles.loading}>Loading organizers…</div>;
   if (error) return <div style={styles.error}>{error}</div>;
 
+  const topOrganizers = organizers.slice(0, 5);
+
   return (
     <div style={styles.page}>
+      {/* HEADER */}
       <header style={styles.header}>
         <h1>Organizers</h1>
         <p style={styles.muted}>Top performers & platform contributors</p>
@@ -46,44 +49,61 @@ export default function AdminOrganizers() {
       <section style={styles.leaderboard}>
         <h3>Top Performing Organizers</h3>
 
-        {organizers.slice(0, 5).map((o, i) => (
-          <div key={o._id} style={styles.leaderRow}>
-            <span style={styles.rank}>#{i + 1}</span>
-            <div>
-              <strong>{o.name}</strong>
-              <p style={styles.muted}>{o.email}</p>
+        {topOrganizers.length === 0 ? (
+          <p style={styles.muted}>No organizers yet.</p>
+        ) : (
+          topOrganizers.map((o, i) => (
+            <div
+              key={o._id}
+              style={styles.leaderRow}
+              onClick={() => navigate(`/admin/organizers/${o._id}`)}
+            >
+              <span style={styles.rank}>#{i + 1}</span>
+
+              <div style={styles.flexCol}>
+                <strong>{o.name}</strong>
+                <span style={styles.muted}>{o.email}</span>
+              </div>
+
+              <strong>₦{(o.revenue || 0).toLocaleString()}</strong>
             </div>
-            <strong>₦{o.revenue.toLocaleString()}</strong>
-          </div>
-        ))}
+          ))
+        )}
       </section>
 
       {/* FULL LIST */}
-      <section style={styles.table}>
+      <section style={styles.list}>
         {organizers.map((o) => (
-          <div key={o._id} style={styles.row}>
-            <div>
+          <div
+            key={o._id}
+            style={styles.card}
+            onClick={() => navigate(`/admin/organizers/${o._id}`)}
+          >
+            <div style={styles.info}>
               <strong>{o.name}</strong>
               <p style={styles.muted}>{o.email}</p>
             </div>
 
-            <div>
-              <p>Events</p>
-              <strong>{o.events}</strong>
-            </div>
-
-            <div>
-              <p>Tickets Sold</p>
-              <strong>{o.ticketsSold}</strong>
-            </div>
-
-            <div>
-              <p>Revenue</p>
-              <strong>₦{o.revenue.toLocaleString()}</strong>
-            </div>
+            <Stat label="Events" value={o.events} />
+            <Stat label="Tickets Sold" value={o.ticketsSold} />
+            <Stat
+              label="Revenue"
+              value={`₦${(o.revenue || 0).toLocaleString()}`}
+            />
           </div>
         ))}
       </section>
+    </div>
+  );
+}
+
+/* ================= SUB COMPONENTS ================= */
+
+function Stat({ label, value }) {
+  return (
+    <div style={styles.stat}>
+      <span style={styles.statLabel}>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -93,7 +113,7 @@ export default function AdminOrganizers() {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: 32,
+    padding: "clamp(16px,4vw,32px)",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -113,10 +133,11 @@ const styles = {
   leaderRow: {
     display: "grid",
     gridTemplateColumns: "40px 1fr auto",
-    alignItems: "center",
     gap: 16,
-    padding: "12px 0",
+    alignItems: "center",
+    padding: "14px 0",
     borderBottom: "1px solid rgba(255,255,255,0.1)",
+    cursor: "pointer",
   },
 
   rank: {
@@ -124,18 +145,38 @@ const styles = {
     color: "#22F2A6",
   },
 
-  table: {
+  list: {
     display: "grid",
     gap: 16,
   },
 
-  row: {
+  card: {
     display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr 1fr",
+    gridTemplateColumns: "1fr repeat(3, minmax(80px, auto))",
     gap: 16,
     background: "rgba(255,255,255,0.08)",
     padding: 20,
     borderRadius: 20,
+    cursor: "pointer",
+  },
+
+  info: {
+    minWidth: 0,
+  },
+
+  stat: {
+    textAlign: "right",
+  },
+
+  statLabel: {
+    display: "block",
+    fontSize: 12,
+    color: "#CFC9D6",
+  },
+
+  flexCol: {
+    display: "flex",
+    flexDirection: "column",
   },
 
   muted: {
@@ -148,7 +189,6 @@ const styles = {
     display: "grid",
     placeItems: "center",
     background: "#0F0618",
-    color: "#fff",
   },
 
   error: {
@@ -159,3 +199,9 @@ const styles = {
     color: "#ff4d4f",
   },
 };
+
+/* ================= MOBILE TWEAK ================= */
+if (window.innerWidth < 640) {
+  styles.card.gridTemplateColumns = "1fr 1fr";
+  styles.stat.textAlign = "left";
+}

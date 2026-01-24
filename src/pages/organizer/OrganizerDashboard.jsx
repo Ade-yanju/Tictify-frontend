@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { fetchOrganizerDashboard } from "../../services/dashboardService";
+import { useNavigate } from "react-router-dom";
 
 export default function OrganizerDashboard() {
+  const navigate = useNavigate();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +28,7 @@ export default function OrganizerDashboard() {
     }
   }
 
-  /* ================= REALTIME (SAFE POLLING) ================= */
+  /* ================= SAFE POLLING ================= */
   useEffect(() => {
     loadDashboard();
     const interval = setInterval(loadDashboard, 15000);
@@ -46,10 +49,7 @@ export default function OrganizerDashboard() {
           <div style={styles.modal}>
             <h3>Error</h3>
             <p>{modal.message}</p>
-            <button
-              style={styles.modalBtn}
-              onClick={() => (window.location.href = "/login")}
-            >
+            <button style={styles.modalBtn} onClick={() => navigate("/login")}>
               OK
             </button>
           </div>
@@ -65,16 +65,19 @@ export default function OrganizerDashboard() {
           </p>
         </div>
 
-        <button
-          style={styles.primaryBtn}
-          onClick={() => (window.location.href = "/organizer/create-event")}
-        >
-          + Create Event
-        </button>
-        <Stat
-          label="Wallet Balance"
-          value={`₦${data.stats.walletBalance.toLocaleString()}`}
-        />
+        <div style={styles.headerActions}>
+          <Stat
+            label="Wallet Balance"
+            value={`₦${data.stats.walletBalance.toLocaleString()}`}
+          />
+
+          <button
+            style={styles.primaryBtn}
+            onClick={() => navigate("/organizer/create-event")}
+          >
+            + Create Event
+          </button>
+        </div>
       </header>
 
       {/* ================= QUICK ACTIONS ================= */}
@@ -82,22 +85,22 @@ export default function OrganizerDashboard() {
         <Action
           title="My Events"
           desc="View & manage events"
-          onClick={() => (window.location.href = "/organizer/event")}
+          onClick={() => navigate("/organizer/event")}
         />
         <Action
           title="Ticket Sales"
           desc="Track sales & revenue"
-          onClick={() => (window.location.href = "/organizer/sales")}
+          onClick={() => navigate("/organizer/sales")}
         />
         <Action
           title="Scan Tickets"
           desc="Admit guests at venue"
-          onClick={() => (window.location.href = "/organizer/scan")}
+          onClick={() => navigate("/organizer/scan")}
         />
         <Action
           title="Withdraw Revenue"
           desc="Transfer earnings"
-          onClick={() => (window.location.href = "/organizer/withdraw")}
+          onClick={() => navigate("/organizer/withdraw")}
         />
       </section>
 
@@ -125,12 +128,13 @@ export default function OrganizerDashboard() {
                 </p>
               </div>
 
-              <div>
+              <div style={styles.eventActions}>
                 <span style={styles.status(event.status)}>{event.status}</span>
+
                 <button
                   style={styles.linkBtn}
                   onClick={() =>
-                    (window.location.href = `/organizer/stats?eventId=${event._id}`)
+                    navigate(`/organizer/stats?eventId=${event._id}`)
                   }
                 >
                   View
@@ -144,7 +148,7 @@ export default function OrganizerDashboard() {
   );
 }
 
-/* ================= LOCAL HELPERS (NOT SHARED) ================= */
+/* ================= LOCAL COMPONENTS ================= */
 
 function Stat({ label, value }) {
   return (
@@ -169,9 +173,10 @@ function Action({ title, desc, onClick }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: 24,
+    padding: "clamp(16px,4vw,32px)",
     background: "#0F0618",
     color: "#fff",
+    fontFamily: "Inter, system-ui",
   },
 
   header: {
@@ -180,6 +185,13 @@ const styles = {
     flexWrap: "wrap",
     gap: 16,
     marginBottom: 32,
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: 16,
+    flexWrap: "wrap",
+    alignItems: "center",
   },
 
   grid: {
@@ -194,6 +206,7 @@ const styles = {
     padding: 20,
     borderRadius: 18,
     cursor: "pointer",
+    transition: "transform 0.15s ease",
   },
 
   stats: {
@@ -216,14 +229,23 @@ const styles = {
   event: {
     display: "flex",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 12,
     background: "rgba(255,255,255,0.05)",
     padding: 20,
     borderRadius: 16,
     marginTop: 16,
   },
 
+  eventActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+
   status: (status) => ({
-    fontWeight: 600,
+    fontWeight: 700,
+    fontSize: 12,
     color:
       status === "LIVE"
         ? "#22F2A6"
@@ -237,16 +259,16 @@ const styles = {
     border: "none",
     padding: "12px 20px",
     borderRadius: 999,
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
   },
 
   linkBtn: {
-    background: "none",
+    background: "transparent",
     border: "none",
     color: "#22F2A6",
     cursor: "pointer",
-    marginLeft: 12,
+    fontWeight: 600,
   },
 
   muted: {

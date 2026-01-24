@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 export default function Checkout() {
-  const eventId = window.location.pathname.split("/").pop();
-  const params = new URLSearchParams(window.location.search);
-  const email = params.get("email");
-  const ticketName = params.get("ticket");
+  const navigate = useNavigate();
+  const { eventId } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const email = searchParams.get("email");
+  const ticketName = searchParams.get("ticket");
 
   const [event, setEvent] = useState(null);
   const [ticket, setTicket] = useState(null);
@@ -20,7 +23,7 @@ export default function Checkout() {
           `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
         );
 
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
 
@@ -29,13 +32,13 @@ export default function Checkout() {
         );
 
         if (!selectedTicket) {
-          throw new Error("Invalid ticket");
+          throw new Error("Invalid ticket selection");
         }
 
         setEvent(data);
         setTicket(selectedTicket);
-      } catch {
-        setError("Unable to prepare checkout. Please try again.");
+      } catch (err) {
+        setError(err.message || "Unable to prepare checkout.");
       } finally {
         setLoading(false);
       }
@@ -76,8 +79,8 @@ export default function Checkout() {
         throw new Error("Invalid payment response");
       }
 
-      // Redirect to ERCASPAY checkout or success page
-      window.location.href = data.paymentUrl;
+      // External redirect (payment gateway)
+      window.location.assign(data.paymentUrl);
     } catch (err) {
       setError(err.message || "Payment initialization failed");
       setProcessing(false);
@@ -295,9 +298,11 @@ const styles = {
     background: "#0F0618",
     color: "#ff4d4f",
   },
-};
 
-/* ===== RESPONSIVE DESKTOP ===== */
-if (window.innerWidth >= 900) {
-  styles.container.gridTemplateColumns = "2fr 1fr";
-}
+  /* ===== RESPONSIVE DESKTOP ===== */
+  "@media (min-width: 900px)": {
+    container: {
+      gridTemplateColumns: "2fr 1fr",
+    },
+  },
+};

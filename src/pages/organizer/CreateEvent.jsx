@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { getToken } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function CreateEvent() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -22,7 +25,7 @@ export default function CreateEvent() {
     formData.append("image", file);
 
     const res = await fetch(
-      "https://api.imgbb.com/1/upload?key=58f658e4c17232715cf88c43a4875cbb",
+      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_KEY}`,
       {
         method: "POST",
         body: formData,
@@ -30,11 +33,7 @@ export default function CreateEvent() {
     );
 
     const data = await res.json();
-
-    if (!data.success) {
-      throw new Error("Image upload failed");
-    }
-
+    if (!data.success) throw new Error("Image upload failed");
     return data.data.url;
   };
 
@@ -44,9 +43,9 @@ export default function CreateEvent() {
   };
 
   const updateTicket = (index, field, value) => {
-    const updated = [...form.ticketTypes];
-    updated[index][field] = value;
-    setForm({ ...form, ticketTypes: updated });
+    const tickets = [...form.ticketTypes];
+    tickets[index][field] = value;
+    setForm({ ...form, ticketTypes: tickets });
   };
 
   const addTicket = () => {
@@ -56,22 +55,31 @@ export default function CreateEvent() {
     });
   };
 
+  const validate = () => {
+    if (!banner) return "Event banner is required";
+    if (!form.title || !form.date || !form.location)
+      return "All event fields are required";
+
+    for (const t of form.ticketTypes) {
+      if (!t.name || t.price === "" || t.quantity === "")
+        return "All ticket fields are required";
+    }
+    return null;
+  };
+
   /* ================= SUBMIT ================= */
   const submit = async (status) => {
-    if (!banner) {
-      return setModal({
-        type: "error",
-        message: "Event banner is required",
-      });
+    const error = validate();
+    if (error) {
+      setModal({ type: "error", message: error });
+      return;
     }
 
     setLoading(true);
 
     try {
-      // 1️⃣ Upload image to ImgBB
       const bannerUrl = await uploadToImgBB(banner);
 
-      // 2️⃣ Send JSON to backend
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`, {
         method: "POST",
         headers: {
@@ -117,7 +125,7 @@ export default function CreateEvent() {
           onClose={() => {
             setModal(null);
             if (modal.type === "success") {
-              window.location.href = "/organizer/dashboard";
+              navigate("/organizer/dashboard");
             }
           }}
         />
@@ -126,12 +134,12 @@ export default function CreateEvent() {
       <div style={styles.card}>
         <h1>Create Event</h1>
 
-        {/* Banner */}
+        {/* Banner Upload */}
         <label style={styles.banner}>
           {preview ? (
-            <img src={preview} alt="preview" />
+            <img src={preview} alt="Banner Preview" style={styles.bannerImg} />
           ) : (
-            "Click to upload banner"
+            <span>Click to upload event banner</span>
           )}
           <input
             type="file"
@@ -146,8 +154,13 @@ export default function CreateEvent() {
           />
         </label>
 
+        {/* FORM */}
         <div style={styles.grid}>
-          <input name="title" placeholder="Title" onChange={updateField} />
+          <input
+            name="title"
+            placeholder="Event Title"
+            onChange={updateField}
+          />
           <input
             name="location"
             placeholder="Location"
@@ -163,35 +176,51 @@ export default function CreateEvent() {
         </div>
 
         <textarea
-          placeholder="Description"
+          placeholder="Event Description"
+          rows={4}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
 
+        {/* TICKETS */}
         <h3>Ticket Types</h3>
         {form.ticketTypes.map((t, i) => (
           <div key={i} style={styles.ticketRow}>
             <input
+              placeholder="Name"
               value={t.name}
               onChange={(e) => updateTicket(i, "name", e.target.value)}
             />
             <input
-              value={t.price}
+              placeholder="Price"
               type="number"
+              value={t.price}
               onChange={(e) => updateTicket(i, "price", e.target.value)}
             />
             <input
-              value={t.quantity}
+              placeholder="Quantity"
               type="number"
+              value={t.quantity}
               onChange={(e) => updateTicket(i, "quantity", e.target.value)}
             />
           </div>
         ))}
 
-        <button onClick={addTicket}>+ Add Ticket</button>
+        <button style={styles.addBtn} onClick={addTicket}>
+          + Add Ticket Type
+        </button>
 
+        {/* ACTIONS */}
         <div style={styles.actions}>
-          <button onClick={() => submit("DRAFT")}>Save Draft</button>
-          <button onClick={() => submit("LIVE")}>Publish</button>
+          <button disabled={loading} onClick={() => submit("DRAFT")}>
+            Save Draft
+          </button>
+          <button
+            disabled={loading}
+            style={styles.publish}
+            onClick={() => submit("LIVE")}
+          >
+            {loading ? "Publishing…" : "Publish Event"}
+          </button>
         </div>
       </div>
     </div>
@@ -203,7 +232,7 @@ function Modal({ type, message, onClose }) {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
-        <h3>{type}</h3>
+        <h3>{type === "error" ? "Error" : "Success"}</h3>
         <p>{message}</p>
         <button onClick={onClose}>OK</button>
       </div>
@@ -214,27 +243,90 @@ function Modal({ type, message, onClose }) {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    padding: 24,
+    padding: "clamp(16px,4vw,32px)",
     background: "#0F0618",
     minHeight: "100vh",
     color: "#fff",
   },
-  card: { maxWidth: 900, margin: "auto", padding: 24, borderRadius: 16 },
+
+  card: {
+    maxWidth: 900,
+    margin: "auto",
+    background: "rgba(255,255,255,0.08)",
+    padding: 24,
+    borderRadius: 20,
+  },
+
   banner: {
-    height: 200,
+    height: 220,
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.05)",
     display: "grid",
     placeItems: "center",
     cursor: "pointer",
+    marginBottom: 24,
+    overflow: "hidden",
   },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  ticketRow: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 },
-  actions: { display: "flex", gap: 12, justifyContent: "flex-end" },
+
+  bannerImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+    gap: 12,
+    marginBottom: 16,
+  },
+
+  ticketRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  addBtn: {
+    marginTop: 8,
+    background: "transparent",
+    border: "1px dashed #22F2A6",
+    color: "#22F2A6",
+    padding: 10,
+    borderRadius: 12,
+    cursor: "pointer",
+  },
+
+  actions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 24,
+  },
+
+  publish: {
+    background: "#22F2A6",
+    border: "none",
+    padding: "10px 20px",
+    borderRadius: 999,
+    fontWeight: 600,
+  },
+
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,.6)",
+    background: "rgba(0,0,0,.7)",
     display: "grid",
     placeItems: "center",
   },
-  modal: { background: "#1A0F2E", padding: 24, borderRadius: 12 },
+
+  modal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 16,
+    maxWidth: 320,
+    width: "100%",
+    textAlign: "center",
+  },
 };

@@ -14,27 +14,29 @@ import Register from "../pages/Register";
 /* ================= ORGANIZER ================= */
 import OrganizerDashboard from "../pages/organizer/OrganizerDashboard";
 import ScanTicket from "../pages/organizer/ScanTicket";
-import CreateEvent from "../pages/organizer/CreateEvent.jsx";
-import MyEvents from "../pages/organizer/MyEvents.jsx";
-import TicketSales from "../pages/organizer/TicketSales.jsx";
-import WithdrawRevenue from "../pages/organizer/WithdrawRevenue.jsx";
-import OrganizerEventStats from "../pages/organizer/OrganizerEventStats.jsx";
+import CreateEvent from "../pages/organizer/CreateEvent";
+import MyEvents from "../pages/organizer/MyEvents";
+import TicketSales from "../pages/organizer/TicketSales";
+import WithdrawRevenue from "../pages/organizer/WithdrawRevenue";
+import OrganizerEventStats from "../pages/organizer/OrganizerEventStats";
+
 /* ================= ADMIN ================= */
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminOrganizers from "../pages/admin/AdminOrganizers";
-import AdminWithdrawals from "../pages/admin/AdminWithdrawals.jsx";
-import AdminEvents from "../pages/admin/AdminEvents.jsx";
-import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics.jsx";
+import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
+import AdminEvents from "../pages/admin/AdminEvents";
+import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
+
 /* ================= GUARDS ================= */
-import ProtectedRoute from "./ProtectedRoute.jsx";
-import OrganizerRoute from "./OrganizerRoute.jsx";
-import AdminRoute from "./AdminRoute.jsx";
+import ProtectedRoute from "./ProtectedRoute";
+import OrganizerRoute from "./OrganizerRoute";
+import AdminRoute from "./AdminRoute";
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ========= PUBLIC (GUEST) ========= */}
+        {/* ========= PUBLIC ========= */}
         <Route path="/" element={<Home />} />
         <Route path="/events" element={<PublicEvents />} />
         <Route path="/events/:id" element={<EventDetails />} />
@@ -67,8 +69,9 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
-          path="/organizer/event"
+          path="/organizer/events"
           element={
             <ProtectedRoute>
               <OrganizerRoute>
@@ -88,6 +91,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/organizer/sales"
           element={
@@ -98,6 +102,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/organizer/stats"
           element={
@@ -108,6 +113,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/organizer/withdraw"
           element={
@@ -118,6 +124,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         {/* ========= ADMIN ========= */}
         <Route
           path="/admin/dashboard"
@@ -129,36 +136,48 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/withdrawals"
           element={
-            <AdminRoute>
-              <AdminWithdrawals />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminWithdrawals />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/organizers"
           element={
-            <AdminRoute>
-              <AdminOrganizers />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminOrganizers />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/events"
           element={
-            <AdminRoute>
-              <AdminEvents />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminEvents />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/sales"
           element={
-            <AdminRoute>
-              <AdminSalesAnalytics />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminSalesAnalytics />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
 

@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 
 export default function Login() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +21,7 @@ export default function Login() {
       const res = await login({ email, password });
 
       /**
-       * Expected response shape:
+       * Expected response:
        * {
        *   token,
        *   user: { role: "admin" | "organizer" }
@@ -26,15 +29,15 @@ export default function Login() {
        */
       const { user } = res;
 
-      if (!user || !user.role) {
+      if (!user?.role) {
         throw new Error("Invalid authentication response");
       }
 
-      // ✅ ROLE-BASED REDIRECT
+      // ✅ ROLE-BASED NAVIGATION (SPA SAFE)
       if (user.role === "admin") {
-        window.location.href = "/admin/dashboard";
+        navigate("/admin/dashboard", { replace: true });
       } else if (user.role === "organizer") {
-        window.location.href = "/organizer/dashboard";
+        navigate("/organizer/dashboard", { replace: true });
       } else {
         throw new Error("Unauthorized role");
       }
@@ -61,6 +64,7 @@ export default function Login() {
           placeholder="Email address"
           style={styles.input}
           required
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
@@ -71,6 +75,7 @@ export default function Login() {
             placeholder="Password"
             style={styles.input}
             required
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           <button
@@ -107,11 +112,16 @@ export default function Login() {
           {loading ? "Signing in..." : "Login"}
         </button>
 
+        {/* REGISTER LINK */}
         <p style={styles.footer}>
           Organizer only?{" "}
-          <a href="/register" style={styles.link}>
+          <button
+            type="button"
+            onClick={() => navigate("/register")}
+            style={styles.linkBtn}
+          >
             Create an organizer account
-          </a>
+          </button>
         </p>
       </form>
     </div>
@@ -224,9 +234,11 @@ const styles = {
     color: "#CFC9D6",
   },
 
-  link: {
+  linkBtn: {
+    background: "none",
+    border: "none",
     color: "#22F2A6",
-    textDecoration: "none",
+    cursor: "pointer",
     fontWeight: 500,
   },
 };

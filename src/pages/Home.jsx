@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 const logo = "/logo.png";
 
 /* ===== HERO IMAGES ===== */
@@ -29,6 +31,8 @@ export default function Home() {
 
 /* ================= NAVBAR ================= */
 function Navbar() {
+  const navigate = useNavigate();
+
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -56,13 +60,13 @@ function Navbar() {
             </button>
             <button
               style={styles.outlineBtn}
-              onClick={() => (window.location.href = "/login")}
+              onClick={() => navigate("/login")}
             >
               Login
             </button>
             <button
               style={styles.primaryBtn}
-              onClick={() => (window.location.href = "/register")}
+              onClick={() => navigate("/register")}
             >
               Sign Up
             </button>
@@ -75,6 +79,8 @@ function Navbar() {
 
 /* ================= HERO ================= */
 function Hero() {
+  const navigate = useNavigate();
+
   return (
     <section id="home" style={styles.hero}>
       <div style={styles.container}>
@@ -93,13 +99,13 @@ function Hero() {
           <div style={styles.heroButtons}>
             <button
               style={styles.primaryBtn}
-              onClick={() => (window.location.href = "/login")}
+              onClick={() => navigate("/login")}
             >
               Create an Event
             </button>
             <button
               style={styles.secondaryBtn}
-              onClick={() => (window.location.href = "/events")}
+              onClick={() => navigate("/events")}
             >
               Browse Events
             </button>
@@ -107,7 +113,7 @@ function Hero() {
         </div>
       </div>
 
-      {/* ===== IMAGE MARQUEE (CORRECT IMPLEMENTATION) ===== */}
+      {/* IMAGE MARQUEE */}
       <div style={styles.marqueeViewport}>
         <div style={styles.marqueeTrack}>
           {[...heroImages, ...heroImages].map((img, i) => (
@@ -145,16 +151,10 @@ function Guests() {
         <div style={styles.grid}>
           <Card
             title="Instant Tickets"
-            text="Receive your e-ticket immediately after payment."
+            text="Receive your e-ticket instantly."
           />
-          <Card
-            title="QR Code Entry"
-            text="Fast, secure entry using scannable QR codes."
-          />
-          <Card
-            title="Stress-Free Access"
-            text="No printing, no queues, no confusion."
-          />
+          <Card title="QR Code Entry" text="Fast and secure event entry." />
+          <Card title="Stress-Free Access" text="No printing. No queues." />
         </div>
       </div>
     </section>
@@ -169,18 +169,9 @@ function Organizers() {
         <h2 style={styles.sectionTitle}>For Organizers</h2>
 
         <div style={styles.grid}>
-          <Card
-            title="Create Events Easily"
-            text="Set up events, ticket types, and prices in minutes."
-          />
-          <Card
-            title="Secure Payments"
-            text="Powered by ErcasPay with fast settlements."
-          />
-          <Card
-            title="Live Analytics"
-            text="Track ticket sales and attendance in real time."
-          />
+          <Card title="Create Events" text="Set up events in minutes." />
+          <Card title="Secure Payments" text="Powered by ErcasPay." />
+          <Card title="Live Analytics" text="Track sales in real time." />
         </div>
       </div>
     </section>
@@ -198,17 +189,17 @@ function HowItWorks() {
           <Step
             number="01"
             title="Create Event"
-            text="Add event details and ticket options."
+            text="Add details and tickets."
           />
           <Step
             number="02"
             title="Sell Tickets"
-            text="Guests pay and receive QR tickets instantly."
+            text="Guests pay & get QR codes."
           />
           <Step
             number="03"
             title="Scan & Admit"
-            text="Scan tickets at the venue to prevent fraud."
+            text="Prevent fraud at entry."
           />
         </div>
       </div>
@@ -224,12 +215,8 @@ function Pricing() {
         <h2 style={styles.sectionTitle}>Simple Pricing</h2>
 
         <div style={styles.grid}>
-          <PriceCard title="Free" price="₦0" text="Perfect for free events." />
-          <PriceCard
-            title="Pro"
-            price="3% + ₦80"
-            text="Only pay when you sell tickets."
-          />
+          <PriceCard title="Free" price="₦0" text="For free events." />
+          <PriceCard title="Pro" price="3% + ₦80" text="Pay per ticket sold." />
         </div>
       </div>
     </section>
@@ -238,14 +225,16 @@ function Pricing() {
 
 /* ================= CTA ================= */
 function CTA() {
+  const navigate = useNavigate();
+
   return (
     <section style={styles.cta}>
       <div style={styles.container}>
         <h2>Start Selling Tickets Today</h2>
-        <p style={styles.mutedText}>
-          Create your first event in minutes and manage it with confidence.
-        </p>
-        <button style={styles.primaryBtn}>Get Started</button>
+        <p style={styles.mutedText}>Create your first event in minutes.</p>
+        <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
+          Get Started
+        </button>
       </div>
     </section>
   );

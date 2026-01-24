@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { register } from "../services/authService";
 
 export default function Register() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -38,7 +41,8 @@ export default function Register() {
         role: "organizer", // 🔒 HARD ENFORCED
       });
 
-      window.location.href = "/login";
+      // ✅ SPA navigation (NO reload)
+      navigate("/login");
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -54,18 +58,22 @@ export default function Register() {
           Register as an event organizer to create and manage events on Tictify
         </p>
 
+        {/* NAME */}
         <input
           style={styles.input}
           placeholder="Full name"
           required
+          value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
+        {/* EMAIL */}
         <input
           style={styles.input}
           type="email"
           placeholder="Email address"
           required
+          value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
 
@@ -76,18 +84,20 @@ export default function Register() {
             type={showPassword ? "text" : "password"}
             placeholder="Password"
             required
+            value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           <button
             type="button"
             style={styles.eye}
             onClick={() => setShowPassword(!showPassword)}
+            aria-label="Toggle password visibility"
           >
             {showPassword ? "🙈" : "👁️"}
           </button>
         </div>
 
-        {/* STRENGTH */}
+        {/* PASSWORD STRENGTH */}
         {form.password && (
           <div style={styles.strength}>
             <div
@@ -110,6 +120,7 @@ export default function Register() {
             type={showConfirm ? "text" : "password"}
             placeholder="Confirm password"
             required
+            value={form.confirmPassword}
             onChange={(e) =>
               setForm({ ...form, confirmPassword: e.target.value })
             }
@@ -118,11 +129,13 @@ export default function Register() {
             type="button"
             style={styles.eye}
             onClick={() => setShowConfirm(!showConfirm)}
+            aria-label="Toggle confirm password visibility"
           >
             {showConfirm ? "🙈" : "👁️"}
           </button>
         </div>
 
+        {/* PASSWORD MATCH */}
         {form.confirmPassword && (
           <p
             style={{
@@ -135,17 +148,23 @@ export default function Register() {
           </p>
         )}
 
+        {/* ERROR */}
         {error && <p style={styles.error}>{error}</p>}
 
+        {/* SUBMIT */}
         <button style={styles.submit} disabled={loading}>
           {loading ? "Creating account..." : "Create Organizer Account"}
         </button>
 
         <p style={styles.footer}>
           Already an organizer?{" "}
-          <a href="/login" style={styles.link}>
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            style={styles.link}
+          >
             Login
-          </a>
+          </button>
         </p>
       </form>
     </div>
@@ -248,8 +267,10 @@ const styles = {
   },
 
   link: {
+    background: "none",
+    border: "none",
     color: "#22F2A6",
-    textDecoration: "none",
+    cursor: "pointer",
     fontWeight: 500,
   },
 };

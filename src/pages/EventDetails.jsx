@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function EventDetails() {
-  const eventId = window.location.pathname.split("/").pop();
+  const { eventId } = useParams();
+  const navigate = useNavigate();
 
   const [event, setEvent] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -9,16 +11,19 @@ export default function EventDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /* ================= LOAD EVENT ================= */
   useEffect(() => {
     async function loadEvent() {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/events/view/${eventId}`,
         );
+
         if (!res.ok) throw new Error("Event not found");
+
         const data = await res.json();
         setEvent(data);
-      } catch {
+      } catch (err) {
         setError("Unable to load this event.");
       } finally {
         setLoading(false);
@@ -30,14 +35,16 @@ export default function EventDetails() {
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  /* ================= STATES ================= */
   if (loading) {
     return <div style={styles.loading}>Loading event…</div>;
   }
 
-  if (error) {
+  if (error || !event) {
     return <div style={styles.error}>{error}</div>;
   }
 
+  /* ================= UI ================= */
   return (
     <div style={styles.page}>
       {/* BANNER */}
@@ -65,15 +72,17 @@ export default function EventDetails() {
         <aside style={styles.purchaseCard}>
           <h2 style={styles.sectionTitle}>Select Ticket</h2>
 
-          {event.ticketTypes.map((ticket, i) => (
-            <label key={i} style={styles.ticketOption}>
+          {event.ticketTypes?.map((ticket) => (
+            <label key={ticket.name} style={styles.ticketOption}>
               <input
                 type="radio"
                 name="ticket"
+                checked={selectedTicket?.name === ticket.name}
                 onChange={() => setSelectedTicket(ticket)}
               />
               <span>
-                {ticket.name} — {ticket.price > 0 ? `₦${ticket.price}` : "Free"}
+                {ticket.name} —{" "}
+                {ticket.price > 0 ? `₦${ticket.price}` : "Free"}
               </span>
             </label>
           ))}
@@ -94,31 +103,38 @@ export default function EventDetails() {
             style={{
               ...styles.buyBtn,
               opacity: emailValid && selectedTicket ? 1 : 0.5,
-              cursor: emailValid && selectedTicket ? "pointer" : "not-allowed",
+              cursor:
+                emailValid && selectedTicket ? "pointer" : "not-allowed",
             }}
             disabled={!emailValid || !selectedTicket}
             onClick={() =>
-              (window.location.href = `/checkout/${event._id}?ticket=${selectedTicket.name}&email=${encodeURIComponent(
-                email,
-              )}`)
+              navigate(
+                `/checkout/${event._id}?ticket=${encodeURIComponent(
+                  selectedTicket.name,
+                )}&email=${encodeURIComponent(email)}`,
+              )
             }
           >
             Proceed to Checkout →
           </button>
 
           <p style={styles.secureNote}>
-            🔒 Secure payment • QR ticket via email
+            🔒 Secure payment • QR ticket generated after payment
           </p>
         </aside>
       </div>
     </div>
   );
 }
+
+/* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
     background: "#0F0618",
     color: "#fff",
+    fontFamily: "Inter, system-ui",
   },
 
   bannerWrapper: {
@@ -140,6 +156,9 @@ const styles = {
     display: "grid",
     gap: 32,
     gridTemplateColumns: "1fr",
+    "@media (min-width: 768px)": {
+      gridTemplateColumns: "2fr 1fr",
+    },
   },
 
   eventCard: {
@@ -165,6 +184,7 @@ const styles = {
   description: {
     lineHeight: 1.6,
     fontSize: 15,
+    color: "#E5E1F0",
   },
 
   purchaseCard: {
@@ -175,12 +195,16 @@ const styles = {
 
   sectionTitle: {
     marginBottom: 12,
+    fontSize: 18,
   },
 
   ticketOption: {
-    display: "block",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 10,
     fontSize: 14,
+    cursor: "pointer",
   },
 
   input: {
@@ -191,6 +215,7 @@ const styles = {
     background: "rgba(255,255,255,0.06)",
     color: "#fff",
     marginTop: 12,
+    outline: "none",
   },
 
   inputError: {
@@ -220,6 +245,7 @@ const styles = {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
+    background: "#0F0618",
     color: "#fff",
   },
 
@@ -227,11 +253,7 @@ const styles = {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
+    background: "#0F0618",
     color: "#ff4d4f",
   },
 };
-
-// Desktop layout
-if (window.innerWidth >= 768) {
-  styles.container.gridTemplateColumns = "2fr 1fr";
-}

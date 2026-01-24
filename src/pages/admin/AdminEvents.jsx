@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getToken } from "../../services/authService";
 
 export default function AdminEvents() {
+  const navigate = useNavigate();
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,30 +41,34 @@ export default function AdminEvents() {
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <h1>All Events</h1>
+        <h1 style={styles.title}>All Events</h1>
         <p style={styles.muted}>Platform-wide event monitoring</p>
       </header>
 
       {events.length === 0 ? (
         <p style={styles.muted}>No events found.</p>
       ) : (
-        <div style={styles.table}>
+        <div style={styles.list}>
           {events.map((e) => (
-            <div key={e._id} style={styles.row}>
-              <div>
+            <div
+              key={e._id}
+              style={styles.card}
+              onClick={() => navigate(`/admin/events/${e._id}`)}
+            >
+              <div style={styles.left}>
                 <strong>{e.title}</strong>
                 <p style={styles.small}>{new Date(e.date).toDateString()}</p>
-                <p style={styles.muted}>Organizer: {e.organizerName}</p>
+                <p style={styles.muted}>Organizer: {e.organizerName || "—"}</p>
               </div>
 
-              <div>
-                <p>Tickets</p>
+              <div style={styles.center}>
+                <p style={styles.muted}>Tickets</p>
                 <strong>
                   {e.ticketsSold}/{e.capacity}
                 </strong>
               </div>
 
-              <div>
+              <div style={styles.right}>
                 <StatusBadge status={e.status} />
               </div>
             </div>
@@ -75,21 +82,10 @@ export default function AdminEvents() {
 /* ================= HELPERS ================= */
 
 function StatusBadge({ status }) {
-  return (
-    <span
-      style={{
-        ...styles.badge,
-        background:
-          status === "LIVE"
-            ? "#22F2A6"
-            : status === "ENDED"
-              ? "#ff4d4f"
-              : "#fadb14",
-      }}
-    >
-      {status}
-    </span>
-  );
+  const color =
+    status === "LIVE" ? "#22F2A6" : status === "ENDED" ? "#ff4d4f" : "#fadb14";
+
+  return <span style={{ ...styles.badge, background: color }}>{status}</span>;
 }
 
 /* ================= STYLES ================= */
@@ -97,29 +93,45 @@ function StatusBadge({ status }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: 32,
+    padding: "clamp(16px,4vw,32px)",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
 
-  header: {
-    marginBottom: 32,
+  header: { marginBottom: 32 },
+
+  title: {
+    fontSize: "clamp(22px,4vw,32px)",
   },
 
-  table: {
+  list: {
     display: "grid",
     gap: 16,
   },
 
-  row: {
+  card: {
     display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr",
+    gridTemplateColumns: "2fr 1fr auto",
     gap: 16,
     background: "rgba(255,255,255,0.08)",
     padding: 20,
     borderRadius: 20,
     alignItems: "center",
+    cursor: "pointer",
+  },
+
+  left: {
+    minWidth: 0,
+  },
+
+  center: {
+    textAlign: "center",
+  },
+
+  right: {
+    display: "flex",
+    justifyContent: "flex-end",
   },
 
   badge: {

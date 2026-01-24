@@ -11,6 +11,8 @@ export default function WithdrawRevenue() {
 
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
   const [modal, setModal] = useState({
     open: false,
     type: "success",
@@ -33,7 +35,7 @@ export default function WithdrawRevenue() {
         if (!res.ok) throw new Error();
 
         const data = await res.json();
-        setBalance(data.stats.walletBalance || 0);
+        setBalance(Number(data.stats.walletBalance || 0));
       } catch {
         setBalance(0);
       }
@@ -51,23 +53,29 @@ export default function WithdrawRevenue() {
 
     const amount = Number(form.amount);
 
-    if (!amount || !form.bankName || !form.accountNumber || !form.accountName) {
-      setModal({
+    if (
+      !amount ||
+      amount <= 0 ||
+      !form.bankName ||
+      !form.accountNumber ||
+      !form.accountName
+    ) {
+      return setModal({
         open: true,
         type: "error",
-        message: "Please fill in all required fields.",
+        message: "Please fill in all fields correctly.",
       });
-      return;
     }
 
     if (amount > balance) {
-      setModal({
+      return setModal({
         open: true,
         type: "error",
         message: "Withdrawal amount exceeds available balance.",
       });
-      return;
     }
+
+    if (submitted) return;
 
     setLoading(true);
 
@@ -83,15 +91,17 @@ export default function WithdrawRevenue() {
           body: JSON.stringify({
             amount,
             bankDetails: {
-              bankName: form.bankName,
-              accountNumber: form.accountNumber,
-              accountName: form.accountName,
+              bankName: form.bankName.trim(),
+              accountNumber: form.accountNumber.trim(),
+              accountName: form.accountName.trim(),
             },
           }),
         },
       );
 
       if (!res.ok) throw new Error("Withdrawal request failed");
+
+      setSubmitted(true);
 
       setModal({
         open: true,
@@ -100,7 +110,7 @@ export default function WithdrawRevenue() {
           "Withdrawal request sent successfully. Awaiting admin approval.",
       });
 
-      // Optimistically update balance
+      // Optimistic UI update
       setBalance((prev) => prev - amount);
 
       setForm({
@@ -127,7 +137,7 @@ export default function WithdrawRevenue() {
         <Modal
           type={modal.type}
           message={modal.message}
-          onClose={() => setModal({ ...modal, open: false })}
+          onClose={() => setModal((m) => ({ ...m, open: false }))}
         />
       )}
 
@@ -135,7 +145,8 @@ export default function WithdrawRevenue() {
         <h1 style={styles.title}>Withdraw Revenue</h1>
 
         <p style={styles.muted}>
-          Available balance: <strong>₦{balance.toLocaleString()}</strong>
+          Available balance (after platform fees):{" "}
+          <strong>₦{balance.toLocaleString()}</strong>
         </p>
 
         <label style={styles.label}>Amount (₦)</label>
@@ -143,6 +154,7 @@ export default function WithdrawRevenue() {
           style={styles.input}
           type="number"
           name="amount"
+          min="1"
           placeholder="50000"
           value={form.amount}
           onChange={updateField}
@@ -178,9 +190,10 @@ export default function WithdrawRevenue() {
         <button
           style={{
             ...styles.primaryBtn,
-            opacity: loading || Number(form.amount) > balance ? 0.5 : 1,
+            opacity:
+              loading || submitted || Number(form.amount) > balance ? 0.6 : 1,
           }}
-          disabled={loading || Number(form.amount) > balance}
+          disabled={loading || submitted || Number(form.amount) > balance}
         >
           {loading ? "Submitting…" : "Request Withdrawal"}
         </button>
@@ -216,7 +229,7 @@ const styles = {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    padding: 24,
+    padding: 20,
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -279,7 +292,6 @@ const styles = {
     textAlign: "center",
   },
 
-  /* MODAL */
   modalOverlay: {
     position: "fixed",
     inset: 0,

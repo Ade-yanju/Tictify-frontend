@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { scanTicket } from "../../services/ticketService";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function ScanTicket() {
-  const scannerRef = useRef(null);
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const eventId = params.get("event");
+
   const qrInstance = useRef(null);
 
   const [manualCode, setManualCode] = useState("");
@@ -16,9 +20,20 @@ export default function ScanTicket() {
     message: "",
   });
 
+  /* ================= VALIDATE EVENT ================= */
+  useEffect(() => {
+    if (!eventId) {
+      setModal({
+        open: true,
+        type: "error",
+        message: "Invalid scan session. Event not specified.",
+      });
+    }
+  }, [eventId]);
+
   /* ================= CAMERA SCAN ================= */
   useEffect(() => {
-    if (!scanning) return;
+    if (!scanning || !eventId) return;
 
     qrInstance.current = new Html5Qrcode("qr-reader");
 
@@ -30,9 +45,9 @@ export default function ScanTicket() {
           if (locked) return;
           setLocked(true);
           await handleScan(decodedText);
-        }
+        },
       )
-      .catch((err) => {
+      .catch(() => {
         setModal({
           open: true,
           type: "error",
@@ -44,12 +59,15 @@ export default function ScanTicket() {
     return () => {
       qrInstance.current?.stop().catch(() => {});
     };
-  }, [scanning, locked]);
+  }, [scanning, locked, eventId]);
 
   /* ================= SCAN HANDLER ================= */
   async function handleScan(code) {
     try {
-      const res = await scanTicket(code);
+      const res = await scanTicket({
+        code,
+        eventId,
+      });
 
       setModal({
         open: true,
@@ -60,7 +78,7 @@ export default function ScanTicket() {
       setModal({
         open: true,
         type: "error",
-        message: err.message || "Invalid or used ticket",
+        message: err.message || "Invalid, used, or wrong event ticket",
       });
     } finally {
       setTimeout(() => setLocked(false), 2000);
@@ -82,13 +100,27 @@ export default function ScanTicket() {
         <Modal
           type={modal.type}
           message={modal.message}
-          onClose={() => setModal({ ...modal, open: false })}
+          onClose={() =>
+            setModal((m) => ({
+              ...m,
+              open: false,
+            }))
+          }
         />
       )}
 
       <div style={styles.container}>
-        <h1>Scan Ticket</h1>
-        <p style={styles.muted}>Scan guest QR code to admit entry</p>
+        <header style={styles.header}>
+          <h1>Scan Tickets</h1>
+          <button
+            style={styles.backBtn}
+            onClick={() => navigate("/organizer/dashboard")}
+          >
+            ← Dashboard
+          </button>
+        </header>
+
+        <p style={styles.muted}>This scanner is locked to this event only</p>
 
         {/* CAMERA */}
         <div style={styles.scannerBox}>
@@ -153,6 +185,23 @@ const styles = {
     textAlign: "center",
   },
 
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  backBtn: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "6px 12px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+
   muted: {
     color: "#CFC9D6",
     marginBottom: 24,
@@ -196,7 +245,7 @@ const styles = {
     borderRadius: 999,
     border: "none",
     background: "#22F2A6",
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
     width: "100%",
   },
@@ -207,11 +256,10 @@ const styles = {
     border: "1px solid #22F2A6",
     background: "transparent",
     color: "#22F2A6",
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
   },
 
-  /* MODAL */
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -235,7 +283,7 @@ const styles = {
     borderRadius: 999,
     border: "none",
     background: "#22F2A6",
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
     width: "100%",
   },

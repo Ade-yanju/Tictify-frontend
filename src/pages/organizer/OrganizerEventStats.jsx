@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function OrganizerEventStats() {
+  const navigate = useNavigate();
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,7 +25,7 @@ export default function OrganizerEventStats() {
 
         const data = await res.json();
         setEvents(data);
-      } catch (err) {
+      } catch {
         setError("Unable to load event statistics.");
       } finally {
         setLoading(false);
@@ -44,10 +47,19 @@ export default function OrganizerEventStats() {
     <div style={styles.page}>
       {/* HEADER */}
       <header style={styles.header}>
-        <h1 style={styles.heading}>Event Performance</h1>
-        <p style={styles.subtitle}>
-          Overview of ticket sales, scans, and revenue for your events
-        </p>
+        <div>
+          <h1 style={styles.heading}>Event Performance</h1>
+          <p style={styles.subtitle}>
+            Overview of ticket sales, scans, and revenue for your events
+          </p>
+        </div>
+
+        <button
+          style={styles.backBtn}
+          onClick={() => navigate("/organizer/dashboard")}
+        >
+          ← Back to Dashboard
+        </button>
       </header>
 
       {/* EMPTY STATE */}
@@ -101,18 +113,26 @@ function Stat({ label, value }) {
     </div>
   );
 }
+
+/* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
     background: "#0F0618",
     color: "#fff",
-    padding: "32px 20px",
+    padding: "clamp(16px,4vw,32px)",
     fontFamily: "Inter, system-ui",
   },
 
   header: {
     maxWidth: 1200,
     margin: "0 auto 32px",
+    display: "flex",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 16,
+    alignItems: "center",
   },
 
   heading: {
@@ -125,12 +145,22 @@ const styles = {
     fontSize: 14,
   },
 
+  backBtn: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "10px 16px",
+    borderRadius: 999,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
   grid: {
     maxWidth: 1200,
     margin: "0 auto",
     display: "grid",
     gap: 24,
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   },
 
   card: {
@@ -160,9 +190,13 @@ const styles = {
     padding: "6px 12px",
     borderRadius: 999,
     fontSize: 12,
-    fontWeight: 600,
+    fontWeight: 700,
     background:
-      status === "LIVE" ? "#22F2A6" : status === "ENDED" ? "#ff4d4f" : "#999",
+      status === "LIVE"
+        ? "#22F2A6"
+        : status === "ENDED"
+          ? "#ff4d4f"
+          : "#fadb14",
     color: "#000",
   }),
 

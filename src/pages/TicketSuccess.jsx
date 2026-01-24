@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function TicketSuccess() {
-  const params = new URLSearchParams(window.location.search);
-  const reference = params.get("ref");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const reference = searchParams.get("ref");
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /* ================= LOAD TICKET ================= */
   useEffect(() => {
     if (!reference) {
       setError("Invalid ticket reference.");
@@ -35,6 +38,7 @@ export default function TicketSuccess() {
     loadTicket();
   }, [reference]);
 
+  /* ================= DOWNLOAD QR ================= */
   function downloadQR() {
     const link = document.createElement("a");
     link.href = data.ticket.qrImage;
@@ -42,6 +46,7 @@ export default function TicketSuccess() {
     link.click();
   }
 
+  /* ================= STATES ================= */
   if (loading) {
     return <div style={styles.loading}>Preparing your ticket…</div>;
   }
@@ -52,6 +57,7 @@ export default function TicketSuccess() {
 
   const { event, ticket } = data;
 
+  /* ================= UI ================= */
   return (
     <div style={styles.page}>
       <div style={styles.card}>
@@ -82,6 +88,15 @@ export default function TicketSuccess() {
           </button>
         </div>
 
+        <div style={styles.links}>
+          <button onClick={() => navigate("/")} style={styles.linkBtn}>
+            ← Back to Home
+          </button>
+          <button onClick={() => navigate("/events")} style={styles.linkBtn}>
+            Browse Events
+          </button>
+        </div>
+
         <p style={styles.ref}>Reference: {reference}</p>
       </div>
     </div>
@@ -100,6 +115,7 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
+
   card: {
     maxWidth: 520,
     width: "100%",
@@ -109,25 +125,30 @@ const styles = {
     textAlign: "center",
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
+
   icon: {
     fontSize: 56,
     marginBottom: 12,
   },
+
   title: {
     fontSize: 28,
     marginBottom: 8,
   },
+
   subtitle: {
     fontSize: 14,
     color: "#CFC9D6",
     marginBottom: 24,
   },
+
   info: {
     fontSize: 14,
     color: "#E5E1F0",
     marginBottom: 20,
     lineHeight: 1.6,
   },
+
   qr: {
     width: 240,
     margin: "20px auto",
@@ -135,12 +156,14 @@ const styles = {
     background: "#fff",
     borderRadius: 14,
   },
+
   actions: {
     display: "flex",
     gap: 12,
     marginTop: 20,
     flexWrap: "wrap",
   },
+
   primaryBtn: {
     flex: 1,
     padding: "14px 22px",
@@ -150,6 +173,7 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
   },
+
   secondaryBtn: {
     flex: 1,
     padding: "14px 22px",
@@ -159,11 +183,29 @@ const styles = {
     color: "#fff",
     cursor: "pointer",
   },
+
+  links: {
+    marginTop: 24,
+    display: "flex",
+    justifyContent: "center",
+    gap: 16,
+    flexWrap: "wrap",
+  },
+
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#22F2A6",
+    cursor: "pointer",
+    fontSize: 14,
+  },
+
   ref: {
     marginTop: 20,
     fontSize: 12,
     color: "#9F97B2",
   },
+
   loading: {
     minHeight: "100vh",
     display: "grid",
@@ -171,6 +213,7 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
   },
+
   error: {
     minHeight: "100vh",
     display: "grid",

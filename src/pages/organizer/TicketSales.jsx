@@ -24,8 +24,8 @@ export default function TicketSales() {
 
         if (!res.ok) throw new Error("Failed to load ticket sales");
 
-        const data = await res.json();
-        setData(data);
+        const json = await res.json();
+        setData(json);
       } catch (err) {
         setModal({
           open: true,
@@ -46,6 +46,16 @@ export default function TicketSales() {
 
   if (!data) return null;
 
+  const {
+    totalTickets,
+    totalRevenue,
+    scanned,
+    unscanned,
+    platformFees = 0,
+  } = data.stats;
+
+  const netRevenue = totalRevenue - platformFees;
+
   return (
     <div style={styles.page}>
       {/* MODAL */}
@@ -53,24 +63,30 @@ export default function TicketSales() {
         <Modal
           type={modal.type}
           message={modal.message}
-          onClose={() => setModal({ ...modal, open: false })}
+          onClose={() => setModal((m) => ({ ...m, open: false }))}
         />
       )}
 
       {/* HEADER */}
       <header style={styles.header}>
         <h1>Ticket Sales</h1>
-        <p style={styles.muted}>
-          Track ticket purchases and revenue across your events
-        </p>
+        <p style={styles.muted}>Track ticket purchases, fees, and earnings</p>
       </header>
 
       {/* STATS */}
       <section style={styles.statsGrid}>
-        <Stat title="Tickets Sold" value={data.stats.totalTickets} />
-        <Stat title="Revenue" value={`₦${data.stats.totalRevenue}`} />
-        <Stat title="Scanned" value={data.stats.scanned} />
-        <Stat title="Pending Entry" value={data.stats.unscanned} />
+        <Stat title="Tickets Sold" value={totalTickets} />
+        <Stat
+          title="Gross Revenue"
+          value={`₦${totalRevenue.toLocaleString()}`}
+        />
+        <Stat
+          title="Platform Fees"
+          value={`₦${platformFees.toLocaleString()}`}
+        />
+        <Stat title="Your Earnings" value={`₦${netRevenue.toLocaleString()}`} />
+        <Stat title="Scanned" value={scanned} />
+        <Stat title="Pending Entry" value={unscanned} />
       </section>
 
       {/* EVENT BREAKDOWN */}
@@ -89,7 +105,9 @@ export default function TicketSales() {
                 </div>
 
                 <div style={styles.right}>
-                  <span style={styles.revenue}>₦{event.revenue}</span>
+                  <span style={styles.revenue}>
+                    ₦{event.revenue.toLocaleString()}
+                  </span>
                   <span style={styles.status(event.status)}>
                     {event.status}
                   </span>
@@ -135,7 +153,7 @@ function Modal({ type, message, onClose }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: 24,
+    padding: "24px 16px",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -147,14 +165,14 @@ const styles = {
 
   statsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-    gap: 20,
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 16,
     marginBottom: 40,
   },
 
   statCard: {
     background: "rgba(255,255,255,0.08)",
-    padding: 24,
+    padding: 20,
     borderRadius: 18,
   },
 
@@ -175,7 +193,7 @@ const styles = {
     alignItems: "center",
     gap: 16,
     background: "rgba(255,255,255,0.06)",
-    padding: 20,
+    padding: 18,
     borderRadius: 16,
     flexWrap: "wrap",
   },
@@ -183,7 +201,7 @@ const styles = {
   right: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
   },
 
   revenue: {
@@ -215,7 +233,6 @@ const styles = {
     color: "#fff",
   },
 
-  /* MODAL */
   modalOverlay: {
     position: "fixed",
     inset: 0,

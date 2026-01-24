@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function PublicEvents() {
+  const navigate = useNavigate();
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,7 +27,7 @@ export default function PublicEvents() {
 
   const getStartingPrice = (ticketTypes = []) => {
     if (!ticketTypes.length) return "Free";
-    const prices = ticketTypes.map((t) => t.price);
+    const prices = ticketTypes.map((t) => Number(t.price) || 0);
     const min = Math.min(...prices);
     return min > 0 ? `₦${min}` : "Free";
   };
@@ -46,7 +49,7 @@ export default function PublicEvents() {
       {/* ERROR */}
       {error && <p style={styles.error}>{error}</p>}
 
-      {/* EMPTY */}
+      {/* EMPTY STATE */}
       {!error && events.length === 0 && (
         <p style={styles.empty}>No upcoming events at the moment.</p>
       )}
@@ -57,7 +60,12 @@ export default function PublicEvents() {
           <div key={event._id} style={styles.card}>
             {/* IMAGE */}
             <div style={styles.imageWrapper}>
-              <img src={event.banner} alt={event.title} style={styles.image} />
+              <img
+                src={event.banner}
+                alt={event.title}
+                style={styles.image}
+                loading="lazy"
+              />
             </div>
 
             {/* CONTENT */}
@@ -79,7 +87,7 @@ export default function PublicEvents() {
 
               <button
                 style={styles.cta}
-                onClick={() => (window.location.href = `/events/${event._id}`)}
+                onClick={() => navigate(`/events/${event._id}`)}
               >
                 View Event →
               </button>
@@ -90,6 +98,8 @@ export default function PublicEvents() {
     </div>
   );
 }
+
+/* ================= STYLES ================= */
 const styles = {
   page: {
     minHeight: "100vh",
