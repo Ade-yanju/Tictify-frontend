@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 export default function TicketSuccess() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const reference = searchParams.get("ref");
+  const { reference} = useParams();
 
   const [data, setData] = useState(null);
   const [status, setStatus] = useState("PROCESSING"); // PROCESSING | READY | ERROR

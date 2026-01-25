@@ -41,7 +41,7 @@ export default function AppRoutes() {
         <Route path="/events" element={<PublicEvents />} />
         <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/checkout/:id" element={<Checkout />} />
-        <Route path="/success" element={<TicketSuccess />} />
+        <Route path="/success/:reference" element={<TicketSuccess />} />
         <Route path="/payment/pending" element={<PaymentPending />} />
 
         {/* ========= AUTH ========= */}
