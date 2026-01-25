@@ -88,18 +88,24 @@ export default function Checkout() {
 
       const data = await res.json();
 
-      if (!res.ok || !data.paymentUrl) {
-        throw new Error(data.message || "Unable to start payment");
+      if (!res.ok) {
+        throw new Error(data.message || "Payment initialization failed");
       }
 
-      // FREE or PAID → backend decides
-      window.location.href = data.paymentUrl;
+      // ✅ Accept BOTH possible keys
+      const redirectUrl = data.paymentUrl || data.checkoutUrl;
+
+      if (!redirectUrl) {
+        console.error("PAYMENT INIT RESPONSE:", data);
+        throw new Error("Payment gateway did not return checkout URL");
+      }
+
+      window.location.href = redirectUrl;
     } catch (err) {
       setError(err.message || "Payment failed");
       setProcessing(false);
     }
   }
-
   /* ================= STATES ================= */
   if (loading) {
     return <div style={styles.loading}>Preparing checkout…</div>;
