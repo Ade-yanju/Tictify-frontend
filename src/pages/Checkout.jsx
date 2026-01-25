@@ -6,8 +6,10 @@ export default function Checkout() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
 
-  const email = searchParams.get("email");
   const ticketName = searchParams.get("ticket");
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
 
   const [event, setEvent] = useState(null);
   const [ticket, setTicket] = useState(null);
@@ -17,7 +19,7 @@ export default function Checkout() {
 
   /* ================= LOAD EVENT ================= */
   useEffect(() => {
-    if (!id || !email || !ticketName) {
+    if (!id || !ticketName) {
       setError("Invalid checkout link.");
       setLoading(false);
       return;
@@ -32,8 +34,7 @@ export default function Checkout() {
         if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
-
-        const selectedTicket = data.ticketTypes?.find(
+        const selectedTicket = data.ticketTypes.find(
           (t) => t.name === ticketName,
         );
 
@@ -51,52 +52,36 @@ export default function Checkout() {
     }
 
     loadEvent();
-  }, [id, email, ticketName]);
+  }, [id, ticketName]);
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
     if (processing || !ticket) return;
 
+    if (!name.trim()) {
+      setError("Full name is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
     setProcessing(true);
     setError("");
 
     try {
-      /* ================= FREE TICKET ================= */
-      if (ticket.price === 0) {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/tickets/free`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              eventId: id,
-              email,
-              ticketType: ticket.name,
-            }),
-          },
-        );
-
-        const data = await res.json();
-
-        if (!res.ok || !data.reference) {
-          throw new Error(data.message || "Unable to issue free ticket");
-        }
-
-        // ✅ Direct success (no payment gateway)
-        window.location.href = `/success?ref=${data.reference}`;
-        return;
-      }
-
-      /* ================= PAID TICKET ================= */
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payments/initiate`, // ✅ FIXED
+        `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             eventId: id,
-            email,
             ticketType: ticket.name,
+            name,
+            email,
           }),
         },
       );
@@ -107,7 +92,7 @@ export default function Checkout() {
         throw new Error(data.message || "Unable to start payment");
       }
 
-      // 🔐 Redirect ONLY to ERCASPAY
+      // FREE or PAID → backend decides
       window.location.href = data.paymentUrl;
     } catch (err) {
       setError(err.message || "Payment failed");
@@ -148,26 +133,33 @@ export default function Checkout() {
           <div style={styles.meta}>
             <span>📍 {event.location || "TBA"}</span>
             <span>📅 {new Date(event.date).toDateString()}</span>
-            <span>👥 Capacity: {event.capacity}</span>
           </div>
 
-          <p style={styles.description}>
-            {event.description || "No description provided."}
-          </p>
+          <p style={styles.description}>{event.description}</p>
         </section>
 
         <aside style={styles.right}>
           <div style={styles.card}>
             <h2 style={styles.heading}>Order Summary</h2>
 
+            <input
+              style={styles.input}
+              placeholder="Full Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <input
+              style={styles.input}
+              placeholder="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
             <div style={styles.row}>
               <span>Ticket</span>
               <strong>{ticket.name}</strong>
-            </div>
-
-            <div style={styles.row}>
-              <span>Email</span>
-              <strong>{email}</strong>
             </div>
 
             <div style={styles.divider} />
@@ -183,20 +175,19 @@ export default function Checkout() {
               style={{
                 ...styles.payBtn,
                 opacity: processing ? 0.6 : 1,
-                cursor: processing ? "not-allowed" : "pointer",
               }}
               disabled={processing}
               onClick={handlePayment}
             >
               {processing
-                ? "Redirecting to payment…"
+                ? "Processing…"
                 : ticket.price > 0
                   ? "Proceed to Secure Payment"
                   : "Confirm Free Ticket"}
             </button>
 
             <p style={styles.secureText}>
-              🔒 You’ll be redirected to ERCASPAY to complete payment
+              🔒 Secure checkout powered by ERCASPAY
             </p>
           </div>
         </aside>
