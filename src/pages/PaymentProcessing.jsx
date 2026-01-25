@@ -9,7 +9,6 @@ export default function PaymentProcessing() {
 
   const [status, setStatus] = useState("INITIAL");
   const [message, setMessage] = useState("");
-  const [attempts, setAttempts] = useState(0);
 
   const MAX_ATTEMPTS = 12; // ~36 seconds
 
@@ -23,14 +22,15 @@ export default function PaymentProcessing() {
     setStatus("PENDING");
     setMessage("Waiting for payment confirmation…");
 
-    const interval = setInterval(async () => {
-      try {
-        setAttempts((a) => a + 1);
+    let count = 0;
 
+    const interval = setInterval(async () => {
+      count++;
+
+      try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/payments/verify/${reference}`,
         );
-
         const data = await res.json();
 
         if (data.status === "SUCCESS") {
@@ -40,23 +40,23 @@ export default function PaymentProcessing() {
 
           setTimeout(() => {
             navigate(`/success/${reference}`);
-          }, 1500);
+          }, 1200);
         }
 
-        if (attempts >= MAX_ATTEMPTS) {
+        if (count >= MAX_ATTEMPTS) {
           clearInterval(interval);
           setStatus("TIMEOUT");
           setMessage("Payment verification is taking longer than expected.");
         }
-      } catch (err) {
+      } catch {
         clearInterval(interval);
         setStatus("ERROR");
-        setMessage("Unable to verify payment. Please try again.");
+        setMessage("Unable to verify payment.");
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [reference, attempts, navigate]);
+  }, [reference, navigate]);
 
   return (
     <div style={styles.page}>
