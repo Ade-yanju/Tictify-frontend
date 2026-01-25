@@ -7,38 +7,59 @@ export default function TicketSuccess() {
   const reference = searchParams.get("ref");
 
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState("PROCESSING"); // PROCESSING | READY | ERROR
+  const [message, setMessage] = useState("Finalizing your ticket…");
 
-  /* ================= LOAD TICKET ================= */
+  const MAX_ATTEMPTS = 15; // ~45 seconds
+  const INTERVAL = 3000;
+
   useEffect(() => {
     if (!reference) {
-      setError("Invalid ticket reference.");
-      setLoading(false);
+      setStatus("ERROR");
+      setMessage("Invalid ticket reference.");
       return;
     }
 
-    async function loadTicket() {
+    let attempts = 0;
+
+    const interval = setInterval(async () => {
+      attempts++;
+
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
         );
 
+        // Ticket not ready yet
+        if (res.status === 404) {
+          if (attempts >= MAX_ATTEMPTS) {
+            clearInterval(interval);
+            setStatus("ERROR");
+            setMessage(
+              "Payment confirmed, but ticket generation is delayed. Please refresh shortly.",
+            );
+          }
+          return;
+        }
+
         if (!res.ok) throw new Error();
 
         const result = await res.json();
-        setData(result);
-      } catch {
-        setError("Unable to load ticket. Please contact support.");
-      } finally {
-        setLoading(false);
-      }
-    }
 
-    loadTicket();
+        clearInterval(interval);
+        setData(result);
+        setStatus("READY");
+        setMessage("Your ticket is ready 🎉");
+      } catch {
+        clearInterval(interval);
+        setStatus("ERROR");
+        setMessage("Unable to load ticket. Please contact support.");
+      }
+    }, INTERVAL);
+
+    return () => clearInterval(interval);
   }, [reference]);
 
-  /* ================= DOWNLOAD QR ================= */
   function downloadQR() {
     const link = document.createElement("a");
     link.href = data.ticket.qrImage;
@@ -47,26 +68,40 @@ export default function TicketSuccess() {
   }
 
   /* ================= STATES ================= */
-  if (loading) {
-    return <div style={styles.loading}>Preparing your ticket…</div>;
+
+  if (status === "PROCESSING") {
+    return (
+      <div style={styles.loading}>
+        <div style={styles.spinner}>🔄</div>
+        <h2>Processing Payment</h2>
+        <p>{message}</p>
+      </div>
+    );
   }
 
-  if (error) {
-    return <div style={styles.error}>{error}</div>;
+  if (status === "ERROR") {
+    return (
+      <div style={styles.error}>
+        <h2>Something went wrong</h2>
+        <p>{message}</p>
+        <button onClick={() => window.location.reload()} style={styles.retry}>
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const { event, ticket } = data;
 
-  /* ================= UI ================= */
+  /* ================= READY ================= */
+
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.icon}>🎟️</div>
 
-        <h1 style={styles.title}>Your Ticket Is Ready</h1>
-        <p style={styles.subtitle}>
-          Payment confirmed. Present this QR code at the event entrance.
-        </p>
+        <h1>Your Ticket Is Ready</h1>
+        <p>Present this QR code at the event entrance.</p>
 
         <div style={styles.info}>
           <strong>{event.title}</strong>
@@ -85,15 +120,6 @@ export default function TicketSuccess() {
           </button>
           <button style={styles.secondaryBtn} onClick={() => window.print()}>
             Print Ticket
-          </button>
-        </div>
-
-        <div style={styles.links}>
-          <button onClick={() => navigate("/")} style={styles.linkBtn}>
-            ← Back to Home
-          </button>
-          <button onClick={() => navigate("/events")} style={styles.linkBtn}>
-            Browse Events
           </button>
         </div>
 
