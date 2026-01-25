@@ -7,6 +7,7 @@ import EventDetails from "../pages/EventDetails";
 import Checkout from "../pages/Checkout";
 import TicketSuccess from "../pages/TicketSuccess";
 import PaymentPending from "../pages/PaymentPending";
+import PaymentProcessing from "../pages/PaymentProcessing";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -43,6 +44,7 @@ export default function AppRoutes() {
         <Route path="/checkout/:id" element={<Checkout />} />
         <Route path="/success" element={<TicketSuccess />} />
         <Route path="/payment/pending" element={<PaymentPending />} />
+        <Route path="/payment/processing" element={<PaymentProcessing />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />
