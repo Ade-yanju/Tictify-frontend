@@ -1,25 +1,23 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function TicketSuccess() {
   const navigate = useNavigate();
-  const { reference} = useParams();
+  const { reference } = useParams();
 
+  const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
   const [data, setData] = useState(null);
-  const [status, setStatus] = useState("PROCESSING"); // PROCESSING | READY | ERROR
-  const [message, setMessage] = useState("Finalizing your ticket…");
-
-  const MAX_ATTEMPTS = 15; // ~45 seconds
-  const INTERVAL = 3000;
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!reference) {
       setStatus("ERROR");
-      setMessage("Invalid ticket reference.");
+      setError("Invalid ticket reference");
       return;
     }
 
     let attempts = 0;
+    const MAX_ATTEMPTS = 15; // ~45 seconds
 
     const interval = setInterval(async () => {
       attempts++;
@@ -29,78 +27,62 @@ export default function TicketSuccess() {
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
         );
 
-        // Ticket not ready yet
-        if (res.status === 404) {
+        const result = await res.json();
+
+        // ⏳ Ticket not ready yet
+        if (result.status === "PENDING") {
           if (attempts >= MAX_ATTEMPTS) {
             clearInterval(interval);
             setStatus("ERROR");
-            setMessage(
-              "Payment confirmed, but ticket generation is delayed. Please refresh shortly.",
-            );
+            setError("Ticket generation is taking too long.");
           }
           return;
         }
 
-        if (!res.ok) throw new Error();
-
-        const result = await res.json();
-
-        clearInterval(interval);
-        setData(result);
-        setStatus("READY");
-        setMessage("Your ticket is ready 🎉");
+        // ✅ Ticket ready
+        if (result.status === "READY") {
+          clearInterval(interval);
+          setData(result);
+          setStatus("READY");
+        }
       } catch {
         clearInterval(interval);
         setStatus("ERROR");
-        setMessage("Unable to load ticket. Please contact support.");
+        setError("Failed to load ticket.");
       }
-    }, INTERVAL);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [reference]);
 
-  function downloadQR() {
-    const link = document.createElement("a");
-    link.href = data.ticket.qrImage;
-    link.download = `ticket-${reference}.png`;
-    link.click();
-  }
-
   /* ================= STATES ================= */
 
-  if (status === "PROCESSING") {
-    return (
-      <div style={styles.loading}>
-        <div style={styles.spinner}>🔄</div>
-        <h2>Processing Payment</h2>
-        <p>{message}</p>
-      </div>
-    );
+  if (status === "LOADING") {
+    return <div style={styles.loading}>Generating your ticket…</div>;
   }
 
   if (status === "ERROR") {
     return (
       <div style={styles.error}>
-        <h2>Something went wrong</h2>
-        <p>{message}</p>
-        <button onClick={() => window.location.reload()} style={styles.retry}>
-          Retry
-        </button>
+        <p>{error}</p>
+        <button onClick={() => navigate("/")}>Go Home</button>
       </div>
     );
   }
 
   const { event, ticket } = data;
 
-  /* ================= READY ================= */
+  /* ================= UI ================= */
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.icon}>🎟️</div>
 
-        <h1>Your Ticket Is Ready</h1>
-        <p>Present this QR code at the event entrance.</p>
+        <h1 style={styles.title}>Your Ticket Is Ready</h1>
+        <p style={styles.subtitle}>
+          Present this QR code at the event entrance
+        </p>
 
         <div style={styles.info}>
           <strong>{event.title}</strong>
@@ -113,14 +95,17 @@ export default function TicketSuccess() {
 
         <img src={ticket.qrImage} alt="QR Code" style={styles.qr} />
 
-        <div style={styles.actions}>
-          <button style={styles.primaryBtn} onClick={downloadQR}>
-            Download QR Code
-          </button>
-          <button style={styles.secondaryBtn} onClick={() => window.print()}>
-            Print Ticket
-          </button>
-        </div>
+        <button
+          style={styles.primaryBtn}
+          onClick={() => {
+            const link = document.createElement("a");
+            link.href = ticket.qrImage;
+            link.download = `ticket-${reference}.png`;
+            link.click();
+          }}
+        >
+          Download QR Code
+        </button>
 
         <p style={styles.ref}>Reference: {reference}</p>
       </div>
