@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function TicketSuccess() {
-  const navigate = useNavigate();
   const { reference } = useParams();
+  const navigate = useNavigate();
 
   const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+
+  const hasVerified = useRef(false);
 
   useEffect(() => {
     if (!reference) {
@@ -17,29 +19,53 @@ export default function TicketSuccess() {
     }
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 15; // ~45 seconds
+    const MAX_ATTEMPTS = 15;
+    const controller = new AbortController();
 
+    /* ===============================
+       1️⃣ VERIFY PAYMENT (ONCE)
+    =============================== */
+    const verifyPayment = async () => {
+      if (hasVerified.current) return;
+      hasVerified.current = true;
+
+      try {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/payments/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference }),
+          signal: controller.signal,
+        });
+      } catch {
+        // Silent fail – polling will still catch ticket
+      }
+    };
+
+    verifyPayment();
+
+    /* ===============================
+       2️⃣ POLL FOR TICKET
+    =============================== */
     const interval = setInterval(async () => {
       attempts++;
 
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
+          { signal: controller.signal },
         );
 
         const result = await res.json();
 
-        // ⏳ Ticket not ready yet
         if (result.status === "PENDING") {
           if (attempts >= MAX_ATTEMPTS) {
             clearInterval(interval);
             setStatus("ERROR");
-            setError("Ticket generation is taking too long.");
+            setError("Ticket generation is taking longer than expected.");
           }
           return;
         }
 
-        // ✅ Ticket ready
         if (result.status === "READY") {
           clearInterval(interval);
           setData(result);
@@ -52,10 +78,13 @@ export default function TicketSuccess() {
       }
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [reference]);
 
-  /* ================= STATES ================= */
+  /* ================= UI STATES ================= */
 
   if (status === "LOADING") {
     return <div style={styles.loading}>Generating your ticket…</div>;
@@ -71,8 +100,6 @@ export default function TicketSuccess() {
   }
 
   const { event, ticket } = data;
-
-  /* ================= UI ================= */
 
   return (
     <div style={styles.page}>
@@ -125,7 +152,6 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
-
   card: {
     maxWidth: 520,
     width: "100%",
@@ -135,30 +161,19 @@ const styles = {
     textAlign: "center",
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
-
-  icon: {
-    fontSize: 56,
-    marginBottom: 12,
-  },
-
-  title: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-
+  icon: { fontSize: 56, marginBottom: 12 },
+  title: { fontSize: 28, marginBottom: 8 },
   subtitle: {
     fontSize: 14,
     color: "#CFC9D6",
     marginBottom: 24,
   },
-
   info: {
     fontSize: 14,
     color: "#E5E1F0",
     marginBottom: 20,
     lineHeight: 1.6,
   },
-
   qr: {
     width: 240,
     margin: "20px auto",
@@ -166,16 +181,7 @@ const styles = {
     background: "#fff",
     borderRadius: 14,
   },
-
-  actions: {
-    display: "flex",
-    gap: 12,
-    marginTop: 20,
-    flexWrap: "wrap",
-  },
-
   primaryBtn: {
-    flex: 1,
     padding: "14px 22px",
     borderRadius: 999,
     border: "none",
@@ -183,39 +189,7 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
   },
-
-  secondaryBtn: {
-    flex: 1,
-    padding: "14px 22px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.25)",
-    background: "transparent",
-    color: "#fff",
-    cursor: "pointer",
-  },
-
-  links: {
-    marginTop: 24,
-    display: "flex",
-    justifyContent: "center",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-
-  linkBtn: {
-    background: "none",
-    border: "none",
-    color: "#22F2A6",
-    cursor: "pointer",
-    fontSize: 14,
-  },
-
-  ref: {
-    marginTop: 20,
-    fontSize: 12,
-    color: "#9F97B2",
-  },
-
+  ref: { marginTop: 20, fontSize: 12, color: "#9F97B2" },
   loading: {
     minHeight: "100vh",
     display: "grid",
@@ -223,7 +197,6 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
   },
-
   error: {
     minHeight: "100vh",
     display: "grid",
