@@ -5,22 +5,26 @@ export default function TicketSuccess() {
   const { reference } = useParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
+  const [status, setStatus] = useState("LOADING"); 
+  // LOADING | READY | PENDING | ERROR
+
   const [data, setData] = useState(null);
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState(
+    "Confirming your payment, please wait…"
+  );
 
   const hasVerified = useRef(false);
 
   useEffect(() => {
     if (!reference) {
       setStatus("ERROR");
-      setError("Invalid ticket reference");
+      setMessage("Invalid ticket reference");
       return;
     }
 
-    let attempts = 0;
-    const MAX_ATTEMPTS = 15;
     const controller = new AbortController();
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20; // ~60 seconds
 
     /* ===============================
        1️⃣ VERIFY PAYMENT (ONCE)
@@ -30,14 +34,17 @@ export default function TicketSuccess() {
       hasVerified.current = true;
 
       try {
-        await fetch(`${import.meta.env.VITE_API_URL}/api/payments/verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference }),
-          signal: controller.signal,
-        });
+        await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/verify`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference }),
+            signal: controller.signal,
+          }
+        );
       } catch {
-        // Silent fail – polling will still catch ticket
+        // Do nothing – polling will handle result
       }
     };
 
@@ -52,29 +59,29 @@ export default function TicketSuccess() {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
-          { signal: controller.signal },
+          { signal: controller.signal }
         );
 
         const result = await res.json();
-
-        if (result.status === "PENDING") {
-          if (attempts >= MAX_ATTEMPTS) {
-            clearInterval(interval);
-            setStatus("ERROR");
-            setError("Ticket generation is taking longer than expected.");
-          }
-          return;
-        }
 
         if (result.status === "READY") {
           clearInterval(interval);
           setData(result);
           setStatus("READY");
+          return;
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+          clearInterval(interval);
+          setStatus("PENDING");
+          setMessage(
+            "Your payment is still being confirmed. This may take a few minutes. Please refresh this page later."
+          );
         }
       } catch {
         clearInterval(interval);
         setStatus("ERROR");
-        setError("Failed to load ticket.");
+        setMessage("Unable to load ticket at the moment.");
       }
     }, 3000);
 
@@ -87,13 +94,27 @@ export default function TicketSuccess() {
   /* ================= UI STATES ================= */
 
   if (status === "LOADING") {
-    return <div style={styles.loading}>Generating your ticket…</div>;
+    return <div style={styles.loading}>{message}</div>;
+  }
+
+  if (status === "PENDING") {
+    return (
+      <div style={styles.pending}>
+        <p>{message}</p>
+        <button onClick={() => window.location.reload()}>
+          Refresh Page
+        </button>
+        <button onClick={() => navigate("/")}>
+          Go Home
+        </button>
+      </div>
+    );
   }
 
   if (status === "ERROR") {
     return (
       <div style={styles.error}>
-        <p>{error}</p>
+        <p>{message}</p>
         <button onClick={() => navigate("/")}>Go Home</button>
       </div>
     );
@@ -190,12 +211,21 @@ const styles = {
     cursor: "pointer",
   },
   ref: { marginTop: 20, fontSize: 12, color: "#9F97B2" },
+
   loading: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
     background: "#0F0618",
     color: "#fff",
+  },
+  pending: {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
+    color: "#FFD666",
+    gap: 12,
   },
   error: {
     minHeight: "100vh",
