@@ -1,19 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function TicketSuccess() {
   const { reference } = useParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState("LOADING"); 
-  // LOADING | READY | PENDING | ERROR
-
+  const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
   const [data, setData] = useState(null);
-  const [message, setMessage] = useState(
-    "Confirming your payment, please wait…"
-  );
-
-  const hasVerified = useRef(false);
+  const [message, setMessage] = useState("Preparing your ticket…");
 
   useEffect(() => {
     if (!reference) {
@@ -22,44 +16,17 @@ export default function TicketSuccess() {
       return;
     }
 
-    const controller = new AbortController();
     let attempts = 0;
-    const MAX_ATTEMPTS = 20; // ~60 seconds
+    const MAX_ATTEMPTS = 10; // ~10 seconds
+    const controller = new AbortController();
 
-    /* ===============================
-       1️⃣ VERIFY PAYMENT (ONCE)
-    =============================== */
-    const verifyPayment = async () => {
-      if (hasVerified.current) return;
-      hasVerified.current = true;
-
-      try {
-        await fetch(
-          `${import.meta.env.VITE_API_URL}/api/payments/verify`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference }),
-            signal: controller.signal,
-          }
-        );
-      } catch {
-        // Do nothing – polling will handle result
-      }
-    };
-
-    verifyPayment();
-
-    /* ===============================
-       2️⃣ POLL FOR TICKET
-    =============================== */
     const interval = setInterval(async () => {
       attempts++;
 
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
 
         const result = await res.json();
@@ -73,9 +40,9 @@ export default function TicketSuccess() {
 
         if (attempts >= MAX_ATTEMPTS) {
           clearInterval(interval);
-          setStatus("PENDING");
+          setStatus("ERROR");
           setMessage(
-            "Your payment is still being confirmed. This may take a few minutes. Please refresh this page later."
+            "We could not load your ticket. Please refresh the page or contact support.",
           );
         }
       } catch {
@@ -83,7 +50,7 @@ export default function TicketSuccess() {
         setStatus("ERROR");
         setMessage("Unable to load ticket at the moment.");
       }
-    }, 3000);
+    }, 1000);
 
     return () => {
       controller.abort();
@@ -97,24 +64,11 @@ export default function TicketSuccess() {
     return <div style={styles.loading}>{message}</div>;
   }
 
-  if (status === "PENDING") {
-    return (
-      <div style={styles.pending}>
-        <p>{message}</p>
-        <button onClick={() => window.location.reload()}>
-          Refresh Page
-        </button>
-        <button onClick={() => navigate("/")}>
-          Go Home
-        </button>
-      </div>
-    );
-  }
-
   if (status === "ERROR") {
     return (
       <div style={styles.error}>
         <p>{message}</p>
+        <button onClick={() => window.location.reload()}>Refresh Page</button>
         <button onClick={() => navigate("/")}>Go Home</button>
       </div>
     );
@@ -211,7 +165,6 @@ const styles = {
     cursor: "pointer",
   },
   ref: { marginTop: 20, fontSize: 12, color: "#9F97B2" },
-
   loading: {
     minHeight: "100vh",
     display: "grid",
@@ -219,19 +172,12 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
   },
-  pending: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0F0618",
-    color: "#FFD666",
-    gap: 12,
-  },
   error: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
     background: "#0F0618",
     color: "#ff4d4f",
+    gap: 12,
   },
 };
