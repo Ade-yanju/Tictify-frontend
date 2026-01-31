@@ -14,7 +14,7 @@ export default function TicketSales() {
     async function loadSales() {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/tickets/sales/organizer`,
+          `${import.meta.env.VITE_API_URL}/api/tickets/sales`,
           {
             headers: {
               Authorization: `Bearer ${getToken()}`,
