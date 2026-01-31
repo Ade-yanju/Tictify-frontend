@@ -85,7 +85,7 @@ export default function OrganizerDashboard() {
         <Action
           title="My Events"
           desc="View & manage events"
-          onClick={() => navigate("/organizer/event")}
+          onClick={() => navigate("/organizer/events")}
         />
         <Action
           title="Ticket Sales"
