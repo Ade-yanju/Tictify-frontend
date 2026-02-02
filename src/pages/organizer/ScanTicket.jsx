@@ -8,11 +8,14 @@ export default function ScanTicket() {
   const [params] = useSearchParams();
   const eventId = params.get("event");
 
-  const qrRef = useRef(null);
+  const scannerRef = useRef(null);
+  const readerRef = useRef(null);
+  const startedRef = useRef(false);
 
   const [manualCode, setManualCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState("");
 
   const [modal, setModal] = useState({
     open: false,
@@ -21,44 +24,53 @@ export default function ScanTicket() {
   });
 
   /* ================= GUARD ================= */
-useEffect(() => {
-  if (!eventId) {
-    navigate("/organizer/scan/select", { replace: true });
-  }
-}, [eventId, navigate]);
-
+  useEffect(() => {
+    if (!eventId) {
+      navigate("/organizer/scan/select", { replace: true });
+    }
+  }, [eventId, navigate]);
 
   /* ================= CAMERA ================= */
   useEffect(() => {
-    if (!scanning || !eventId) return;
+    if (!scanning || !eventId || !readerRef.current) return;
+    if (startedRef.current) return;
 
-    const scanner = new Html5Qrcode("qr-reader");
-    qrRef.current = scanner;
+    startedRef.current = true;
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 260, height: 260 } },
-        async (decodedText) => {
-          if (processing) return;
-          await handleScan(decodedText);
-        },
-      )
-      .catch(() => {
+    const scanner = new Html5Qrcode(readerRef.current.id);
+    scannerRef.current = scanner;
+
+    // 🔑 MOBILE-SAFE START
+    setTimeout(async () => {
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: (w, h) => {
+              const size = Math.min(w, h) * 0.7;
+              return { width: size, height: size };
+            },
+            aspectRatio: 1,
+          },
+          async (decodedText) => {
+            if (processing) return;
+            await handleScan(decodedText);
+          },
+        );
+      } catch (err) {
+        startedRef.current = false;
+        setScanning(false);
         setModal({
           open: true,
           type: "error",
-          message: "Camera access denied or unavailable.",
+          message:
+            "Unable to access camera. Please allow camera permission or use manual entry.",
         });
-        setScanning(false);
-      });
+      }
+    }, 300); // ✅ CRITICAL delay for mobile rendering
 
-    return () => {
-      scanner
-        .stop()
-        .catch(() => {})
-        .finally(() => (qrRef.current = null));
-    };
+    return () => stopCamera();
   }, [scanning, eventId, processing]);
 
   /* ================= SCAN ================= */
@@ -74,16 +86,15 @@ useEffect(() => {
         message: res.message || "Access granted",
       });
 
-      // Auto stop camera on success
       stopCamera();
     } catch (err) {
       setModal({
         open: true,
         type: "error",
-        message: err.message || "Invalid, used, or wrong event ticket",
+        message: err.message || "Invalid, already used, or wrong event ticket",
       });
     } finally {
-      setTimeout(() => setProcessing(false), 1500);
+      setTimeout(() => setProcessing(false), 1200);
     }
   }
 
@@ -97,13 +108,22 @@ useEffect(() => {
   }
 
   function stopCamera() {
+    startedRef.current = false;
     setScanning(false);
-    qrRef.current?.stop().catch(() => {});
+
+    if (scannerRef.current) {
+      scannerRef.current
+        .stop()
+        .catch(() => {})
+        .finally(() => {
+          scannerRef.current?.clear();
+          scannerRef.current = null;
+        });
+    }
   }
 
   return (
     <div style={styles.page}>
-      {/* MODAL */}
       {modal.open && (
         <Modal
           type={modal.type}
@@ -112,7 +132,6 @@ useEffect(() => {
         />
       )}
 
-      {/* PROCESSING OVERLAY */}
       {processing && (
         <div style={styles.processing}>
           <div style={styles.spinner} />
@@ -131,13 +150,13 @@ useEffect(() => {
           </button>
         </header>
 
-        <p style={styles.muted}>Scanner is locked to this event</p>
+        <p style={styles.muted}>Camera is locked to this event</p>
 
         {/* CAMERA */}
         <div style={styles.scannerBox}>
           {scanning ? (
             <>
-              <div id="qr-reader" style={styles.camera} />
+              <div ref={readerRef} id="qr-reader" style={styles.camera} />
               <button style={styles.stopBtn} onClick={stopCamera}>
                 Stop Camera
               </button>
@@ -145,17 +164,18 @@ useEffect(() => {
           ) : (
             <button
               style={styles.primaryBtn}
-              onClick={() => setScanning(true)}
+              onClick={() => {
+                setError("");
+                setScanning(true);
+              }}
             >
               🎥 Start Camera Scan
             </button>
           )}
         </div>
 
-        {/* DIVIDER */}
         <div style={styles.divider}>OR</div>
 
-        {/* MANUAL */}
         <form onSubmit={handleManualSubmit} style={styles.form}>
           <input
             style={styles.input}
@@ -167,6 +187,8 @@ useEffect(() => {
             Verify Code
           </button>
         </form>
+
+        {error && <p style={styles.error}>{error}</p>}
       </div>
     </div>
   );
@@ -190,10 +212,9 @@ function Modal({ type, message, onClose }) {
 }
 
 /* ================= STYLES ================= */
-
 const styles = {
   page: {
-    minHeight: "100vh",
+    minHeight: "100svh", // 🔥 mobile-safe viewport
     background: "#0F0618",
     color: "#fff",
     display: "grid",
@@ -244,8 +265,10 @@ const styles = {
 
   camera: {
     width: "100%",
+    height: "min(70vw, 320px)", // 🔥 critical
     borderRadius: 12,
     overflow: "hidden",
+    background: "#000",
   },
 
   stopBtn: {
@@ -347,13 +370,15 @@ const styles = {
     cursor: "pointer",
     width: "100%",
   },
+
+  error: {
+    color: "#ff4d4f",
+    marginTop: 12,
+    fontSize: 13,
+  },
 };
 
-/* ================= SPINNER ================= */
+/* ===== SPINNER ===== */
 const style = document.createElement("style");
-style.innerHTML = `
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-`;
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
 document.head.appendChild(style);
