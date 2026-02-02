@@ -2,10 +2,22 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
+/* ================= SAFE DEFAULT ================= */
+const EMPTY_SALES = {
+  stats: {
+    totalTickets: 0,
+    totalRevenue: 0,
+    platformFees: 0,
+    scanned: 0,
+    unscanned: 0,
+  },
+  events: [],
+};
+
 export default function TicketSales() {
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(EMPTY_SALES);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({
     open: false,
@@ -28,7 +40,12 @@ export default function TicketSales() {
         if (!res.ok) throw new Error("Failed to load ticket sales");
 
         const json = await res.json();
-        setData(json);
+
+        // ✅ HARDEN RESPONSE
+        setData({
+          stats: json?.stats ?? EMPTY_SALES.stats,
+          events: Array.isArray(json?.events) ? json.events : [],
+        });
       } catch (err) {
         setModal({
           open: true,
@@ -48,7 +65,7 @@ export default function TicketSales() {
       {/* LOADING MODAL */}
       {loading && <LoadingModal />}
 
-      {/* ERROR / INFO MODAL */}
+      {/* ERROR MODAL */}
       {modal.open && (
         <Modal
           type={modal.type}
@@ -74,62 +91,57 @@ export default function TicketSales() {
         </div>
       </header>
 
-      {!data ? null : (
-        <>
-          {/* STATS */}
-          <section style={styles.statsGrid}>
-            <Stat title="Tickets Sold" value={data.stats.totalTickets} />
-            <Stat
-              title="Gross Revenue"
-              value={`₦${data.stats.totalRevenue.toLocaleString()}`}
-            />
-            <Stat
-              title="Platform Fees"
-              value={`₦${(data.stats.platformFees || 0).toLocaleString()}`}
-            />
-            <Stat
-              title="Your Earnings"
-              value={`₦${(
-                data.stats.totalRevenue -
-                (data.stats.platformFees || 0)
-              ).toLocaleString()}`}
-            />
-            <Stat title="Scanned" value={data.stats.scanned} />
-            <Stat title="Pending Entry" value={data.stats.unscanned} />
-          </section>
+      {/* STATS */}
+      <section style={styles.statsGrid}>
+        <Stat title="Tickets Sold" value={data.stats.totalTickets} />
+        <Stat
+          title="Gross Revenue"
+          value={`₦${data.stats.totalRevenue.toLocaleString()}`}
+        />
+        <Stat
+          title="Platform Fees"
+          value={`₦${data.stats.platformFees.toLocaleString()}`}
+        />
+        <Stat
+          title="Your Earnings"
+          value={`₦${(
+            data.stats.totalRevenue - data.stats.platformFees
+          ).toLocaleString()}`}
+        />
+        <Stat title="Scanned" value={data.stats.scanned} />
+        <Stat title="Pending Entry" value={data.stats.unscanned} />
+      </section>
 
-          {/* EVENT BREAKDOWN */}
-          <section style={styles.section}>
-            <h2>Sales by Event</h2>
+      {/* EVENT BREAKDOWN */}
+      <section style={styles.section}>
+        <h2>Sales by Event</h2>
 
-            {data.events.length === 0 ? (
-              <p style={styles.muted}>No ticket sales yet.</p>
-            ) : (
-              <div style={styles.list}>
-                {data.events.map((event) => (
-                  <div key={event.eventId} style={styles.eventCard}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                      <h3 style={styles.eventTitle}>{event.title}</h3>
-                      <p style={styles.muted}>
-                        {event.ticketsSold} tickets sold
-                      </p>
-                    </div>
+        {data.events.length === 0 ? (
+          <p style={styles.muted}>No ticket sales yet.</p>
+        ) : (
+          <div style={styles.list}>
+            {data.events.map((event) => (
+              <div key={event.eventId} style={styles.eventCard}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <h3 style={styles.eventTitle}>{event.title}</h3>
+                  <p style={styles.muted}>
+                    {event.ticketsSold} tickets sold
+                  </p>
+                </div>
 
-                    <div style={styles.right}>
-                      <span style={styles.revenue}>
-                        ₦{event.revenue.toLocaleString()}
-                      </span>
-                      <span style={styles.status(event.status)}>
-                        {event.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                <div style={styles.right}>
+                  <span style={styles.revenue}>
+                    ₦{event.revenue.toLocaleString()}
+                  </span>
+                  <span style={styles.status(event.status)}>
+                    {event.status}
+                  </span>
+                </div>
               </div>
-            )}
-          </section>
-        </>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -171,6 +183,7 @@ function Modal({ type, message, onClose }) {
     </div>
   );
 }
+
 
 /* ================= STYLES ================= */
 

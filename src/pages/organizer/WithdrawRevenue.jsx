@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function WithdrawRevenue() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     amount: "",
     bankName: "",
@@ -11,6 +14,7 @@ export default function WithdrawRevenue() {
 
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingBalance, setLoadingBalance] = useState(true);
   const [submitted, setSubmitted] = useState(false);
 
   const [modal, setModal] = useState({
@@ -35,9 +39,11 @@ export default function WithdrawRevenue() {
         if (!res.ok) throw new Error();
 
         const data = await res.json();
-        setBalance(Number(data.stats.walletBalance || 0));
+        setBalance(Number(data?.stats?.walletBalance || 0));
       } catch {
         setBalance(0);
+      } finally {
+        setLoadingBalance(false);
       }
     }
 
@@ -132,7 +138,10 @@ export default function WithdrawRevenue() {
 
   return (
     <div style={styles.page}>
-      {/* MODAL */}
+      {/* ================= LOADING MODALS ================= */}
+      {(loading || loadingBalance) && <LoadingModal />}
+
+      {/* ================= INFO MODAL ================= */}
       {modal.open && (
         <Modal
           type={modal.type}
@@ -141,11 +150,21 @@ export default function WithdrawRevenue() {
         />
       )}
 
+      {/* ================= CARD ================= */}
       <form style={styles.card} onSubmit={submit}>
+        {/* BACK */}
+        <button
+          type="button"
+          style={styles.backBtn}
+          onClick={() => navigate("/organizer/dashboard")}
+        >
+          ← Back to Dashboard
+        </button>
+
         <h1 style={styles.title}>Withdraw Revenue</h1>
 
         <p style={styles.muted}>
-          Available balance (after platform fees):{" "}
+          Available balance:{" "}
           <strong>₦{balance.toLocaleString()}</strong>
         </p>
 
@@ -206,7 +225,16 @@ export default function WithdrawRevenue() {
   );
 }
 
-/* ================= MODAL ================= */
+/* ================= MODALS ================= */
+
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>Processing…</div>
+    </div>
+  );
+}
+
 function Modal({ type, message, onClose }) {
   return (
     <div style={styles.modalOverlay}>
@@ -224,12 +252,13 @@ function Modal({ type, message, onClose }) {
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    padding: 20,
+    padding: "clamp(16px,4vw,32px)",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -240,9 +269,18 @@ const styles = {
     maxWidth: 420,
     background: "rgba(255,255,255,0.08)",
     backdropFilter: "blur(18px)",
-    padding: 32,
+    padding: 28,
     borderRadius: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+  },
+
+  backBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#22F2A6",
+    fontWeight: 600,
+    marginBottom: 12,
+    cursor: "pointer",
   },
 
   title: {
@@ -308,6 +346,13 @@ const styles = {
     maxWidth: 360,
     width: "100%",
     textAlign: "center",
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 18,
+    fontWeight: 600,
   },
 
   modalBtn: {

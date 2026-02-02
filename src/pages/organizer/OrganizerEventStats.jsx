@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
+/* ================= SAFE DEFAULT ================= */
+const EMPTY_EVENTS = [];
+
 export default function OrganizerEventStats() {
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState(EMPTY_EVENTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -24,7 +27,7 @@ export default function OrganizerEventStats() {
         if (!res.ok) throw new Error("Failed to load stats");
 
         const data = await res.json();
-        setEvents(data);
+        setEvents(Array.isArray(data) ? data : []);
       } catch {
         setError("Unable to load event statistics.");
       } finally {
@@ -35,70 +38,83 @@ export default function OrganizerEventStats() {
     loadStats();
   }, []);
 
-  if (loading) {
-    return <div style={styles.loading}>Loading analytics…</div>;
-  }
-
-  if (error) {
-    return <div style={styles.error}>{error}</div>;
-  }
-
   return (
     <div style={styles.page}>
-      {/* HEADER */}
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.heading}>Event Performance</h1>
-          <p style={styles.subtitle}>
-            Overview of ticket sales, scans, and revenue for your events
-          </p>
-        </div>
+      {/* ================= LOADING MODAL ================= */}
+      {loading && <LoadingModal />}
 
-        <button
-          style={styles.backBtn}
-          onClick={() => navigate("/organizer/dashboard")}
-        >
-          ← Back to Dashboard
-        </button>
-      </header>
+      {/* ================= ERROR ================= */}
+      {error && !loading && <div style={styles.error}>{error}</div>}
 
-      {/* EMPTY STATE */}
-      {events.length === 0 && (
-        <p style={styles.empty}>You haven’t hosted any events yet.</p>
-      )}
-
-      {/* EVENTS GRID */}
-      <div style={styles.grid}>
-        {events.map((event) => (
-          <div key={event.eventId} style={styles.card}>
-            {/* BANNER */}
-            <div style={styles.bannerWrapper}>
-              <img src={event.banner} alt={event.title} style={styles.banner} />
-              <span style={styles.status(event.status)}>{event.status}</span>
-            </div>
-
-            {/* BODY */}
-            <div style={styles.body}>
-              <h3 style={styles.title}>{event.title}</h3>
-
-              <p style={styles.meta}>
-                📅 {new Date(event.date).toDateString()}
+      {!loading && !error && (
+        <>
+          {/* HEADER */}
+          <header style={styles.header}>
+            <div>
+              <h1 style={styles.heading}>Event Performance</h1>
+              <p style={styles.subtitle}>
+                Overview of ticket sales, scans, and revenue
               </p>
-
-              {/* STATS */}
-              <div style={styles.statsGrid}>
-                <Stat label="Tickets Sold" value={event.ticketsSold} />
-                <Stat label="Remaining" value={event.ticketsRemaining} />
-                <Stat label="Scanned" value={event.ticketsScanned} />
-                <Stat
-                  label="Revenue"
-                  value={`₦${event.revenue.toLocaleString()}`}
-                />
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
+
+            <button
+              style={styles.backBtn}
+              onClick={() => navigate("/organizer/dashboard")}
+            >
+              ← Back to Dashboard
+            </button>
+          </header>
+
+          {/* EMPTY STATE */}
+          {events.length === 0 ? (
+            <p style={styles.empty}>You haven’t hosted any events yet.</p>
+          ) : (
+            <div style={styles.grid}>
+              {events.map((event) => (
+                <div key={event.eventId} style={styles.card}>
+                  {/* BANNER */}
+                  <div style={styles.bannerWrapper}>
+                    <img
+                      src={event.banner}
+                      alt={event.title}
+                      style={styles.banner}
+                    />
+                    <span style={styles.status(event.status)}>
+                      {event.status}
+                    </span>
+                  </div>
+
+                  {/* BODY */}
+                  <div style={styles.body}>
+                    <h3 style={styles.title}>{event.title}</h3>
+
+                    <p style={styles.meta}>
+                      📅 {new Date(event.date).toDateString()}
+                    </p>
+
+                    {/* STATS */}
+                    <div style={styles.statsGrid}>
+                      <Stat label="Tickets Sold" value={event.ticketsSold ?? 0} />
+                      <Stat
+                        label="Remaining"
+                        value={event.ticketsRemaining ?? 0}
+                      />
+                      <Stat
+                        label="Scanned"
+                        value={event.ticketsScanned ?? 0}
+                      />
+                      <Stat
+                        label="Revenue"
+                        value={`₦${(event.revenue ?? 0).toLocaleString()}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -110,6 +126,19 @@ function Stat({ label, value }) {
     <div style={styles.statCard}>
       <span style={styles.statLabel}>{label}</span>
       <strong style={styles.statValue}>{value}</strong>
+    </div>
+  );
+}
+
+/* ================= LOADING MODAL ================= */
+
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 12 }}>Loading analytics…</p>
+      </div>
     </div>
   );
 }
@@ -136,7 +165,7 @@ const styles = {
   },
 
   heading: {
-    fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+    fontSize: "clamp(1.6rem, 3.5vw, 2.2rem)",
     marginBottom: 6,
   },
 
@@ -160,7 +189,7 @@ const styles = {
     margin: "0 auto",
     display: "grid",
     gap: 24,
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
   },
 
   card: {
@@ -174,7 +203,7 @@ const styles = {
 
   bannerWrapper: {
     position: "relative",
-    height: 160,
+    height: 180,
   },
 
   banner: {
@@ -195,8 +224,8 @@ const styles = {
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-          ? "#ff4d4f"
-          : "#fadb14",
+        ? "#ff4d4f"
+        : "#fadb14",
     color: "#000",
   }),
 
@@ -217,7 +246,7 @@ const styles = {
 
   statsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
     gap: 12,
   },
 
@@ -246,19 +275,37 @@ const styles = {
     color: "#CFC9D6",
   },
 
-  loading: {
-    minHeight: "100vh",
+  error: {
+    minHeight: "40vh",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
+    color: "#ff4d4f",
   },
 
-  error: {
-    minHeight: "100vh",
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#ff4d4f",
+    zIndex: 1000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };
