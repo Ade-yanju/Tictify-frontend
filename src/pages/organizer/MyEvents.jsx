@@ -9,6 +9,7 @@ export default function MyEvents() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // eventId
 
   async function fetchEvents() {
     try {
@@ -22,7 +23,7 @@ export default function MyEvents() {
       );
 
       const data = await res.json();
-      setEvents(data || []);
+      setEvents(Array.isArray(data) ? data : []);
     } catch {
       setEvents([]);
     } finally {
@@ -50,12 +51,33 @@ export default function MyEvents() {
     }
   }
 
+  async function deleteEvent(id) {
+    if (processingId) return;
+    setProcessingId(id);
+
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/events/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
+      );
+
+      // Optimistic update
+      setEvents((prev) => prev.filter((e) => e._id !== id));
+    } finally {
+      setProcessingId(null);
+      setConfirmDelete(null);
+    }
+  }
+
   function copyEventLink(eventId) {
     const publicUrl = `${window.location.origin}/events/${eventId}`;
-
     navigator.clipboard.writeText(publicUrl);
     setCopiedId(eventId);
-
     setTimeout(() => setCopiedId(null), 2000);
   }
 
@@ -67,6 +89,14 @@ export default function MyEvents() {
     <div style={styles.page}>
       {/* ================= LOADING MODAL ================= */}
       {loading && <LoadingModal />}
+
+      {/* ================= DELETE CONFIRM MODAL ================= */}
+      {confirmDelete && (
+        <ConfirmModal
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => deleteEvent(confirmDelete)}
+        />
+      )}
 
       {/* ================= HEADER ================= */}
       <header style={styles.header}>
@@ -150,7 +180,13 @@ export default function MyEvents() {
                 )}
 
                 {event.status === "ENDED" && (
-                  <span style={styles.muted}>Event completed</span>
+                  <button
+                    style={styles.deleteBtn}
+                    disabled={processingId === event._id}
+                    onClick={() => setConfirmDelete(event._id)}
+                  >
+                    Delete Event
+                  </button>
                 )}
               </div>
             </div>
@@ -169,6 +205,27 @@ function LoadingModal() {
       <div style={styles.loadingModal}>
         <div style={styles.spinner} />
         <p style={{ marginTop: 14 }}>Loading your events…</p>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ onCancel, onConfirm }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <h3>Delete Event?</h3>
+        <p style={{ marginTop: 8 }}>
+          This action cannot be undone.
+        </p>
+        <div style={styles.confirmActions}>
+          <button style={styles.cancelBtn} onClick={onCancel}>
+            Cancel
+          </button>
+          <button style={styles.deleteBtn} onClick={onConfirm}>
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -253,6 +310,25 @@ const styles = {
     color: "#fff",
   },
 
+  deleteBtn: {
+    background: "#b91c1c",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: 999,
+    fontWeight: 600,
+    cursor: "pointer",
+    color: "#fff",
+  },
+
+  cancelBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
   linkBtn: {
     background: "transparent",
     border: "1px solid #22F2A6",
@@ -300,6 +376,22 @@ const styles = {
     display: "grid",
     placeItems: "center",
     zIndex: 1000,
+  },
+
+  modal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 18,
+    width: "90%",
+    maxWidth: 360,
+    textAlign: "center",
+  },
+
+  confirmActions: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 20,
   },
 
   loadingModal: {

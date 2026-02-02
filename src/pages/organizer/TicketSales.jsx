@@ -26,6 +26,8 @@ export default function TicketSales() {
   });
 
   useEffect(() => {
+    let mounted = true; // 👈 prevents state update after unmount
+
     async function loadSales() {
       try {
         const res = await fetch(
@@ -41,23 +43,45 @@ export default function TicketSales() {
 
         const json = await res.json();
 
-        // ✅ HARDEN RESPONSE
+        if (!mounted) return;
+
         setData({
-          stats: json?.stats ?? EMPTY_SALES.stats,
-          events: Array.isArray(json?.events) ? json.events : [],
+          stats: {
+            totalTickets: Number(json?.stats?.totalTickets || 0),
+            totalRevenue: Number(json?.stats?.totalRevenue || 0),
+            platformFees: Number(json?.stats?.platformFees || 0),
+            scanned: Number(json?.stats?.scanned || 0),
+            unscanned: Number(json?.stats?.unscanned || 0),
+          },
+          events: Array.isArray(json?.events)
+            ? json.events.map((e) => ({
+                eventId: e.eventId,
+                title: e.title || "Untitled Event",
+                ticketsSold: Number(e.ticketsSold || 0),
+                revenue: Number(e.revenue || 0),
+                status: e.status || "UNKNOWN",
+              }))
+            : [],
         });
       } catch (err) {
+        if (!mounted) return;
+
         setModal({
           open: true,
           type: "error",
-          message: err.message || "Unable to load ticket sales at the moment.",
+          message:
+            err.message || "Unable to load ticket sales at the moment.",
         });
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     loadSales();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -183,6 +207,7 @@ function Modal({ type, message, onClose }) {
     </div>
   );
 }
+
 
 
 /* ================= STYLES ================= */

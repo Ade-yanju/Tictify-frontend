@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function TicketSuccess() {
   const { reference } = useParams();
   const navigate = useNavigate();
+  const touchStartX = useRef(0);
 
   const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
   const [data, setData] = useState(null);
   const [message, setMessage] = useState("Preparing your ticket…");
 
+  /* ================= LOAD TICKET ================= */
   useEffect(() => {
     if (!reference) {
       setStatus("ERROR");
@@ -17,7 +19,7 @@ export default function TicketSuccess() {
     }
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 10; // ~10 seconds
+    const MAX_ATTEMPTS = 10;
     const controller = new AbortController();
 
     const interval = setInterval(async () => {
@@ -31,7 +33,7 @@ export default function TicketSuccess() {
 
         const result = await res.json();
 
-        if (result.status === "READY") {
+        if (result?.status === "READY") {
           clearInterval(interval);
           setData(result);
           setStatus("READY");
@@ -58,18 +60,50 @@ export default function TicketSuccess() {
     };
   }, [reference]);
 
-  /* ================= UI STATES ================= */
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const start = (e) => (touchStartX.current = e.touches[0].clientX);
+    const end = (e) => {
+      if (e.changedTouches[0].clientX - touchStartX.current > 80) {
+        navigate("/");
+      }
+    };
 
+    window.addEventListener("touchstart", start);
+    window.addEventListener("touchend", end);
+
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [navigate]);
+
+  /* ================= LOADING ================= */
   if (status === "LOADING") {
-    return <div style={styles.loading}>{message}</div>;
+    return (
+      <div style={styles.page}>
+        <LoadingModal message={message} />
+      </div>
+    );
   }
 
+  /* ================= ERROR ================= */
   if (status === "ERROR") {
     return (
-      <div style={styles.error}>
-        <p>{message}</p>
-        <button onClick={() => window.location.reload()}>Refresh Page</button>
-        <button onClick={() => navigate("/")}>Go Home</button>
+      <div style={styles.page}>
+        <div style={styles.errorCard}>
+          <h2 style={{ marginBottom: 8 }}>Something went wrong</h2>
+          <p style={styles.muted}>{message}</p>
+
+          <div style={styles.errorActions}>
+            <button style={styles.secondaryBtn} onClick={() => window.location.reload()}>
+              Refresh
+            </button>
+            <button style={styles.primaryBtn} onClick={() => navigate("/")}>
+              Go Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -115,47 +149,68 @@ export default function TicketSuccess() {
   );
 }
 
-/* ================= STYLES ================= */
+/* ================= LOADING MODAL ================= */
+function LoadingModal({ message }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 14 }}>{message}</p>
+      </div>
+    </div>
+  );
+}
 
+/* ================= STYLES ================= */
 const styles = {
   page: {
     minHeight: "100vh",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     display: "grid",
     placeItems: "center",
-    padding: 20,
+    padding: "clamp(16px,4vw,32px)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
+
   card: {
-    maxWidth: 520,
     width: "100%",
+    maxWidth: 520,
     background: "rgba(255,255,255,0.08)",
-    padding: "40px 32px",
+    padding: "clamp(28px,5vw,40px)",
     borderRadius: 24,
     textAlign: "center",
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
+
   icon: { fontSize: 56, marginBottom: 12 },
-  title: { fontSize: 28, marginBottom: 8 },
+
+  title: {
+    fontSize: "clamp(22px,4vw,28px)",
+    marginBottom: 8,
+  },
+
   subtitle: {
     fontSize: 14,
     color: "#CFC9D6",
     marginBottom: 24,
   },
+
   info: {
     fontSize: 14,
     color: "#E5E1F0",
     marginBottom: 20,
     lineHeight: 1.6,
   },
+
   qr: {
-    width: 240,
+    width: "min(240px, 80vw)",
     margin: "20px auto",
     padding: 14,
     background: "#fff",
     borderRadius: 14,
   },
+
   primaryBtn: {
     padding: "14px 22px",
     borderRadius: 999,
@@ -163,21 +218,72 @@ const styles = {
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
     cursor: "pointer",
+    marginTop: 8,
   },
-  ref: { marginTop: 20, fontSize: 12, color: "#9F97B2" },
-  loading: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0F0618",
+
+  secondaryBtn: {
+    padding: "12px 18px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.3)",
+    background: "transparent",
     color: "#fff",
+    cursor: "pointer",
   },
-  error: {
-    minHeight: "100vh",
+
+  ref: {
+    marginTop: 20,
+    fontSize: 12,
+    color: "#9F97B2",
+    wordBreak: "break-all",
+  },
+
+  muted: {
+    color: "#CFC9D6",
+    fontSize: 14,
+    textAlign: "center",
+  },
+
+  errorCard: {
+    background: "rgba(255,255,255,0.08)",
+    padding: 32,
+    borderRadius: 20,
+    textAlign: "center",
+    maxWidth: 420,
+    width: "100%",
+  },
+
+  errorActions: {
+    display: "flex",
+    gap: 12,
+    justifyContent: "center",
+    marginTop: 20,
+    flexWrap: "wrap",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#ff4d4f",
-    gap: 12,
+    zIndex: 2000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
+  const touchStartX = useRef(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,54 +12,70 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /* ================= LOGIN ================= */
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
+
     setError("");
     setLoading(true);
 
     try {
-      // 🔐 LOGIN REQUEST
       const res = await login({ email, password });
-
-      /**
-       * Expected response:
-       * {
-       *   token,
-       *   user: { role: "admin" | "organizer" }
-       * }
-       */
       const { user } = res;
 
-      if (!user?.role) {
-        throw new Error("Invalid authentication response");
-      }
+      if (!user?.role) throw new Error();
 
-      // ✅ ROLE-BASED NAVIGATION (SPA SAFE)
-      if (user.role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
-      } else if (user.role === "organizer") {
-        navigate("/organizer/dashboard", { replace: true });
-      } else {
-        throw new Error("Unauthorized role");
-      }
-    } catch (err) {
+      navigate(
+        user.role === "admin"
+          ? "/admin/dashboard"
+          : "/organizer/dashboard",
+        { replace: true },
+      );
+    } catch {
       setError("Invalid email or password");
     } finally {
       setLoading(false);
     }
   }
 
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (e) => {
+      const diff = e.changedTouches[0].clientX - touchStartX.current;
+      if (diff > 80) navigate("/");
+    };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [navigate]);
+
   const strength = getPasswordStrength(password);
 
   return (
     <div style={styles.viewport}>
+      {loading && <LoadingModal />}
+
+      {/* BACK */}
+      <button style={styles.backBtn} onClick={() => navigate("/")}>
+        ← Back
+      </button>
+
       <form style={styles.card} onSubmit={handleSubmit}>
         <h2 style={styles.title}>Welcome Back</h2>
         <p style={styles.subtitle}>
           Login to manage your events on <strong>Tictify</strong>
         </p>
 
-        {/* EMAIL */}
         <input
           type="email"
           placeholder="Email address"
@@ -68,7 +85,6 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        {/* PASSWORD */}
         <div style={styles.passwordField}>
           <input
             type={showPassword ? "text" : "password"}
@@ -82,13 +98,11 @@ export default function Login() {
             type="button"
             style={styles.eye}
             onClick={() => setShowPassword(!showPassword)}
-            aria-label="Toggle password visibility"
           >
             {showPassword ? "🙈" : "👁️"}
           </button>
         </div>
 
-        {/* PASSWORD STRENGTH */}
         {password && (
           <div style={styles.strength}>
             <div
@@ -104,15 +118,12 @@ export default function Login() {
           </div>
         )}
 
-        {/* ERROR */}
         {error && <p style={styles.error}>{error}</p>}
 
-        {/* SUBMIT */}
         <button style={styles.submit} disabled={loading}>
-          {loading ? "Signing in..." : "Login"}
+          {loading ? "Signing in…" : "Login"}
         </button>
 
-        {/* REGISTER LINK */}
         <p style={styles.footer}>
           Organizer only?{" "}
           <button
@@ -124,6 +135,18 @@ export default function Login() {
           </button>
         </p>
       </form>
+    </div>
+  );
+}
+
+/* ================= LOADING MODAL ================= */
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 12 }}>Signing you in…</p>
+      </div>
     </div>
   );
 }
@@ -142,13 +165,26 @@ function getPasswordStrength(password) {
 /* ================= STYLES ================= */
 const styles = {
   viewport: {
-    position: "fixed",
-    inset: 0,
+    minHeight: "100vh",
     display: "grid",
     placeItems: "center",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     color: "#fff",
-    padding: 20,
+    padding: "clamp(16px,4vw,32px)",
+    position: "relative",
+  },
+
+  backBtn: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.25)",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontSize: 14,
   },
 
   card: {
@@ -156,7 +192,7 @@ const styles = {
     maxWidth: 420,
     background: "rgba(255,255,255,0.08)",
     backdropFilter: "blur(16px)",
-    padding: "36px 32px",
+    padding: "clamp(24px,5vw,36px)",
     borderRadius: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
@@ -173,7 +209,7 @@ const styles = {
   },
 
   input: {
-    width: "95%",
+    width: "100%",
     padding: "14px 16px",
     borderRadius: 12,
     border: "1px solid rgba(255,255,255,0.15)",
@@ -197,7 +233,6 @@ const styles = {
     border: "none",
     color: "#fff",
     cursor: "pointer",
-    opacity: 0.8,
   },
 
   strength: {
@@ -240,5 +275,32 @@ const styles = {
     color: "#22F2A6",
     cursor: "pointer",
     fontWeight: 500,
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 2000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };

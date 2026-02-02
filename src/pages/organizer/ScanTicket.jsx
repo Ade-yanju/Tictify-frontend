@@ -8,11 +8,11 @@ export default function ScanTicket() {
   const [params] = useSearchParams();
   const eventId = params.get("event");
 
-  const qrInstance = useRef(null);
+  const qrRef = useRef(null);
 
   const [manualCode, setManualCode] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [locked, setLocked] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const [modal, setModal] = useState({
     open: false,
@@ -20,7 +20,7 @@ export default function ScanTicket() {
     message: "",
   });
 
-  /* ================= VALIDATE EVENT ================= */
+  /* ================= GUARD ================= */
   useEffect(() => {
     if (!eventId) {
       setModal({
@@ -31,19 +31,19 @@ export default function ScanTicket() {
     }
   }, [eventId]);
 
-  /* ================= CAMERA SCAN ================= */
+  /* ================= CAMERA ================= */
   useEffect(() => {
     if (!scanning || !eventId) return;
 
-    qrInstance.current = new Html5Qrcode("qr-reader");
+    const scanner = new Html5Qrcode("qr-reader");
+    qrRef.current = scanner;
 
-    qrInstance.current
+    scanner
       .start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: { width: 260, height: 260 } },
         async (decodedText) => {
-          if (locked) return;
-          setLocked(true);
+          if (processing) return;
           await handleScan(decodedText);
         },
       )
@@ -51,29 +51,34 @@ export default function ScanTicket() {
         setModal({
           open: true,
           type: "error",
-          message: "Camera access denied or unavailable",
+          message: "Camera access denied or unavailable.",
         });
         setScanning(false);
       });
 
     return () => {
-      qrInstance.current?.stop().catch(() => {});
+      scanner
+        .stop()
+        .catch(() => {})
+        .finally(() => (qrRef.current = null));
     };
-  }, [scanning, locked, eventId]);
+  }, [scanning, eventId, processing]);
 
-  /* ================= SCAN HANDLER ================= */
+  /* ================= SCAN ================= */
   async function handleScan(code) {
+    setProcessing(true);
+
     try {
-      const res = await scanTicket({
-        code,
-        eventId,
-      });
+      const res = await scanTicket({ code, eventId });
 
       setModal({
         open: true,
         type: "success",
         message: res.message || "Access granted",
       });
+
+      // Auto stop camera on success
+      stopCamera();
     } catch (err) {
       setModal({
         open: true,
@@ -81,16 +86,22 @@ export default function ScanTicket() {
         message: err.message || "Invalid, used, or wrong event ticket",
       });
     } finally {
-      setTimeout(() => setLocked(false), 2000);
+      setTimeout(() => setProcessing(false), 1500);
     }
   }
 
-  /* ================= MANUAL SUBMIT ================= */
+  /* ================= MANUAL ================= */
   async function handleManualSubmit(e) {
     e.preventDefault();
-    if (!manualCode) return;
-    await handleScan(manualCode);
+    if (!manualCode || processing) return;
+
+    await handleScan(manualCode.trim());
     setManualCode("");
+  }
+
+  function stopCamera() {
+    setScanning(false);
+    qrRef.current?.stop().catch(() => {});
   }
 
   return (
@@ -100,18 +111,21 @@ export default function ScanTicket() {
         <Modal
           type={modal.type}
           message={modal.message}
-          onClose={() =>
-            setModal((m) => ({
-              ...m,
-              open: false,
-            }))
-          }
+          onClose={() => setModal((m) => ({ ...m, open: false }))}
         />
+      )}
+
+      {/* PROCESSING OVERLAY */}
+      {processing && (
+        <div style={styles.processing}>
+          <div style={styles.spinner} />
+          <p>Verifying ticket…</p>
+        </div>
       )}
 
       <div style={styles.container}>
         <header style={styles.header}>
-          <h1>Scan Tickets</h1>
+          <h1 style={styles.title}>Scan Tickets</h1>
           <button
             style={styles.backBtn}
             onClick={() => navigate("/organizer/dashboard")}
@@ -120,14 +134,22 @@ export default function ScanTicket() {
           </button>
         </header>
 
-        <p style={styles.muted}>This scanner is locked to this event only</p>
+        <p style={styles.muted}>Scanner is locked to this event</p>
 
         {/* CAMERA */}
         <div style={styles.scannerBox}>
           {scanning ? (
-            <div id="qr-reader" style={styles.camera} />
+            <>
+              <div id="qr-reader" style={styles.camera} />
+              <button style={styles.stopBtn} onClick={stopCamera}>
+                Stop Camera
+              </button>
+            </>
           ) : (
-            <button style={styles.primaryBtn} onClick={() => setScanning(true)}>
+            <button
+              style={styles.primaryBtn}
+              onClick={() => setScanning(true)}
+            >
               🎥 Start Camera Scan
             </button>
           )}
@@ -136,15 +158,17 @@ export default function ScanTicket() {
         {/* DIVIDER */}
         <div style={styles.divider}>OR</div>
 
-        {/* MANUAL INPUT */}
+        {/* MANUAL */}
         <form onSubmit={handleManualSubmit} style={styles.form}>
           <input
             style={styles.input}
-            placeholder="Enter QR code manually"
+            placeholder="Enter ticket code manually"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
           />
-          <button style={styles.secondaryBtn}>Verify Code</button>
+          <button style={styles.secondaryBtn} disabled={processing}>
+            Verify Code
+          </button>
         </form>
       </div>
     </div>
@@ -169,6 +193,7 @@ function Modal({ type, message, onClose }) {
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -176,7 +201,8 @@ const styles = {
     color: "#fff",
     display: "grid",
     placeItems: "center",
-    padding: 20,
+    padding: 16,
+    fontFamily: "Inter, system-ui",
   },
 
   container: {
@@ -189,7 +215,11 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+
+  title: {
+    fontSize: "clamp(20px, 4vw, 26px)",
   },
 
   backBtn: {
@@ -198,20 +228,20 @@ const styles = {
     color: "#22F2A6",
     padding: "6px 12px",
     borderRadius: 999,
-    cursor: "pointer",
     fontWeight: 600,
+    cursor: "pointer",
   },
 
   muted: {
     color: "#CFC9D6",
-    marginBottom: 24,
+    marginBottom: 20,
     fontSize: 14,
   },
 
   scannerBox: {
     background: "rgba(255,255,255,0.08)",
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     marginBottom: 20,
   },
 
@@ -221,8 +251,20 @@ const styles = {
     overflow: "hidden",
   },
 
+  stopBtn: {
+    marginTop: 12,
+    padding: 12,
+    width: "100%",
+    borderRadius: 999,
+    border: "none",
+    background: "#ff4d4f",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
   divider: {
-    margin: "20px 0",
+    margin: "16px 0",
     fontSize: 12,
     color: "#888",
   },
@@ -260,6 +302,27 @@ const styles = {
     cursor: "pointer",
   },
 
+  processing: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.7)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 1000,
+    color: "#fff",
+    fontWeight: 600,
+  },
+
+  spinner: {
+    width: 36,
+    height: 36,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    marginBottom: 12,
+    animation: "spin 1s linear infinite",
+  },
+
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -288,3 +351,12 @@ const styles = {
     width: "100%",
   },
 };
+
+/* ================= SPINNER ================= */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);

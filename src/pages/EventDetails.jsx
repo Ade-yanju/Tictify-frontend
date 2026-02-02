@@ -1,267 +1,289 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-export default function EventDetails() {
-  const { id } = useParams(); // ✅ FIXED
+export default function TicketSuccess() {
+  const { reference } = useParams();
   const navigate = useNavigate();
+  const touchStartX = useRef(0);
 
-  const [event, setEvent] = useState(null);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState("LOADING"); // LOADING | READY | ERROR
+  const [data, setData] = useState(null);
+  const [message, setMessage] = useState("Preparing your ticket…");
 
-  /* ================= RESPONSIVE ================= */
-  const isDesktop = window.innerWidth >= 768;
-
-  /* ================= LOAD EVENT ================= */
+  /* ================= LOAD TICKET ================= */
   useEffect(() => {
-    if (!id) {
-      setError("Invalid event link.");
-      setLoading(false);
+    if (!reference) {
+      setStatus("ERROR");
+      setMessage("Invalid ticket reference");
       return;
     }
 
-    async function loadEvent() {
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10;
+    const controller = new AbortController();
+
+    const interval = setInterval(async () => {
+      attempts++;
+
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
+          `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
+          { signal: controller.signal },
         );
 
-        if (!res.ok) throw new Error("Event not found");
+        const result = await res.json();
 
-        const data = await res.json();
-        setEvent(data);
+        if (result?.status === "READY") {
+          clearInterval(interval);
+          setData(result);
+          setStatus("READY");
+          return;
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+          clearInterval(interval);
+          setStatus("ERROR");
+          setMessage(
+            "We could not load your ticket. Please refresh the page or contact support.",
+          );
+        }
       } catch {
-        setError("Unable to load this event.");
-      } finally {
-        setLoading(false);
+        clearInterval(interval);
+        setStatus("ERROR");
+        setMessage("Unable to load ticket at the moment.");
       }
-    }
+    }, 1000);
 
-    loadEvent();
-  }, [id]);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [reference]);
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const start = (e) => (touchStartX.current = e.touches[0].clientX);
+    const end = (e) => {
+      if (e.changedTouches[0].clientX - touchStartX.current > 80) {
+        navigate("/");
+      }
+    };
 
-  /* ================= STATES ================= */
-  if (loading) {
-    return <div style={styles.loading}>Loading event…</div>;
+    window.addEventListener("touchstart", start);
+    window.addEventListener("touchend", end);
+
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [navigate]);
+
+  /* ================= LOADING ================= */
+  if (status === "LOADING") {
+    return (
+      <div style={styles.page}>
+        <LoadingModal message={message} />
+      </div>
+    );
   }
 
-  if (error || !event) {
-    return <div style={styles.error}>{error}</div>;
+  /* ================= ERROR ================= */
+  if (status === "ERROR") {
+    return (
+      <div style={styles.page}>
+        <div style={styles.errorCard}>
+          <h2 style={{ marginBottom: 8 }}>Something went wrong</h2>
+          <p style={styles.muted}>{message}</p>
+
+          <div style={styles.errorActions}>
+            <button style={styles.secondaryBtn} onClick={() => window.location.reload()}>
+              Refresh
+            </button>
+            <button style={styles.primaryBtn} onClick={() => navigate("/")}>
+              Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  /* ================= UI ================= */
+  const { event, ticket } = data;
+
   return (
     <div style={styles.page}>
-      {/* BANNER */}
-      <div style={styles.bannerWrapper}>
-        <img src={event.banner} alt={event.title} style={styles.banner} />
+      <div style={styles.card}>
+        <div style={styles.icon}>🎟️</div>
+
+        <h1 style={styles.title}>Your Ticket Is Ready</h1>
+        <p style={styles.subtitle}>
+          Present this QR code at the event entrance
+        </p>
+
+        <div style={styles.info}>
+          <strong>{event.title}</strong>
+          <p>{new Date(event.date).toDateString()}</p>
+          <p>{event.location}</p>
+          <p>
+            Ticket Type: <strong>{ticket.ticketType}</strong>
+          </p>
+        </div>
+
+        <img src={ticket.qrImage} alt="QR Code" style={styles.qr} />
+
+        <button
+          style={styles.primaryBtn}
+          onClick={() => {
+            const link = document.createElement("a");
+            link.href = ticket.qrImage;
+            link.download = `ticket-${reference}.png`;
+            link.click();
+          }}
+        >
+          Download QR Code
+        </button>
+
+        <p style={styles.ref}>Reference: {reference}</p>
       </div>
+    </div>
+  );
+}
 
-      <div
-        style={{
-          ...styles.container,
-          gridTemplateColumns: isDesktop ? "2fr 1fr" : "1fr",
-        }}
-      >
-        {/* EVENT INFO */}
-        <section style={styles.eventCard}>
-          <h1 style={styles.title}>{event.title}</h1>
-
-          <div style={styles.metaRow}>
-            <span>📍 {event.location || "TBA"}</span>
-            <span>📅 {new Date(event.date).toDateString()}</span>
-            <span>👥 Capacity: {event.capacity}</span>
-          </div>
-
-          <p style={styles.description}>
-            {event.description || "No description provided."}
-          </p>
-        </section>
-
-        {/* PURCHASE */}
-        <aside style={styles.purchaseCard}>
-          <h2 style={styles.sectionTitle}>Select Ticket</h2>
-
-          {event.ticketTypes?.map((ticket) => (
-            <label key={ticket.name} style={styles.ticketOption}>
-              <input
-                type="radio"
-                name="ticket"
-                checked={selectedTicket?.name === ticket.name}
-                onChange={() => setSelectedTicket(ticket)}
-              />
-              <span>
-                {ticket.name} — {ticket.price > 0 ? `₦${ticket.price}` : "Free"}
-              </span>
-            </label>
-          ))}
-
-          <input
-            type="email"
-            placeholder="Enter your email address"
-            style={styles.input}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          {!emailValid && email && (
-            <p style={styles.inputError}>Enter a valid email address</p>
-          )}
-
-          <button
-            style={{
-              ...styles.buyBtn,
-              opacity: emailValid && selectedTicket ? 1 : 0.5,
-              cursor: emailValid && selectedTicket ? "pointer" : "not-allowed",
-            }}
-            disabled={!emailValid || !selectedTicket}
-            onClick={() =>
-              navigate(
-                `/checkout/${event._id}?ticket=${encodeURIComponent(
-                  selectedTicket.name,
-                )}&email=${encodeURIComponent(email)}`,
-              )
-            }
-          >
-            Proceed to Checkout →
-          </button>
-
-          <p style={styles.secureNote}>
-            🔒 Secure payment • QR ticket generated after payment
-          </p>
-        </aside>
+/* ================= LOADING MODAL ================= */
+function LoadingModal({ message }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 14 }}>{message}</p>
       </div>
     </div>
   );
 }
 
 /* ================= STYLES ================= */
-
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#0F0618",
+    background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
+    display: "grid",
+    placeItems: "center",
+    padding: "clamp(16px,4vw,32px)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
 
-  bannerWrapper: {
+  card: {
     width: "100%",
-    height: 260,
-    overflow: "hidden",
-  },
-
-  banner: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-
-  container: {
-    maxWidth: 1100,
-    margin: "0 auto",
-    padding: "32px 20px",
-    display: "grid",
-    gap: 32,
-  },
-
-  eventCard: {
+    maxWidth: 520,
     background: "rgba(255,255,255,0.08)",
+    padding: "clamp(28px,5vw,40px)",
     borderRadius: 24,
-    padding: 28,
+    textAlign: "center",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
+
+  icon: { fontSize: 56, marginBottom: 12 },
 
   title: {
-    marginBottom: 12,
-    fontSize: 28,
+    fontSize: "clamp(22px,4vw,28px)",
+    marginBottom: 8,
   },
 
-  metaRow: {
-    display: "flex",
-    gap: 16,
-    flexWrap: "wrap",
+  subtitle: {
+    fontSize: 14,
     color: "#CFC9D6",
-    marginBottom: 20,
-    fontSize: 14,
+    marginBottom: 24,
   },
 
-  description: {
-    lineHeight: 1.6,
-    fontSize: 15,
+  info: {
+    fontSize: 14,
     color: "#E5E1F0",
+    marginBottom: 20,
+    lineHeight: 1.6,
   },
 
-  purchaseCard: {
-    background: "rgba(255,255,255,0.06)",
-    borderRadius: 24,
-    padding: 28,
-  },
-
-  sectionTitle: {
-    marginBottom: 12,
-    fontSize: 18,
-  },
-
-  ticketOption: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
-    fontSize: 14,
-    cursor: "pointer",
-  },
-
-  input: {
-    width: "100%",
-    padding: "14px 16px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#fff",
-    marginTop: 12,
-    outline: "none",
-  },
-
-  inputError: {
-    color: "#ff4d4f",
-    fontSize: 12,
-    marginTop: 6,
-  },
-
-  buyBtn: {
-    width: "100%",
+  qr: {
+    width: "min(240px, 80vw)",
+    margin: "20px auto",
     padding: 14,
+    background: "#fff",
+    borderRadius: 14,
+  },
+
+  primaryBtn: {
+    padding: "14px 22px",
     borderRadius: 999,
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
-    marginTop: 16,
+    cursor: "pointer",
+    marginTop: 8,
   },
 
-  secureNote: {
-    marginTop: 14,
-    fontSize: 13,
+  secondaryBtn: {
+    padding: "12px 18px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.3)",
+    background: "transparent",
+    color: "#fff",
+    cursor: "pointer",
+  },
+
+  ref: {
+    marginTop: 20,
+    fontSize: 12,
+    color: "#9F97B2",
+    wordBreak: "break-all",
+  },
+
+  muted: {
     color: "#CFC9D6",
+    fontSize: 14,
     textAlign: "center",
   },
 
-  loading: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
+  errorCard: {
+    background: "rgba(255,255,255,0.08)",
+    padding: 32,
+    borderRadius: 20,
+    textAlign: "center",
+    maxWidth: 420,
+    width: "100%",
   },
 
-  error: {
-    minHeight: "100vh",
+  errorActions: {
+    display: "flex",
+    gap: 12,
+    justifyContent: "center",
+    marginTop: 20,
+    flexWrap: "wrap",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#ff4d4f",
+    zIndex: 2000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };

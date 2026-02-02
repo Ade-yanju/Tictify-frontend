@@ -119,6 +119,11 @@ export default function OrganizerDashboard() {
           desc="Admit guests at venue"
           onClick={() => navigate("/organizer/scan")}
         />
+          <Action
+          title="Event Stats"
+          desc="Event Stat"
+          onClick={() => navigate("/organizer/stats")}
+        />
         <Action
           title="Withdraw Revenue"
           desc="Transfer earnings"

@@ -8,52 +8,94 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getToken } from "../../services/authService";
+import { getToken, logout } from "../../services/authService";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  /* ================= AUTH + LOAD ================= */
   useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     async function load() {
       try {
         const [dashRes, chartRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
-            headers: { Authorization: `Bearer ${getToken()}` },
+            headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
-            headers: { Authorization: `Bearer ${getToken()}` },
+            headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
+
+        if (!dashRes.ok || !chartRes.ok) {
+          throw new Error("Session expired or unauthorized");
+        }
 
         const dash = await dashRes.json();
         const charts = await chartRes.json();
 
-        setData(dash);
-        setAnalytics(charts);
+        setData(dash || {});
+        setAnalytics(charts || {});
       } catch (err) {
-        console.error("Admin dashboard load error", err);
+        setError(err.message || "Unable to load admin dashboard");
+      } finally {
+        setLoading(false);
       }
     }
 
     load();
-  }, []);
+  }, [navigate]);
 
-  if (!data || !analytics) {
-    return <div style={styles.loading}>Loading dashboard…</div>;
+  /* ================= LOGOUT ================= */
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
   }
+
+  /* ================= STATES ================= */
+  if (loading) {
+    return <LoadingModal />;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.error}>
+        <p>{error}</p>
+        <button style={styles.primaryBtn} onClick={handleLogout}>
+          Login Again
+        </button>
+      </div>
+    );
+  }
+
+  const stats = data?.stats || {};
+  const chartData = analytics?.monthlyRevenue || [];
 
   return (
     <div style={styles.page}>
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <header style={styles.header}>
-        <h1 style={styles.title}>Admin Dashboard</h1>
-        <p style={styles.muted}>Platform overview & financial insights</p>
+        <div>
+          <h1 style={styles.title}>Admin Dashboard</h1>
+          <p style={styles.muted}>Platform overview & financial insights</p>
+        </div>
+
+        <button style={styles.logoutBtn} onClick={handleLogout}>
+          Logout
+        </button>
       </header>
 
-      {/* QUICK NAV */}
+      {/* ================= QUICK NAV ================= */}
       <section style={styles.navGrid}>
         <NavCard
           title="Withdrawals"
@@ -77,30 +119,30 @@ export default function AdminDashboard() {
         />
       </section>
 
-      {/* KPI */}
+      {/* ================= KPI ================= */}
       <section style={styles.kpiGrid}>
         <KPI
           label="Total Revenue"
-          value={`₦${(data.stats.revenue || 0).toLocaleString()}`}
+          value={`₦${(stats.revenue || 0).toLocaleString()}`}
         />
         <KPI
           label="Platform Fees"
-          value={`₦${(data.stats.platformFees || 0).toLocaleString()}`}
+          value={`₦${(stats.platformFees || 0).toLocaleString()}`}
         />
-        <KPI label="Tickets Sold" value={data.stats.ticketsSold || 0} />
-        <KPI label="Events Hosted" value={data.stats.events || 0} />
+        <KPI label="Tickets Sold" value={stats.ticketsSold || 0} />
+        <KPI label="Events Hosted" value={stats.events || 0} />
         <KPI
           label="Pending Withdrawals"
-          value={data.stats.pendingWithdrawals || 0}
+          value={stats.pendingWithdrawals || 0}
         />
       </section>
 
-      {/* CHART */}
+      {/* ================= CHART ================= */}
       <section style={styles.card}>
         <h3 style={styles.cardTitle}>Monthly Revenue vs Platform Fees</h3>
 
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={analytics.monthlyRevenue || []}>
+          <LineChart data={chartData}>
             <XAxis dataKey="_id" />
             <YAxis />
             <Tooltip />
@@ -145,6 +187,17 @@ function NavCard({ title, desc, onClick }) {
   );
 }
 
+function LoadingModal() {
+  return (
+    <div style={styles.loadingOverlay}>
+      <div style={styles.loadingCard}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 12 }}>Loading admin dashboard…</p>
+      </div>
+    </div>
+  );
+}
+
 /* ================= STYLES ================= */
 
 const styles = {
@@ -157,6 +210,11 @@ const styles = {
   },
 
   header: {
+    display: "flex",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 16,
+    alignItems: "center",
     marginBottom: 32,
   },
 
@@ -215,12 +273,70 @@ const styles = {
     fontSize: 14,
   },
 
-  loading: {
+  logoutBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "10px 18px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+
+  primaryBtn: {
+    marginTop: 16,
+    padding: "12px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  loadingOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "#0F0618",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 1000,
+    color: "#fff",
+  },
+
+  loadingCard: {
+    background: "rgba(255,255,255,0.08)",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 36,
+    height: 36,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  },
+
+  error: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
     background: "#0F0618",
-    color: "#fff",
-    fontSize: 16,
+    color: "#ff4d4f",
+    textAlign: "center",
+    padding: 20,
   },
 };
+
+/* ================= SPINNER KEYFRAMES ================= */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);

@@ -1,27 +1,37 @@
 import { useEffect, useState } from "react";
-import { getToken } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
+import { getToken, logout } from "../../services/authService";
 
 export default function AdminWithdrawals() {
+  const navigate = useNavigate();
+
   const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState(null);
 
+  /* ================= LOAD ================= */
   async function loadWithdrawals() {
+    const token = getToken();
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/admin/withdrawals`,
         {
-          headers: { Authorization: `Bearer ${getToken()}` },
+          headers: { Authorization: `Bearer ${token}` },
         },
       );
 
-      if (!res.ok) throw new Error("Failed to load withdrawals");
+      if (!res.ok) throw new Error("Session expired");
 
       const data = await res.json();
-      setWithdrawals(data);
-    } catch {
-      setError("Unable to load withdrawal requests.");
+      setWithdrawals(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || "Unable to load withdrawal requests.");
     } finally {
       setLoading(false);
     }
@@ -31,11 +41,14 @@ export default function AdminWithdrawals() {
     loadWithdrawals();
   }, []);
 
+  /* ================= ACTION ================= */
   async function handleAction(id, action) {
-    const confirm = window.confirm(
+    if (processingId) return;
+
+    const confirmed = window.confirm(
       `Are you sure you want to ${action.toUpperCase()} this withdrawal?`,
     );
-    if (!confirm) return;
+    if (!confirmed) return;
 
     setProcessingId(id);
 
@@ -52,39 +65,79 @@ export default function AdminWithdrawals() {
 
       await loadWithdrawals();
     } catch {
-      alert("Action failed. Please try again.");
+      setError("Action failed. Please try again.");
     } finally {
       setProcessingId(null);
     }
   }
 
-  if (loading) return <div style={styles.loading}>Loading withdrawals…</div>;
-  if (error) return <div style={styles.error}>{error}</div>;
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
+  /* ================= STATES ================= */
+  if (loading) return <LoadingModal />;
+
+  if (error) {
+    return (
+      <div style={styles.error}>
+        <p>{error}</p>
+        <button style={styles.primaryBtn} onClick={handleLogout}>
+          Login Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
+      {/* ================= HEADER ================= */}
       <header style={styles.header}>
-        <h1>Withdrawal Requests</h1>
-        <p style={styles.muted}>Review and approve organizer payout requests</p>
+        <div>
+          <h1 style={styles.title}>Withdrawal Requests</h1>
+          <p style={styles.muted}>
+            Review and approve organizer payout requests
+          </p>
+        </div>
+
+        <div style={styles.headerActions}>
+          <button
+            style={styles.backBtn}
+            onClick={() => navigate("/admin/dashboard")}
+          >
+            ← Dashboard
+          </button>
+
+          <button style={styles.logoutBtn} onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
+      {/* ================= LIST ================= */}
       {withdrawals.length === 0 ? (
         <p style={styles.muted}>No withdrawal requests yet.</p>
       ) : (
         <div style={styles.list}>
           {withdrawals.map((w) => (
             <div key={w._id} style={styles.card}>
-              {/* LEFT */}
+              {/* INFO */}
               <div style={styles.info}>
                 <strong>{w.organizer?.name || "Organizer"}</strong>
                 <p style={styles.muted}>{w.organizer?.email}</p>
-                <p style={styles.amount}>₦{w.amount.toLocaleString()}</p>
+
+                <p style={styles.amount}>
+                  ₦{(w.amount || 0).toLocaleString()}
+                </p>
+
                 <p style={styles.small}>
-                  {w.bankDetails.bankName} • {w.bankDetails.accountNumber}
+                  {w.bankDetails?.bankName} •{" "}
+                  {w.bankDetails?.accountNumber}
                 </p>
               </div>
 
-              {/* RIGHT */}
+              {/* ACTIONS */}
               <div style={styles.actions}>
                 <StatusBadge status={w.status} />
 
@@ -95,7 +148,7 @@ export default function AdminWithdrawals() {
                       disabled={processingId === w._id}
                       onClick={() => handleAction(w._id, "approve")}
                     >
-                      {processingId === w._id ? "…" : "Approve"}
+                      {processingId === w._id ? "Processing…" : "Approve"}
                     </button>
 
                     <button
@@ -127,7 +180,20 @@ function StatusBadge({ status }) {
         : "#fadb14";
 
   return (
-    <span style={{ ...styles.badge, borderColor: color, color }}>{status}</span>
+    <span style={{ ...styles.badge, borderColor: color, color }}>
+      {status}
+    </span>
+  );
+}
+
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 12 }}>Loading withdrawals…</p>
+      </div>
+    </div>
   );
 }
 
@@ -143,7 +209,23 @@ const styles = {
   },
 
   header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 16,
     marginBottom: 32,
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+
+  title: {
+    fontSize: "clamp(22px,4vw,32px)",
+    marginBottom: 4,
   },
 
   list: {
@@ -167,13 +249,14 @@ const styles = {
 
   amount: {
     marginTop: 8,
-    fontWeight: 600,
+    fontWeight: 700,
     fontSize: 16,
+    color: "#22F2A6",
   },
 
   actions: {
     display: "flex",
-    gap: 12,
+    gap: 10,
     alignItems: "center",
     flexWrap: "wrap",
     justifyContent: "flex-end",
@@ -216,12 +299,58 @@ const styles = {
     fontSize: 12,
   },
 
-  loading: {
-    minHeight: "100vh",
+  backBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
+  logoutBtn: {
+    background: "transparent",
+    border: "1px solid #ff4d4f",
+    color: "#ff4d4f",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
+  primaryBtn: {
+    padding: "12px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "#0F0618",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
+    zIndex: 1000,
+  },
+
+  loadingModal: {
+    background: "rgba(255,255,255,0.08)",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 
   error: {
@@ -230,5 +359,16 @@ const styles = {
     placeItems: "center",
     background: "#0F0618",
     color: "#ff4d4f",
+    textAlign: "center",
+    padding: 20,
   },
 };
+
+/* ================= SPINNER ================= */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);

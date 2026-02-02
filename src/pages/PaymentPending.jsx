@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 export default function PaymentPending() {
@@ -6,16 +6,45 @@ export default function PaymentPending() {
   const navigate = useNavigate();
   const reference = searchParams.get("ref");
 
-  const [status, setStatus] = useState("PENDING");
-  const [error, setError] = useState("");
+  const touchStartX = useRef(0);
+  const attempts = useRef(0);
 
+  const [status, setStatus] = useState("PENDING"); // PENDING | FAILED | ERROR
+  const [message, setMessage] = useState(
+    "Please wait while we verify your payment.",
+  );
+
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const start = (e) => (touchStartX.current = e.touches[0].clientX);
+    const end = (e) => {
+      if (e.changedTouches[0].clientX - touchStartX.current > 80) {
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener("touchstart", start);
+    window.addEventListener("touchend", end);
+
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [navigate]);
+
+  /* ================= PAYMENT STATUS POLLING ================= */
   useEffect(() => {
     if (!reference) {
-      setError("Invalid payment reference");
+      setStatus("ERROR");
+      setMessage("Invalid payment reference.");
       return;
     }
 
+    const MAX_ATTEMPTS = 20; // ~60 seconds
+
     const interval = setInterval(async () => {
+      attempts.current++;
+
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/payments/status/${reference}`,
@@ -25,47 +54,65 @@ export default function PaymentPending() {
 
         if (data.status === "SUCCESS") {
           clearInterval(interval);
-          navigate(`/success?ref=${reference}`);
+          navigate(`/success?ref=${reference}`, { replace: true });
         }
 
         if (data.status === "FAILED") {
           clearInterval(interval);
           setStatus("FAILED");
+          setMessage("Your payment could not be confirmed.");
+        }
+
+        if (attempts.current >= MAX_ATTEMPTS) {
+          clearInterval(interval);
+          setStatus("ERROR");
+          setMessage(
+            "Payment verification is taking longer than expected. Please refresh or contact support.",
+          );
         }
       } catch {
-        // silent retry
+        // silent retry until timeout
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [reference, navigate]);
 
+  /* ================= UI ================= */
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         {status === "PENDING" && (
           <>
             <div style={styles.spinner} />
-            <h2>Confirming Payment</h2>
-            <p style={styles.text}>
-              Please wait while we verify your payment with the provider.
-            </p>
+            <h2 style={styles.title}>Confirming Payment</h2>
+            <p style={styles.text}>{message}</p>
+            <p style={styles.note}>Do not close this page</p>
           </>
         )}
 
         {status === "FAILED" && (
           <>
             <h2 style={{ color: "#ff4d4f" }}>Payment Failed</h2>
-            <p style={styles.text}>
-              Your payment could not be confirmed. Please try again.
-            </p>
+            <p style={styles.text}>{message}</p>
             <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
               Try Again
             </button>
           </>
         )}
 
-        {error && <p style={styles.error}>{error}</p>}
+        {status === "ERROR" && (
+          <>
+            <h2 style={{ color: "#fadb14" }}>Verification Delayed</h2>
+            <p style={styles.text}>{message}</p>
+            <button
+              style={styles.secondaryBtn}
+              onClick={() => window.location.reload()}
+            >
+              Refresh Page
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -79,7 +126,7 @@ const styles = {
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
     display: "grid",
     placeItems: "center",
-    padding: 20,
+    padding: "clamp(16px,4vw,32px)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
@@ -88,7 +135,7 @@ const styles = {
     width: "100%",
     maxWidth: 420,
     background: "rgba(255,255,255,0.08)",
-    padding: 36,
+    padding: "clamp(28px,5vw,36px)",
     borderRadius: 24,
     textAlign: "center",
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
@@ -104,14 +151,26 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 
+  title: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+
   text: {
     fontSize: 14,
     color: "#CFC9D6",
     marginTop: 8,
+    lineHeight: 1.5,
+  },
+
+  note: {
+    marginTop: 12,
+    fontSize: 12,
+    color: "#9F97B2",
   },
 
   primaryBtn: {
-    marginTop: 20,
+    marginTop: 22,
     width: "100%",
     padding: 14,
     borderRadius: 999,
@@ -121,20 +180,24 @@ const styles = {
     cursor: "pointer",
   },
 
-  error: {
-    marginTop: 16,
-    color: "#ff4d4f",
-    fontSize: 13,
+  secondaryBtn: {
+    marginTop: 18,
+    width: "100%",
+    padding: 12,
+    borderRadius: 999,
+    border: "1px solid #22F2A6",
+    background: "transparent",
+    color: "#22F2A6",
+    fontWeight: 600,
+    cursor: "pointer",
   },
 };
 
-/* ===== SPINNER ANIMATION ===== */
-const styleSheet = document.styleSheets[0];
-styleSheet.insertRule(
-  `
+/* ================= KEYFRAMES ================= */
+const style = document.createElement("style");
+style.innerHTML = `
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-`,
-  styleSheet.cssRules.length,
-);
+`;
+document.head.appendChild(style);

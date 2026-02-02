@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const logo = "/logo.png";
 
-/* ===== HERO IMAGES ===== */
 const heroImages = [
   "/hero/hero1.jpg",
   "/hero/hero2.jpg",
@@ -32,8 +32,10 @@ export default function Home() {
 /* ================= NAVBAR ================= */
 function Navbar() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const scrollTo = (id) => {
+    setOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -48,32 +50,58 @@ function Navbar() {
             onClick={() => scrollTo("home")}
           />
 
+          {/* DESKTOP */}
           <div style={styles.navLinks}>
-            <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
-              Home
-            </button>
-            <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
-              Discover
-            </button>
-            <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
-              Pricing
-            </button>
-            <button
-              style={styles.outlineBtn}
-              onClick={() => navigate("/login")}
-            >
-              Login
-            </button>
-            <button
-              style={styles.primaryBtn}
-              onClick={() => navigate("/register")}
-            >
-              Sign Up
-            </button>
+            <NavLinks scrollTo={scrollTo} navigate={navigate} />
           </div>
+
+          {/* MOBILE */}
+          <button style={styles.menuBtn} onClick={() => setOpen(!open)}>
+            ☰
+          </button>
         </nav>
+
+        {open && (
+          <div style={styles.mobileMenu}>
+            <NavLinks
+              scrollTo={scrollTo}
+              navigate={navigate}
+              mobile
+            />
+          </div>
+        )}
       </div>
     </header>
+  );
+}
+
+function NavLinks({ scrollTo, navigate, mobile }) {
+  return (
+    <>
+      <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
+        Home
+      </button>
+      <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
+        Discover
+      </button>
+      <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
+        Pricing
+      </button>
+
+      <button
+        style={mobile ? styles.outlineBtnFull : styles.outlineBtn}
+        onClick={() => navigate("/login")}
+      >
+        Login
+      </button>
+
+      <button
+        style={mobile ? styles.primaryBtnFull : styles.primaryBtn}
+        onClick={() => navigate("/register")}
+      >
+        Sign Up
+      </button>
+    </>
   );
 }
 
@@ -93,7 +121,7 @@ function Hero() {
 
           <p style={styles.heroText}>
             Create events, sell tickets, and manage entry with secure QR codes —
-            built for both organizers and guests.
+            built for organizers and guests.
           </p>
 
           <div style={styles.heroButtons}>
@@ -103,6 +131,7 @@ function Hero() {
             >
               Create an Event
             </button>
+
             <button
               style={styles.secondaryBtn}
               onClick={() => navigate("/events")}
@@ -113,7 +142,7 @@ function Hero() {
         </div>
       </div>
 
-      {/* IMAGE MARQUEE */}
+      {/* MARQUEE */}
       <div style={styles.marqueeViewport}>
         <div style={styles.marqueeTrack}>
           {[...heroImages, ...heroImages].map((img, i) => (
@@ -127,32 +156,26 @@ function Hero() {
   );
 }
 
-/* ================= TRUST ================= */
+/* ================= SECTIONS (unchanged logic) ================= */
 function Trust() {
   return (
     <section style={styles.trust}>
       <div style={styles.container}>
         <p style={styles.trustText}>
-          Trusted by campus promoters, communities, and event organizers across
-          Nigeria.
+          Trusted by campus promoters, communities, and event organizers across Nigeria.
         </p>
       </div>
     </section>
   );
 }
 
-/* ================= GUESTS ================= */
 function Guests() {
   return (
     <section id="guests" style={styles.sectionAlt}>
       <div style={styles.container}>
         <h2 style={styles.sectionTitle}>For Guests</h2>
-
         <div style={styles.grid}>
-          <Card
-            title="Instant Tickets"
-            text="Receive your e-ticket instantly."
-          />
+          <Card title="Instant Tickets" text="Receive your e-ticket instantly." />
           <Card title="QR Code Entry" text="Fast and secure event entry." />
           <Card title="Stress-Free Access" text="No printing. No queues." />
         </div>
@@ -161,13 +184,11 @@ function Guests() {
   );
 }
 
-/* ================= ORGANIZERS ================= */
 function Organizers() {
   return (
     <section style={styles.section}>
       <div style={styles.container}>
         <h2 style={styles.sectionTitle}>For Organizers</h2>
-
         <div style={styles.grid}>
           <Card title="Create Events" text="Set up events in minutes." />
           <Card title="Secure Payments" text="Powered by ErcasPay." />
@@ -178,42 +199,26 @@ function Organizers() {
   );
 }
 
-/* ================= HOW IT WORKS ================= */
 function HowItWorks() {
   return (
     <section style={styles.sectionAlt}>
       <div style={styles.container}>
         <h2 style={styles.sectionTitle}>How It Works</h2>
-
         <div style={styles.grid}>
-          <Step
-            number="01"
-            title="Create Event"
-            text="Add details and tickets."
-          />
-          <Step
-            number="02"
-            title="Sell Tickets"
-            text="Guests pay & get QR codes."
-          />
-          <Step
-            number="03"
-            title="Scan & Admit"
-            text="Prevent fraud at entry."
-          />
+          <Step number="01" title="Create Event" text="Add details and tickets." />
+          <Step number="02" title="Sell Tickets" text="Guests pay & get QR codes." />
+          <Step number="03" title="Scan & Admit" text="Prevent fraud at entry." />
         </div>
       </div>
     </section>
   );
 }
 
-/* ================= PRICING ================= */
 function Pricing() {
   return (
     <section id="pricing" style={styles.section}>
       <div style={styles.container}>
         <h2 style={styles.sectionTitle}>Simple Pricing</h2>
-
         <div style={styles.grid}>
           <PriceCard title="Free" price="₦0" text="For free events." />
           <PriceCard title="Pro" price="3% + ₦80" text="Pay per ticket sold." />
@@ -223,10 +228,8 @@ function Pricing() {
   );
 }
 
-/* ================= CTA ================= */
 function CTA() {
   const navigate = useNavigate();
-
   return (
     <section style={styles.cta}>
       <div style={styles.container}>
@@ -240,7 +243,6 @@ function CTA() {
   );
 }
 
-/* ================= FOOTER ================= */
 function Footer() {
   return (
     <footer style={styles.footer}>
@@ -283,6 +285,7 @@ function PriceCard({ title, price, text }) {
     </div>
   );
 }
+
 
 /* ================= STYLES ================= */
 const styles = {

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../services/authService";
 
 export default function Register() {
   const navigate = useNavigate();
+  const touchStartX = useRef(0);
 
   const [form, setForm] = useState({
     name: "",
@@ -23,8 +24,11 @@ export default function Register() {
     form.confirmPassword &&
     form.password === form.confirmPassword;
 
+  /* ================= REGISTER ================= */
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
+
     setError("");
 
     if (form.password !== form.confirmPassword) {
@@ -38,11 +42,10 @@ export default function Register() {
         name: form.name,
         email: form.email,
         password: form.password,
-        role: "organizer", // 🔒 HARD ENFORCED
+        role: "organizer", // 🔒 enforced
       });
 
-      // ✅ SPA navigation (NO reload)
-      navigate("/login");
+      navigate("/login", { replace: true });
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -50,15 +53,41 @@ export default function Register() {
     }
   }
 
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (e) => {
+      const diff = e.changedTouches[0].clientX - touchStartX.current;
+      if (diff > 80) navigate("/");
+    };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [navigate]);
+
   return (
     <div style={styles.viewport}>
+      {loading && <LoadingModal />}
+
+      {/* BACK */}
+      <button style={styles.backBtn} onClick={() => navigate("/")}>
+        ← Back
+      </button>
+
       <form style={styles.card} onSubmit={handleSubmit}>
         <h2 style={styles.title}>Create Organizer Account</h2>
         <p style={styles.subtitle}>
-          Register as an event organizer to create and manage events on Tictify
+          Register to create and manage events on <strong>Tictify</strong>
         </p>
 
-        {/* NAME */}
         <input
           style={styles.input}
           placeholder="Full name"
@@ -67,7 +96,6 @@ export default function Register() {
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
-        {/* EMAIL */}
         <input
           style={styles.input}
           type="email"
@@ -77,7 +105,6 @@ export default function Register() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
 
-        {/* PASSWORD */}
         <div style={styles.passwordField}>
           <input
             style={styles.input}
@@ -91,13 +118,11 @@ export default function Register() {
             type="button"
             style={styles.eye}
             onClick={() => setShowPassword(!showPassword)}
-            aria-label="Toggle password visibility"
           >
             {showPassword ? "🙈" : "👁️"}
           </button>
         </div>
 
-        {/* PASSWORD STRENGTH */}
         {form.password && (
           <div style={styles.strength}>
             <div
@@ -113,7 +138,6 @@ export default function Register() {
           </div>
         )}
 
-        {/* CONFIRM PASSWORD */}
         <div style={styles.passwordField}>
           <input
             style={styles.input}
@@ -129,13 +153,11 @@ export default function Register() {
             type="button"
             style={styles.eye}
             onClick={() => setShowConfirm(!showConfirm)}
-            aria-label="Toggle confirm password visibility"
           >
             {showConfirm ? "🙈" : "👁️"}
           </button>
         </div>
 
-        {/* PASSWORD MATCH */}
         {form.confirmPassword && (
           <p
             style={{
@@ -148,12 +170,10 @@ export default function Register() {
           </p>
         )}
 
-        {/* ERROR */}
         {error && <p style={styles.error}>{error}</p>}
 
-        {/* SUBMIT */}
         <button style={styles.submit} disabled={loading}>
-          {loading ? "Creating account..." : "Create Organizer Account"}
+          {loading ? "Creating account…" : "Create Organizer Account"}
         </button>
 
         <p style={styles.footer}>
@@ -167,6 +187,18 @@ export default function Register() {
           </button>
         </p>
       </form>
+    </div>
+  );
+}
+
+/* ================= LOADING MODAL ================= */
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 12 }}>Creating account…</p>
+      </div>
     </div>
   );
 }
@@ -185,13 +217,25 @@ function getPasswordStrength(password) {
 /* ================= STYLES ================= */
 const styles = {
   viewport: {
-    position: "fixed",
-    inset: 0,
+    minHeight: "100vh",
     display: "grid",
     placeItems: "center",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
-    padding: 20,
+    padding: "clamp(16px,4vw,32px)",
     color: "#fff",
+    position: "relative",
+  },
+
+  backBtn: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.25)",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
   },
 
   card: {
@@ -199,7 +243,7 @@ const styles = {
     maxWidth: 440,
     background: "rgba(255,255,255,0.08)",
     backdropFilter: "blur(16px)",
-    padding: "36px 32px",
+    padding: "clamp(24px,5vw,36px)",
     borderRadius: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
@@ -213,7 +257,7 @@ const styles = {
   },
 
   input: {
-    width: "95%",
+    width: "100%",
     padding: "14px 16px",
     borderRadius: 12,
     border: "1px solid rgba(255,255,255,0.15)",
@@ -272,5 +316,32 @@ const styles = {
     color: "#22F2A6",
     cursor: "pointer",
     fontWeight: 500,
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 2000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };

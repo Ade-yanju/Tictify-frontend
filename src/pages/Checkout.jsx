@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const touchStartX = useRef(0);
 
   const ticketName = searchParams.get("ticket");
 
@@ -38,9 +39,7 @@ export default function Checkout() {
           (t) => t.name === ticketName,
         );
 
-        if (!selectedTicket) {
-          throw new Error("Invalid ticket selection");
-        }
+        if (!selectedTicket) throw new Error("Invalid ticket selection");
 
         setEvent(data);
         setTicket(selectedTicket);
@@ -58,15 +57,8 @@ export default function Checkout() {
   async function handlePayment() {
     if (processing || !ticket) return;
 
-    if (!name.trim()) {
-      setError("Full name is required");
-      return;
-    }
-
-    if (!email.trim()) {
-      setError("Email is required");
-      return;
-    }
+    if (!name.trim()) return setError("Full name is required");
+    if (!email.trim()) return setError("Email is required");
 
     setProcessing(true);
     setError("");
@@ -87,17 +79,10 @@ export default function Checkout() {
       );
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Payment initialization failed");
-      }
-
-      // ✅ Accept BOTH possible keys
       const redirectUrl = data.paymentUrl || data.checkoutUrl;
 
-      if (!redirectUrl) {
-        console.error("PAYMENT INIT RESPONSE:", data);
-        throw new Error("Payment gateway did not return checkout URL");
+      if (!res.ok || !redirectUrl) {
+        throw new Error(data.message || "Payment initialization failed");
       }
 
       window.location.href = redirectUrl;
@@ -106,18 +91,39 @@ export default function Checkout() {
       setProcessing(false);
     }
   }
+
+  /* ================= SWIPE BACK ================= */
+  useEffect(() => {
+    const start = (e) => (touchStartX.current = e.touches[0].clientX);
+    const end = (e) => {
+      if (e.changedTouches[0].clientX - touchStartX.current > 80) {
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener("touchstart", start);
+    window.addEventListener("touchend", end);
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [navigate]);
+
   /* ================= STATES ================= */
   if (loading) {
-    return <div style={styles.loading}>Preparing checkout…</div>;
+    return <LoadingModal message="Preparing checkout…" />;
   }
 
   if (error) {
     return (
-      <div style={styles.error}>
-        <p>{error}</p>
-        <button style={styles.backBtn} onClick={() => navigate(-1)}>
-          ← Go Back
-        </button>
+      <div style={styles.page}>
+        <div style={styles.errorCard}>
+          <h2>Error</h2>
+          <p style={styles.muted}>{error}</p>
+          <button style={styles.primaryBtn} onClick={() => navigate(-1)}>
+            ← Go Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -125,6 +131,8 @@ export default function Checkout() {
   /* ================= UI ================= */
   return (
     <div style={styles.page}>
+      {processing && <LoadingModal message="Redirecting to payment…" />}
+
       <div
         style={{
           ...styles.banner,
@@ -188,8 +196,8 @@ export default function Checkout() {
               {processing
                 ? "Processing…"
                 : ticket.price > 0
-                  ? "Proceed to Secure Payment"
-                  : "Confirm Free Ticket"}
+                ? "Proceed to Secure Payment"
+                : "Confirm Free Ticket"}
             </button>
 
             <p style={styles.secureText}>
@@ -202,8 +210,19 @@ export default function Checkout() {
   );
 }
 
-/* ================= STYLES ================= */
+/* ================= LOADING MODAL ================= */
+function LoadingModal({ message }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 14 }}>{message}</p>
+      </div>
+    </div>
+  );
+}
 
+//* ================= STYLES ================= */
 const styles = {
   page: {
     minHeight: "100vh",
@@ -211,29 +230,47 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
+
   banner: {
-    height: "35vh",
-    minHeight: 240,
+    height: "min(35vh, 320px)",
     backgroundSize: "cover",
     backgroundPosition: "center",
   },
+
+  /* 🔑 MOBILE-FIRST GRID */
   container: {
     maxWidth: 1200,
-    margin: "-70px auto 0",
+    margin: "-80px auto 0",
     padding: "0 16px 80px",
     display: "grid",
     gap: 32,
-    gridTemplateColumns: "1fr",
+    gridTemplateColumns: "1fr", // default (mobile)
   },
+
   left: {
     background: "rgba(255,255,255,0.08)",
-    padding: 28,
+    padding: "clamp(20px,4vw,28px)",
     borderRadius: 24,
   },
+
+  right: {
+    display: "flex",
+    justifyContent: "center",
+  },
+
+  card: {
+    width: "100%",
+    maxWidth: 420,
+    background: "rgba(255,255,255,0.08)",
+    padding: "clamp(20px,4vw,28px)",
+    borderRadius: 24,
+  },
+
   title: {
     fontSize: "clamp(22px, 4vw, 32px)",
     marginBottom: 12,
   },
+
   meta: {
     display: "flex",
     gap: 14,
@@ -242,44 +279,45 @@ const styles = {
     fontSize: 14,
     marginBottom: 18,
   },
+
   description: {
     lineHeight: 1.6,
     color: "#CFC9D6",
   },
-  right: {
-    display: "flex",
-    justifyContent: "center",
-  },
-  card: {
+
+  input: {
     width: "100%",
-    maxWidth: 420,
-    background: "rgba(255,255,255,0.08)",
-    padding: 28,
-    borderRadius: 24,
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#fff",
+    marginBottom: 14,
   },
-  heading: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
+
   row: {
     display: "flex",
     justifyContent: "space-between",
     marginBottom: 14,
   },
+
   divider: {
     height: 1,
     background: "rgba(255,255,255,0.15)",
     margin: "16px 0",
   },
+
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
     marginBottom: 20,
   },
+
   total: {
     fontSize: 22,
     color: "#22F2A6",
   },
+
   payBtn: {
     width: "100%",
     padding: 14,
@@ -289,36 +327,43 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
   },
+
   secureText: {
     marginTop: 14,
     fontSize: 13,
     textAlign: "center",
     color: "#CFC9D6",
   },
-  backBtn: {
-    marginTop: 16,
-    padding: "10px 20px",
-    borderRadius: 999,
-    border: "none",
-    background: "#22F2A6",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  loading: {
-    minHeight: "100vh",
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
+    zIndex: 2000,
   },
-  error: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
     textAlign: "center",
-    color: "#ff4d4f",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  },
+
+  muted: {
+    color: "#CFC9D6",
+    fontSize: 14,
   },
 };
-
-/* ===== RESPONSIVE ===== */
-if (window.innerWidth >= 900) {
-  styles.container.gridTemplateColumns = "2fr 1fr";
-}
