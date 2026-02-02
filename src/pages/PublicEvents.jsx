@@ -19,9 +19,7 @@ export default function PublicEvents() {
         if (!res.ok) throw new Error();
 
         const data = await res.json();
-        if (!mounted) return;
-
-        setEvents(Array.isArray(data) ? data : []);
+        if (mounted) setEvents(Array.isArray(data) ? data : []);
       } catch {
         if (mounted) setError("Unable to load events at the moment.");
       } finally {
@@ -62,7 +60,7 @@ export default function PublicEvents() {
       : `Starts in ${hours} hour${hours > 1 ? "s" : ""}`;
   };
 
-  /* ================= SEARCH FILTER ================= */
+  /* ================= FILTER ================= */
   const filteredEvents = useMemo(() => {
     return events.filter(
       (e) =>
@@ -86,11 +84,8 @@ export default function PublicEvents() {
       {/* ================= HEADER ================= */}
       <header style={styles.header}>
         <h1 style={styles.heading}>Upcoming Events</h1>
-        <p style={styles.subtitle}>
-          Discover events happening around you
-        </p>
+        <p style={styles.subtitle}>Discover events happening around you</p>
 
-        {/* SEARCH */}
         <input
           style={styles.search}
           placeholder="Search by event or location…"
@@ -99,28 +94,27 @@ export default function PublicEvents() {
         />
       </header>
 
-      {/* ERROR */}
       {error && !loading && <p style={styles.error}>{error}</p>}
 
-      {/* EMPTY */}
       {!loading && !error && filteredEvents.length === 0 && (
         <p style={styles.empty}>No matching events found.</p>
       )}
 
-      {/* GRID */}
+      {/* ================= GRID ================= */}
       <div style={styles.grid}>
         {filteredEvents.map((event) => {
           const remaining = getRemainingTickets(event);
           const featured = featuredIds.includes(event._id);
 
           return (
-            <div key={event._id} style={styles.card}>
+            <article key={event._id} style={styles.card}>
               {/* IMAGE */}
               <div style={styles.imageWrapper}>
                 <img
                   src={event.banner}
                   alt={event.title}
                   style={styles.image}
+                  loading="lazy"
                 />
                 {featured && <span style={styles.featured}>Featured</span>}
               </div>
@@ -128,6 +122,7 @@ export default function PublicEvents() {
               {/* BODY */}
               <div style={styles.cardBody}>
                 <h3 style={styles.title}>{event.title}</h3>
+
                 <p style={styles.meta}>📍 {event.location || "TBA"}</p>
                 <p style={styles.meta}>
                   📅 {new Date(event.date).toDateString()}
@@ -152,7 +147,7 @@ export default function PublicEvents() {
                   View Event →
                 </button>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
@@ -191,13 +186,13 @@ const styles = {
   },
 
   heading: {
-    fontSize: "clamp(1.6rem,3vw,2.2rem)",
+    fontSize: "clamp(22px,4vw,32px)",
   },
 
   subtitle: {
     color: "#CFC9D6",
-    marginTop: 8,
-    fontSize: 15,
+    marginTop: 6,
+    fontSize: 14,
   },
 
   search: {
@@ -212,25 +207,28 @@ const styles = {
     outline: "none",
   },
 
+  /* ===== GRID ===== */
   grid: {
     maxWidth: 1200,
     margin: "0 auto",
     display: "grid",
     gap: 20,
-    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   },
 
+  /* ===== CARD ===== */
   card: {
     background: "rgba(255,255,255,0.07)",
     borderRadius: 20,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
+    height: "100%",
   },
 
   imageWrapper: {
     position: "relative",
-    height: 180,
+    height: 200,
   },
 
   image: {
@@ -258,7 +256,7 @@ const styles = {
 
   title: {
     fontSize: 18,
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
   meta: {
@@ -268,33 +266,39 @@ const styles = {
   },
 
   tickets: {
-    marginTop: 8,
+    marginTop: 10,
     fontSize: 14,
     color: "#22F2A6",
     fontWeight: 600,
   },
 
+  /* ===== FOOTER ===== */
   cardFooter: {
     padding: 16,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
     borderTop: "1px solid rgba(255,255,255,0.08)",
+    flexWrap: "wrap",
   },
 
   price: {
     fontWeight: 700,
     color: "#22F2A6",
+    fontSize: 15,
   },
 
   cta: {
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     border: "none",
-    padding: "8px 16px",
+    padding: "10px 16px",
     borderRadius: 999,
     fontWeight: 600,
     cursor: "pointer",
     color: "#000",
+    width: "100%",
+    maxWidth: 160,
   },
 
   empty: {
@@ -309,6 +313,7 @@ const styles = {
     marginBottom: 24,
   },
 
+  /* ===== MODAL ===== */
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -336,3 +341,12 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 };
+
+/* ===== SPINNER ===== */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);

@@ -66,10 +66,7 @@ export default function OrganizerDashboard() {
 
       {/* ================= ERROR MODAL ================= */}
       {modal.open && (
-        <Modal
-          message={modal.message}
-          onConfirm={() => navigate("/login")}
-        />
+        <Modal message={modal.message} onConfirm={() => navigate("/login")} />
       )}
 
       {/* ================= HEADER ================= */}
@@ -117,9 +114,9 @@ export default function OrganizerDashboard() {
         <Action
           title="Scan Tickets"
           desc="Admit guests at venue"
-          onClick={() => navigate("/organizer/scan")}
+          onClick={() => navigate("/organizer/scan/select")}
         />
-          <Action
+        <Action
           title="Event Stats"
           desc="Event Stat"
           onClick={() => navigate("/organizer/stats")}
@@ -156,9 +153,7 @@ export default function OrganizerDashboard() {
               </div>
 
               <div style={styles.eventActions}>
-                <span style={styles.status(event.status)}>
-                  {event.status}
-                </span>
+                <span style={styles.status(event.status)}>{event.status}</span>
 
                 <button
                   style={styles.linkBtn}
@@ -308,8 +303,8 @@ const styles = {
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-        ? "#ff4d4f"
-        : "#fadb14",
+          ? "#ff4d4f"
+          : "#fadb14",
   }),
 
   primaryBtn: {

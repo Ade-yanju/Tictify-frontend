@@ -19,7 +19,7 @@ import MyEvents from "../pages/organizer/MyEvents";
 import TicketSales from "../pages/organizer/TicketSales";
 import WithdrawRevenue from "../pages/organizer/WithdrawRevenue";
 import OrganizerEventStats from "../pages/organizer/OrganizerEventStats";
-
+import SelectEventToScan from "../pages/organizer/SelectEventToScan";
 /* ================= ADMIN ================= */
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminOrganizers from "../pages/admin/AdminOrganizers";
@@ -81,7 +81,16 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/organizer/scan/select"
+          element={
+            <ProtectedRoute>
+              <OrganizerRoute>
+                <SelectEventToScan />
+              </OrganizerRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/organizer/scan"
           element={

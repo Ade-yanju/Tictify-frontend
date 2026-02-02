@@ -21,15 +21,12 @@ export default function ScanTicket() {
   });
 
   /* ================= GUARD ================= */
-  useEffect(() => {
-    if (!eventId) {
-      setModal({
-        open: true,
-        type: "error",
-        message: "Invalid scan session. Event not specified.",
-      });
-    }
-  }, [eventId]);
+useEffect(() => {
+  if (!eventId) {
+    navigate("/organizer/scan/select", { replace: true });
+  }
+}, [eventId, navigate]);
+
 
   /* ================= CAMERA ================= */
   useEffect(() => {
