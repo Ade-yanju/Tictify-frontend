@@ -8,6 +8,7 @@ export default function MyEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   async function fetchEvents() {
     try {
@@ -31,7 +32,6 @@ export default function MyEvents() {
 
   async function updateStatus(id, action) {
     if (processingId) return;
-
     setProcessingId(id);
 
     try {
@@ -44,27 +44,34 @@ export default function MyEvents() {
           },
         },
       );
-
       await fetchEvents();
     } finally {
       setProcessingId(null);
     }
   }
 
+  function copyEventLink(eventId) {
+    const publicUrl = `${window.location.origin}/events/${eventId}`;
+
+    navigator.clipboard.writeText(publicUrl);
+    setCopiedId(eventId);
+
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  if (loading) {
-    return <div style={styles.loading}>Loading your events…</div>;
-  }
-
   return (
     <div style={styles.page}>
-      {/* HEADER */}
+      {/* ================= LOADING MODAL ================= */}
+      {loading && <LoadingModal />}
+
+      {/* ================= HEADER ================= */}
       <header style={styles.header}>
         <div>
-          <h1>My Events</h1>
+          <h1 style={styles.title}>My Events</h1>
           <p style={styles.muted}>Manage and monitor your events</p>
         </div>
 
@@ -76,7 +83,7 @@ export default function MyEvents() {
         </button>
       </header>
 
-      {/* EMPTY STATE */}
+      {/* ================= EMPTY STATE ================= */}
       {events.length === 0 ? (
         <div style={styles.empty}>
           <p style={styles.muted}>You haven’t created any events yet.</p>
@@ -97,10 +104,20 @@ export default function MyEvents() {
                   {new Date(event.date).toDateString()} • {event.location}
                 </p>
 
-                <span style={styles.status(event.status)}>{event.status}</span>
+                <span style={styles.status(event.status)}>
+                  {event.status}
+                </span>
               </div>
 
+              {/* ================= ACTIONS ================= */}
               <div style={styles.actions}>
+                <button
+                  style={styles.shareBtn}
+                  onClick={() => copyEventLink(event._id)}
+                >
+                  {copiedId === event._id ? "Copied!" : "Share Link"}
+                </button>
+
                 {event.status === "DRAFT" && (
                   <button
                     style={styles.actionBtn}
@@ -144,7 +161,21 @@ export default function MyEvents() {
   );
 }
 
+/* ================= COMPONENTS ================= */
+
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 14 }}>Loading your events…</p>
+      </div>
+    </div>
+  );
+}
+
 /* ================= STYLES ================= */
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -152,6 +183,7 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
+    overflowX: "hidden",
   },
 
   header: {
@@ -163,9 +195,13 @@ const styles = {
     marginBottom: 32,
   },
 
+  title: {
+    fontSize: "clamp(22px,5vw,30px)",
+  },
+
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
     gap: 20,
   },
 
@@ -184,13 +220,12 @@ const styles = {
     marginTop: 8,
     fontWeight: 700,
     fontSize: 12,
-    letterSpacing: 0.5,
     color:
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-          ? "#ff4d4f"
-          : "#fadb14",
+        ? "#ff4d4f"
+        : "#fadb14",
   }),
 
   actions: {
@@ -227,6 +262,16 @@ const styles = {
     cursor: "pointer",
   },
 
+  shareBtn: {
+    background: "rgba(255,255,255,0.12)",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontWeight: 600,
+    color: "#fff",
+  },
+
   primaryBtn: {
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     border: "none",
@@ -248,11 +293,30 @@ const styles = {
     fontSize: 14,
   },
 
-  loading: {
-    minHeight: "100vh",
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
+    zIndex: 1000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 };

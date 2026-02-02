@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchOrganizerDashboard } from "../../services/dashboardService";
+import { getToken, logout } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
 export default function OrganizerDashboard() {
@@ -35,31 +36,29 @@ export default function OrganizerDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return <div style={styles.loading}>Loading dashboard…</div>;
+  /* ================= LOGOUT ================= */
+  function handleLogout() {
+    logout(); // clear token
+    navigate("/login");
   }
-
-  if (!data) return null;
 
   return (
     <div style={styles.page}>
-      {/* ================= MODAL ================= */}
+      {/* ================= LOADING MODAL ================= */}
+      {loading && <LoadingModal />}
+
+      {/* ================= ERROR MODAL ================= */}
       {modal.open && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
-            <h3>Error</h3>
-            <p>{modal.message}</p>
-            <button style={styles.modalBtn} onClick={() => navigate("/login")}>
-              OK
-            </button>
-          </div>
-        </div>
+        <Modal
+          message={modal.message}
+          onConfirm={() => navigate("/login")}
+        />
       )}
 
       {/* ================= HEADER ================= */}
       <header style={styles.header}>
         <div>
-          <h1>Organizer Dashboard</h1>
+          <h1 style={styles.title}>Organizer Dashboard</h1>
           <p style={styles.muted}>
             Welcome back, manage your events in real time
           </p>
@@ -68,7 +67,7 @@ export default function OrganizerDashboard() {
         <div style={styles.headerActions}>
           <Stat
             label="Wallet Balance"
-            value={`₦${data.stats.walletBalance.toLocaleString()}`}
+            value={`₦${data?.stats.walletBalance.toLocaleString()}`}
           />
 
           <button
@@ -77,6 +76,12 @@ export default function OrganizerDashboard() {
           >
             + Create Event
           </button>
+
+          {getToken() && (
+            <button style={styles.logoutBtn} onClick={handleLogout}>
+              Logout
+            </button>
+          )}
         </div>
       </header>
 
@@ -121,7 +126,7 @@ export default function OrganizerDashboard() {
         ) : (
           data.events.map((event) => (
             <div key={event._id} style={styles.event}>
-              <div>
+              <div style={{ minWidth: 180 }}>
                 <strong>{event.title}</strong>
                 <p style={styles.muted}>
                   {event.sold}/{event.capacity} tickets sold
@@ -129,7 +134,9 @@ export default function OrganizerDashboard() {
               </div>
 
               <div style={styles.eventActions}>
-                <span style={styles.status(event.status)}>{event.status}</span>
+                <span style={styles.status(event.status)}>
+                  {event.status}
+                </span>
 
                 <button
                   style={styles.linkBtn}
@@ -148,7 +155,7 @@ export default function OrganizerDashboard() {
   );
 }
 
-/* ================= LOCAL COMPONENTS ================= */
+/* ================= COMPONENTS ================= */
 
 function Stat({ label, value }) {
   return (
@@ -168,6 +175,31 @@ function Action({ title, desc, onClick }) {
   );
 }
 
+function LoadingModal() {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingModal}>
+        <div style={styles.spinner} />
+        <p style={{ marginTop: 14 }}>Loading dashboard…</p>
+      </div>
+    </div>
+  );
+}
+
+function Modal({ message, onConfirm }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <h3>Error</h3>
+        <p>{message}</p>
+        <button style={styles.modalBtn} onClick={onConfirm}>
+          Login
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ================= STYLES ================= */
 
 const styles = {
@@ -177,26 +209,31 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
+    overflowX: "hidden",
   },
 
   header: {
     display: "flex",
-    justifyContent: "space-between",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 16,
     marginBottom: 32,
   },
 
+  title: {
+    fontSize: "clamp(22px,5vw,30px)",
+  },
+
   headerActions: {
     display: "flex",
-    gap: 16,
     flexWrap: "wrap",
+    gap: 12,
     alignItems: "center",
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
     gap: 16,
     marginBottom: 32,
   },
@@ -206,19 +243,18 @@ const styles = {
     padding: 20,
     borderRadius: 18,
     cursor: "pointer",
-    transition: "transform 0.15s ease",
   },
 
   stats: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
-    gap: 20,
+    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gap: 16,
     marginBottom: 40,
   },
 
   stat: {
     background: "rgba(255,255,255,0.08)",
-    padding: 24,
+    padding: 22,
     borderRadius: 18,
   },
 
@@ -228,19 +264,19 @@ const styles = {
 
   event: {
     display: "flex",
-    justifyContent: "space-between",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12,
     background: "rgba(255,255,255,0.05)",
-    padding: 20,
+    padding: 18,
     borderRadius: 16,
     marginTop: 16,
   },
 
   eventActions: {
     display: "flex",
-    alignItems: "center",
     gap: 12,
+    alignItems: "center",
   },
 
   status: (status) => ({
@@ -250,8 +286,8 @@ const styles = {
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-          ? "#ff4d4f"
-          : "#fadb14",
+        ? "#ff4d4f"
+        : "#fadb14",
   }),
 
   primaryBtn: {
@@ -263,12 +299,21 @@ const styles = {
     cursor: "pointer",
   },
 
+  logoutBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "10px 16px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+
   linkBtn: {
     background: "transparent",
     border: "none",
     color: "#22F2A6",
-    cursor: "pointer",
     fontWeight: 600,
+    cursor: "pointer",
   },
 
   muted: {
@@ -276,28 +321,39 @@ const styles = {
     fontSize: 14,
   },
 
-  loading: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0F0618",
-    color: "#fff",
-  },
-
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.6)",
+    background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
     zIndex: 1000,
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+    width: "90%",
+    maxWidth: 320,
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
   },
 
   modal: {
     background: "#1A0F2E",
     padding: 24,
     borderRadius: 18,
-    width: 320,
+    width: "90%",
+    maxWidth: 360,
     textAlign: "center",
   },
 
