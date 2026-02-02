@@ -3,10 +3,22 @@ import { fetchOrganizerDashboard } from "../../services/dashboardService";
 import { getToken, logout } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
+/* ================= SAFE DEFAULT ================= */
+const EMPTY_DASHBOARD = {
+  stats: {
+    walletBalance: 0,
+    events: 0,
+    ticketsSold: 0,
+    revenue: 0,
+    upcoming: 0,
+  },
+  events: [],
+};
+
 export default function OrganizerDashboard() {
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
 
   const [modal, setModal] = useState({
@@ -18,7 +30,12 @@ export default function OrganizerDashboard() {
   async function loadDashboard() {
     try {
       const res = await fetchOrganizerDashboard();
-      setData(res);
+
+      // ✅ HARDEN AGAINST BAD API RESPONSES
+      setData({
+        stats: res?.stats ?? EMPTY_DASHBOARD.stats,
+        events: Array.isArray(res?.events) ? res.events : [],
+      });
     } catch (err) {
       setModal({
         open: true,
@@ -38,7 +55,7 @@ export default function OrganizerDashboard() {
 
   /* ================= LOGOUT ================= */
   function handleLogout() {
-    logout(); // clear token
+    logout();
     navigate("/login");
   }
 
@@ -67,7 +84,7 @@ export default function OrganizerDashboard() {
         <div style={styles.headerActions}>
           <Stat
             label="Wallet Balance"
-            value={`₦${data?.stats.walletBalance.toLocaleString()}`}
+            value={`₦${data.stats.walletBalance.toLocaleString()}`}
           />
 
           <button
