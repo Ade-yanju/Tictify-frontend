@@ -8,13 +8,13 @@ export default function ScanTicket() {
   const [params] = useSearchParams();
   const eventId = params.get("event");
 
-  const qrRef = useRef(null);
+  const qrRegionId = "qr-reader";
   const scannerRef = useRef(null);
+  const activeScanRef = useRef(false);
 
   const [manualCode, setManualCode] = useState("");
   const [processing, setProcessing] = useState(false);
   const [scanning, setScanning] = useState(false);
-
   const [modal, setModal] = useState(null);
 
   /* ================= GUARD ================= */
@@ -24,43 +24,48 @@ export default function ScanTicket() {
     }
   }, [eventId, navigate]);
 
-  /* ================= START CAMERA (MOBILE SAFE) ================= */
+  /* ================= START CAMERA ================= */
   const startCamera = async () => {
-    if (!qrRef.current || scanning) return;
+    if (scanning || processing) return;
 
     try {
-      const scanner = new Html5Qrcode(qrRef.current.id);
+      const scanner = new Html5Qrcode(qrRegionId);
       scannerRef.current = scanner;
 
       const cameras = await Html5Qrcode.getCameras();
-      if (!cameras.length) throw new Error("No camera found");
+      if (!cameras.length) {
+        throw new Error("No camera available on this device");
+      }
 
-      // 🔑 ALWAYS use explicit cameraId on mobile
-      const backCamera =
-        cameras.find((c) => c.label.toLowerCase().includes("back")) ||
-        cameras[cameras.length - 1];
+      // 🔑 Always prefer back camera
+      const camera =
+        cameras.find((c) =>
+          /back|rear|environment/i.test(c.label),
+        ) || cameras[cameras.length - 1];
 
       setScanning(true);
+      activeScanRef.current = true;
 
       await scanner.start(
-        backCamera.id,
+        camera.id,
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 240, height: 240 },
           aspectRatio: 1,
           disableFlip: true,
         },
         async (decodedText) => {
-          if (processing) return;
+          if (!activeScanRef.current || processing) return;
+          activeScanRef.current = false;
           await handleScan(decodedText);
         },
       );
     } catch (err) {
-      stopCamera();
+      await stopCamera();
       setModal({
         type: "error",
         message:
-          "Camera could not start. Please allow camera permission or use manual entry.",
+          "Camera permission denied or unavailable. Please allow camera access or use manual entry.",
       });
     }
   };
@@ -71,40 +76,46 @@ export default function ScanTicket() {
       if (scannerRef.current) {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-        scannerRef.current = null;
       }
     } catch {}
+    scannerRef.current = null;
     setScanning(false);
+    activeScanRef.current = false;
   };
 
-  /* ================= SCAN ================= */
+  /* ================= SCAN HANDLER ================= */
   async function handleScan(code) {
     setProcessing(true);
 
     try {
-      const res = await scanTicket({ code, eventId });
+      const res = await scanTicket({
+        code: code.trim(),
+        eventId,
+      });
 
       setModal({
         type: "success",
-        message: res.message || "Access granted",
+        message: res.message || "Ticket verified successfully",
       });
 
       await stopCamera();
     } catch (err) {
       setModal({
         type: "error",
-        message: err.message || "Invalid, used, or wrong event ticket",
+        message:
+          err.message || "Invalid, used, or wrong event ticket",
       });
+      activeScanRef.current = true;
     } finally {
       setTimeout(() => setProcessing(false), 1200);
     }
   }
 
-  /* ================= MANUAL ================= */
+  /* ================= MANUAL ENTRY ================= */
   async function handleManualSubmit(e) {
     e.preventDefault();
     if (!manualCode || processing) return;
-    await handleScan(manualCode.trim());
+    await handleScan(manualCode);
     setManualCode("");
   }
 
@@ -117,7 +128,9 @@ export default function ScanTicket() {
 
   return (
     <div style={styles.page}>
-      {modal && <Modal {...modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <Modal {...modal} onClose={() => setModal(null)} />
+      )}
 
       {processing && (
         <div style={styles.processing}>
@@ -131,21 +144,32 @@ export default function ScanTicket() {
           <h1>Scan Tickets</h1>
           <button
             style={styles.backBtn}
-            onClick={() => navigate("/organizer/dashboard")}
+            onClick={() =>
+              navigate("/organizer/dashboard")
+            }
           >
             ← Dashboard
           </button>
         </header>
 
         <div style={styles.scannerBox}>
-          <div id="qr-reader" ref={qrRef} style={styles.camera} />
+          <div
+            id={qrRegionId}
+            style={styles.camera}
+          />
 
           {!scanning ? (
-            <button style={styles.primaryBtn} onClick={startCamera}>
+            <button
+              style={styles.primaryBtn}
+              onClick={startCamera}
+            >
               🎥 Start Camera Scan
             </button>
           ) : (
-            <button style={styles.stopBtn} onClick={stopCamera}>
+            <button
+              style={styles.stopBtn}
+              onClick={stopCamera}
+            >
               Stop Camera
             </button>
           )}
@@ -153,14 +177,21 @@ export default function ScanTicket() {
 
         <div style={styles.divider}>OR</div>
 
-        <form onSubmit={handleManualSubmit} style={styles.form}>
+        <form
+          onSubmit={handleManualSubmit}
+          style={styles.form}
+        >
           <input
             style={styles.input}
             placeholder="Enter ticket code manually"
             value={manualCode}
-            onChange={(e) => setManualCode(e.target.value)}
+            onChange={(e) =>
+              setManualCode(e.target.value)
+            }
           />
-          <button style={styles.secondaryBtn}>Verify Code</button>
+          <button style={styles.secondaryBtn}>
+            Verify Code
+          </button>
         </form>
       </div>
     </div>
@@ -172,11 +203,23 @@ function Modal({ type, message, onClose }) {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
-        <h3 style={{ color: type === "error" ? "#ff4d4f" : "#22F2A6" }}>
-          {type === "error" ? "Access Denied" : "Access Granted"}
+        <h3
+          style={{
+            color:
+              type === "error"
+                ? "#ff4d4f"
+                : "#22F2A6",
+          }}
+        >
+          {type === "error"
+            ? "Access Denied"
+            : "Access Granted"}
         </h3>
         <p>{message}</p>
-        <button style={styles.modalBtn} onClick={onClose}>
+        <button
+          style={styles.modalBtn}
+          onClick={onClose}
+        >
           OK
         </button>
       </div>
@@ -211,9 +254,10 @@ const styles = {
   },
   camera: {
     width: "100%",
-    height: 320, // 🔥 MUST BE FIXED HEIGHT
+    height: 320,
     background: "#000",
     borderRadius: 12,
+    overflow: "hidden",
   },
   primaryBtn: {
     marginTop: 12,
@@ -295,7 +339,8 @@ const styles = {
   },
 };
 
-/* ===== SPINNER ===== */
+/* ================= SPINNER ================= */
 const style = document.createElement("style");
-style.innerHTML = "@keyframes spin { to { transform: rotate(360deg); } }";
+style.innerHTML =
+  "@keyframes spin { to { transform: rotate(360deg); } }";
 document.head.appendChild(style);

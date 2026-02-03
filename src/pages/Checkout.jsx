@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
 export default function Checkout() {
@@ -18,6 +18,15 @@ export default function Checkout() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
 
+  /* ================= VALIDATION ================= */
+  const emailValid = useMemo(
+    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    [email],
+  );
+
+  const nameValid = name.trim().length >= 2;
+  const canPay = emailValid && nameValid && ticket && !processing;
+
   /* ================= LOAD EVENT ================= */
   useEffect(() => {
     if (!id || !ticketName) {
@@ -26,39 +35,33 @@ export default function Checkout() {
       return;
     }
 
-    async function loadEvent() {
+    (async () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
         );
-
         if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
-        const selectedTicket = data.ticketTypes.find(
+        const selected = data.ticketTypes?.find(
           (t) => t.name === ticketName,
         );
 
-        if (!selectedTicket) throw new Error("Invalid ticket selection");
+        if (!selected) throw new Error("Invalid ticket selection");
 
         setEvent(data);
-        setTicket(selectedTicket);
+        setTicket(selected);
       } catch (err) {
         setError(err.message || "Unable to prepare checkout.");
       } finally {
         setLoading(false);
       }
-    }
-
-    loadEvent();
+    })();
   }, [id, ticketName]);
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
-    if (processing || !ticket) return;
-
-    if (!name.trim()) return setError("Full name is required");
-    if (!email.trim()) return setError("Email is required");
+    if (!canPay) return;
 
     setProcessing(true);
     setError("");
@@ -79,13 +82,11 @@ export default function Checkout() {
       );
 
       const data = await res.json();
-      const redirectUrl = data.paymentUrl || data.checkoutUrl;
-
-      if (!res.ok || !redirectUrl) {
+      if (!res.ok || !data?.paymentUrl) {
         throw new Error(data.message || "Payment initialization failed");
       }
 
-      window.location.href = redirectUrl;
+      window.location.href = data.paymentUrl;
     } catch (err) {
       setError(err.message || "Payment failed");
       setProcessing(false);
@@ -130,9 +131,10 @@ export default function Checkout() {
 
   /* ================= UI ================= */
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       {processing && <LoadingModal message="Redirecting to payment…" />}
 
+      {/* BANNER */}
       <div
         style={{
           ...styles.banner,
@@ -141,6 +143,7 @@ export default function Checkout() {
       />
 
       <div style={styles.container}>
+        {/* LEFT */}
         <section style={styles.left}>
           <h1 style={styles.title}>{event.title}</h1>
 
@@ -152,6 +155,7 @@ export default function Checkout() {
           <p style={styles.description}>{event.description}</p>
         </section>
 
+        {/* RIGHT */}
         <aside style={styles.right}>
           <div style={styles.card}>
             <h2 style={styles.heading}>Order Summary</h2>
@@ -162,6 +166,9 @@ export default function Checkout() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            {!nameValid && name && (
+              <p style={styles.inputError}>Enter your full name</p>
+            )}
 
             <input
               style={styles.input}
@@ -170,6 +177,11 @@ export default function Checkout() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {!emailValid && email && (
+              <p style={styles.inputError}>
+                Enter a valid email address
+              </p>
+            )}
 
             <div style={styles.row}>
               <span>Ticket</span>
@@ -188,14 +200,13 @@ export default function Checkout() {
             <button
               style={{
                 ...styles.payBtn,
-                opacity: processing ? 0.6 : 1,
+                opacity: canPay ? 1 : 0.5,
+                cursor: canPay ? "pointer" : "not-allowed",
               }}
-              disabled={processing}
+              disabled={!canPay}
               onClick={handlePayment}
             >
-              {processing
-                ? "Processing…"
-                : ticket.price > 0
+              {ticket.price > 0
                 ? "Proceed to Secure Payment"
                 : "Confirm Free Ticket"}
             </button>
@@ -206,7 +217,7 @@ export default function Checkout() {
           </div>
         </aside>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -222,34 +233,33 @@ function LoadingModal({ message }) {
   );
 }
 
-//* ================= STYLES ================= */
+/* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: "100vh",
+    minHeight: "100svh",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
 
   banner: {
-    height: "min(35vh, 320px)",
+    height: "min(38svh, 360px)",
     backgroundSize: "cover",
     backgroundPosition: "center",
   },
 
-  /* 🔑 MOBILE-FIRST GRID */
   container: {
     maxWidth: 1200,
-    margin: "-80px auto 0",
-    padding: "0 16px 80px",
+    margin: "-96px auto 0",
+    padding: "0 clamp(16px,4vw,32px) 80px",
     display: "grid",
     gap: 32,
-    gridTemplateColumns: "1fr", // default (mobile)
+    gridTemplateColumns: "1fr",
   },
 
   left: {
     background: "rgba(255,255,255,0.08)",
-    padding: "clamp(20px,4vw,28px)",
+    padding: "clamp(20px,4vw,32px)",
     borderRadius: 24,
   },
 
@@ -262,12 +272,12 @@ const styles = {
     width: "100%",
     maxWidth: 420,
     background: "rgba(255,255,255,0.08)",
-    padding: "clamp(20px,4vw,28px)",
+    padding: "clamp(20px,4vw,32px)",
     borderRadius: 24,
   },
 
   title: {
-    fontSize: "clamp(22px, 4vw, 32px)",
+    fontSize: "clamp(22px,4vw,34px)",
     marginBottom: 12,
   },
 
@@ -292,7 +302,13 @@ const styles = {
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.06)",
     color: "#fff",
-    marginBottom: 14,
+    marginBottom: 8,
+  },
+
+  inputError: {
+    fontSize: 12,
+    color: "#ff4d4f",
+    marginBottom: 10,
   },
 
   row: {
@@ -325,7 +341,6 @@ const styles = {
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
-    cursor: "pointer",
   },
 
   secureText: {
@@ -333,6 +348,23 @@ const styles = {
     fontSize: 13,
     textAlign: "center",
     color: "#CFC9D6",
+  },
+
+  errorCard: {
+    minHeight: "100svh",
+    display: "grid",
+    placeItems: "center",
+    textAlign: "center",
+    padding: 32,
+  },
+
+  primaryBtn: {
+    marginTop: 16,
+    padding: "10px 18px",
+    borderRadius: 999,
+    border: "none",
+    background: "#22F2A6",
+    fontWeight: 600,
   },
 
   modalOverlay: {
@@ -367,3 +399,8 @@ const styles = {
     fontSize: 14,
   },
 };
+
+/* ===== SPINNER ===== */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);

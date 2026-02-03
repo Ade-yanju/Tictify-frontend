@@ -12,6 +12,7 @@ export default function OrganizerEventStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /* ================= LOAD STATS ================= */
   useEffect(() => {
     async function loadStats() {
       try {
@@ -39,21 +40,19 @@ export default function OrganizerEventStats() {
   }, []);
 
   return (
-    <div style={styles.page}>
-      {/* ================= LOADING MODAL ================= */}
+    <main style={styles.page}>
       {loading && <LoadingModal />}
 
-      {/* ================= ERROR ================= */}
       {error && !loading && <div style={styles.error}>{error}</div>}
 
       {!loading && !error && (
         <>
-          {/* HEADER */}
+          {/* ================= HEADER ================= */}
           <header style={styles.header}>
             <div>
               <h1 style={styles.heading}>Event Performance</h1>
               <p style={styles.subtitle}>
-                Overview of ticket sales, scans, and revenue
+                Ticket sales, scans, and revenue overview
               </p>
             </div>
 
@@ -65,26 +64,28 @@ export default function OrganizerEventStats() {
             </button>
           </header>
 
-          {/* EMPTY STATE */}
+          {/* ================= EMPTY ================= */}
           {events.length === 0 ? (
             <p style={styles.empty}>You haven’t hosted any events yet.</p>
           ) : (
-            <div style={styles.grid}>
+            <section style={styles.grid}>
               {events.map((event) => (
-                <div key={event.eventId} style={styles.card}>
-                  {/* BANNER */}
+                <article key={event.eventId} style={styles.card}>
+                  {/* ================= BANNER ================= */}
                   <div style={styles.bannerWrapper}>
                     <img
                       src={event.banner}
                       alt={event.title}
                       style={styles.banner}
+                      loading="lazy"
                     />
+
                     <span style={styles.status(event.status)}>
                       {event.status}
                     </span>
                   </div>
 
-                  {/* BODY */}
+                  {/* ================= BODY ================= */}
                   <div style={styles.body}>
                     <h3 style={styles.title}>{event.title}</h3>
 
@@ -92,35 +93,33 @@ export default function OrganizerEventStats() {
                       📅 {new Date(event.date).toDateString()}
                     </p>
 
-                    {/* STATS */}
                     <div style={styles.statsGrid}>
-                      <Stat label="Tickets Sold" value={event.ticketsSold ?? 0} />
+                      <Stat
+                        label="Tickets Sold"
+                        value={event.ticketsSold ?? 0}
+                      />
                       <Stat
                         label="Remaining"
                         value={event.ticketsRemaining ?? 0}
                       />
-                      <Stat
-                        label="Scanned"
-                        value={event.ticketsScanned ?? 0}
-                      />
+                      <Stat label="Scanned" value={event.ticketsScanned ?? 0} />
                       <Stat
                         label="Revenue"
                         value={`₦${(event.revenue ?? 0).toLocaleString()}`}
                       />
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
-            </div>
+            </section>
           )}
         </>
       )}
-    </div>
+    </main>
   );
 }
 
-/* ================= STAT COMPONENT ================= */
-
+/* ================= STAT ================= */
 function Stat({ label, value }) {
   return (
     <div style={styles.statCard}>
@@ -130,8 +129,7 @@ function Stat({ label, value }) {
   );
 }
 
-/* ================= LOADING MODAL ================= */
-
+/* ================= LOADING ================= */
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
@@ -147,15 +145,16 @@ function LoadingModal() {
 
 const styles = {
   page: {
-    minHeight: "100vh",
+    minHeight: "100svh",
     background: "#0F0618",
     color: "#fff",
-    padding: "clamp(16px,4vw,32px)",
+    padding: "clamp(16px,4vw,40px)",
     fontFamily: "Inter, system-ui",
+    overflowX: "hidden",
   },
 
   header: {
-    maxWidth: 1200,
+    maxWidth: 1280,
     margin: "0 auto 32px",
     display: "flex",
     justifyContent: "space-between",
@@ -165,8 +164,7 @@ const styles = {
   },
 
   heading: {
-    fontSize: "clamp(1.6rem, 3.5vw, 2.2rem)",
-    marginBottom: 6,
+    fontSize: "clamp(22px,4vw,34px)",
   },
 
   subtitle: {
@@ -178,64 +176,65 @@ const styles = {
     background: "transparent",
     border: "1px solid #22F2A6",
     color: "#22F2A6",
-    padding: "10px 16px",
+    padding: "10px 18px",
     borderRadius: 999,
     fontWeight: 600,
     cursor: "pointer",
   },
 
   grid: {
-    maxWidth: 1200,
+    maxWidth: 1280,
     margin: "0 auto",
     display: "grid",
     gap: 24,
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   },
 
   card: {
     background: "rgba(255,255,255,0.07)",
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.35)",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.4)",
   },
 
   bannerWrapper: {
     position: "relative",
-    height: 180,
+    height: "clamp(160px, 28vw, 220px)",
   },
 
   banner: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
+    display: "block",
   },
 
   status: (status) => ({
     position: "absolute",
     top: 12,
     right: 12,
-    padding: "6px 12px",
+    padding: "6px 14px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
     background:
       status === "LIVE"
-        ? "#22F2A6"
+        ? "rgba(34,242,166,0.95)"
         : status === "ENDED"
-        ? "#ff4d4f"
-        : "#fadb14",
+          ? "rgba(255,77,79,0.95)"
+          : "rgba(250,219,20,0.95)",
     color: "#000",
   }),
 
   body: {
-    padding: 18,
+    padding: "clamp(16px,4vw,22px)",
   },
 
   title: {
-    fontSize: 17,
-    marginBottom: 8,
+    fontSize: 18,
+    marginBottom: 6,
   },
 
   meta: {
@@ -252,16 +251,16 @@ const styles = {
 
   statCard: {
     background: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
+    borderRadius: 16,
     padding: "12px 10px",
     textAlign: "center",
   },
 
   statLabel: {
-    display: "block",
     fontSize: 12,
     color: "#CFC9D6",
     marginBottom: 4,
+    display: "block",
   },
 
   statValue: {
@@ -273,6 +272,7 @@ const styles = {
     textAlign: "center",
     marginTop: 60,
     color: "#CFC9D6",
+    fontSize: 15,
   },
 
   error: {
@@ -280,6 +280,7 @@ const styles = {
     display: "grid",
     placeItems: "center",
     color: "#ff4d4f",
+    fontSize: 15,
   },
 
   modalOverlay: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function BuyTicket({ event }) {
@@ -6,20 +6,24 @@ export default function BuyTicket({ event }) {
   const touchStartX = useRef(0);
 
   const [email, setEmail] = useState("");
-  const [ticket, setTicket] = useState(event.ticketTypes?.[0]?.name || "");
-  const [error, setError] = useState("");
+  const [ticket, setTicket] = useState(
+    event?.ticketTypes?.[0]?.name || "",
+  );
   const [processing, setProcessing] = useState(false);
 
   /* ================= VALIDATION ================= */
-  const isValidEmail = email.includes("@");
-  const canProceed = isValidEmail && ticket && !processing;
+  const emailValid = useMemo(
+    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    [email],
+  );
+
+  const canProceed = emailValid && ticket && !processing;
 
   /* ================= PROCEED ================= */
   function proceedToCheckout() {
     if (!canProceed) return;
 
     setProcessing(true);
-    setError("");
 
     navigate(
       `/checkout/${event._id}?email=${encodeURIComponent(
@@ -46,8 +50,16 @@ export default function BuyTicket({ event }) {
     };
   }, [navigate]);
 
+  if (!event) {
+    return (
+      <div style={styles.errorPage}>
+        Unable to load event.
+      </div>
+    );
+  }
+
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       {processing && <LoadingModal />}
 
       {/* BACK */}
@@ -55,7 +67,7 @@ export default function BuyTicket({ event }) {
         ← Back
       </button>
 
-      <div style={styles.card}>
+      <section style={styles.card}>
         <h2 style={styles.title}>{event.title}</h2>
         <p style={styles.muted}>{event.location || "TBA"}</p>
 
@@ -67,6 +79,12 @@ export default function BuyTicket({ event }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
+        {!emailValid && email && (
+          <p style={styles.inputError}>
+            Please enter a valid email address
+          </p>
+        )}
 
         {/* TICKET TYPES */}
         {event.ticketTypes?.length > 0 && (
@@ -83,12 +101,11 @@ export default function BuyTicket({ event }) {
           </select>
         )}
 
-        {error && <p style={styles.error}>{error}</p>}
-
         <button
           style={{
             ...styles.btn,
-            opacity: canProceed ? 1 : 0.6,
+            opacity: canProceed ? 1 : 0.5,
+            cursor: canProceed ? "pointer" : "not-allowed",
           }}
           disabled={!canProceed}
           onClick={proceedToCheckout}
@@ -99,8 +116,8 @@ export default function BuyTicket({ event }) {
         <p style={styles.secure}>
           🔒 Secure checkout • No account required
         </p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
@@ -119,10 +136,10 @@ function LoadingModal() {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: "100vh",
+    minHeight: "100svh",
     display: "grid",
     placeItems: "center",
-    padding: "clamp(16px,4vw,32px)",
+    padding: "clamp(16px,4vw,40px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -139,37 +156,46 @@ const styles = {
     padding: "8px 14px",
     borderRadius: 999,
     cursor: "pointer",
+    fontSize: 14,
   },
 
   card: {
-    background: "rgba(255,255,255,0.08)",
-    padding: "clamp(24px,5vw,32px)",
-    borderRadius: 20,
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 460,
+    background: "rgba(255,255,255,0.08)",
+    backdropFilter: "blur(16px)",
+    padding: "clamp(24px,5vw,36px)",
+    borderRadius: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
 
   title: {
+    fontSize: "clamp(20px,4vw,26px)",
     marginBottom: 6,
-    fontSize: 22,
   },
 
   muted: {
     color: "#CFC9D6",
     fontSize: 14,
-    marginBottom: 20,
+    marginBottom: 22,
   },
 
   input: {
     width: "100%",
     padding: "14px 16px",
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.06)",
     color: "#fff",
     outline: "none",
+    fontSize: 14,
+  },
+
+  inputError: {
+    fontSize: 12,
+    color: "#ff4d4f",
+    marginBottom: 10,
   },
 
   btn: {
@@ -179,20 +205,22 @@ const styles = {
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 600,
-    cursor: "pointer",
+    marginTop: 6,
   },
 
   secure: {
-    marginTop: 14,
+    marginTop: 16,
     fontSize: 12,
     textAlign: "center",
     color: "#CFC9D6",
   },
 
-  error: {
+  errorPage: {
+    minHeight: "100svh",
+    display: "grid",
+    placeItems: "center",
+    background: "#0F0618",
     color: "#ff4d4f",
-    fontSize: 13,
-    marginBottom: 12,
   },
 
   modalOverlay: {
@@ -222,3 +250,8 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 };
+
+/* ===== SPINNER ===== */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);

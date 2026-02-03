@@ -9,9 +9,11 @@ export default function MyEvents() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null); // eventId
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
+  /* ================= FETCH ================= */
   async function fetchEvents() {
+    setLoading(true);
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/events/organizer`,
@@ -21,7 +23,6 @@ export default function MyEvents() {
           },
         },
       );
-
       const data = await res.json();
       setEvents(Array.isArray(data) ? data : []);
     } catch {
@@ -31,6 +32,7 @@ export default function MyEvents() {
     }
   }
 
+  /* ================= ACTIONS ================= */
   async function updateStatus(id, action) {
     if (processingId) return;
     setProcessingId(id);
@@ -40,9 +42,7 @@ export default function MyEvents() {
         `${import.meta.env.VITE_API_URL}/api/events/${action}/${id}`,
         {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
+          headers: { Authorization: `Bearer ${getToken()}` },
         },
       );
       await fetchEvents();
@@ -56,28 +56,27 @@ export default function MyEvents() {
     setProcessingId(id);
 
     try {
-      await fetch(
+      const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/events/${id}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
+          headers: { Authorization: `Bearer ${getToken()}` },
         },
       );
-
-      // Optimistic update
-      setEvents((prev) => prev.filter((e) => e._id !== id));
+      if (!res.ok) throw new Error("Delete failed");
+      await fetchEvents();
+    } catch (err) {
+      alert(err.message);
     } finally {
       setProcessingId(null);
       setConfirmDelete(null);
     }
   }
 
-  function copyEventLink(eventId) {
-    const publicUrl = `${window.location.origin}/events/${eventId}`;
-    navigator.clipboard.writeText(publicUrl);
-    setCopiedId(eventId);
+  function copyEventLink(id) {
+    const link = `${window.location.origin}/events/${id}`;
+    navigator.clipboard.writeText(link);
+    setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   }
 
@@ -86,11 +85,9 @@ export default function MyEvents() {
   }, []);
 
   return (
-    <div style={styles.page}>
-      {/* ================= LOADING MODAL ================= */}
+    <main style={styles.page}>
       {loading && <LoadingModal />}
 
-      {/* ================= DELETE CONFIRM MODAL ================= */}
       {confirmDelete && (
         <ConfirmModal
           onCancel={() => setConfirmDelete(null)}
@@ -98,11 +95,11 @@ export default function MyEvents() {
         />
       )}
 
-      {/* ================= HEADER ================= */}
+      {/* HEADER */}
       <header style={styles.header}>
         <div>
           <h1 style={styles.title}>My Events</h1>
-          <p style={styles.muted}>Manage and monitor your events</p>
+          <p style={styles.muted}>Manage, publish, and monitor your events</p>
         </div>
 
         <button
@@ -113,98 +110,101 @@ export default function MyEvents() {
         </button>
       </header>
 
-      {/* ================= EMPTY STATE ================= */}
-      {events.length === 0 ? (
-        <div style={styles.empty}>
-          <p style={styles.muted}>You haven’t created any events yet.</p>
+      {/* EMPTY */}
+      {!loading && events.length === 0 && (
+        <section style={styles.empty}>
+          <h3>No events yet</h3>
+          <p style={styles.muted}>
+            Create your first event and start selling tickets.
+          </p>
           <button
             style={styles.primaryBtn}
             onClick={() => navigate("/organizer/create-event")}
           >
-            Create your first event
+            Create Event
           </button>
-        </div>
-      ) : (
-        <div style={styles.grid}>
-          {events.map((event) => (
-            <div key={event._id} style={styles.card}>
-              <div>
-                <h3>{event.title}</h3>
-                <p style={styles.muted}>
-                  {new Date(event.date).toDateString()} • {event.location}
-                </p>
-
-                <span style={styles.status(event.status)}>
-                  {event.status}
-                </span>
-              </div>
-
-              {/* ================= ACTIONS ================= */}
-              <div style={styles.actions}>
-                <button
-                  style={styles.shareBtn}
-                  onClick={() => copyEventLink(event._id)}
-                >
-                  {copiedId === event._id ? "Copied!" : "Share Link"}
-                </button>
-
-                {event.status === "DRAFT" && (
-                  <button
-                    style={styles.actionBtn}
-                    disabled={processingId === event._id}
-                    onClick={() => updateStatus(event._id, "publish")}
-                  >
-                    Publish
-                  </button>
-                )}
-
-                {event.status === "LIVE" && (
-                  <>
-                    <button
-                      style={styles.endBtn}
-                      disabled={processingId === event._id}
-                      onClick={() => updateStatus(event._id, "end")}
-                    >
-                      End Event
-                    </button>
-
-                    <button
-                      style={styles.linkBtn}
-                      onClick={() =>
-                        navigate(`/organizer/scan?event=${event._id}`)
-                      }
-                    >
-                      Scan Tickets
-                    </button>
-                  </>
-                )}
-
-                {event.status === "ENDED" && (
-                  <button
-                    style={styles.deleteBtn}
-                    disabled={processingId === event._id}
-                    onClick={() => setConfirmDelete(event._id)}
-                  >
-                    Delete Event
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        </section>
       )}
-    </div>
+
+      {/* GRID */}
+      <section style={styles.grid}>
+        {events.map((event) => (
+          <article key={event._id} style={styles.card}>
+            <div>
+              <h3 style={styles.cardTitle}>{event.title}</h3>
+              <p style={styles.muted}>
+                {new Date(event.date).toDateString()} • {event.location}
+              </p>
+
+              <span style={styles.status(event.status)}>
+                {event.status}
+              </span>
+            </div>
+
+            <div style={styles.actions}>
+              <button
+                style={styles.shareBtn}
+                onClick={() => copyEventLink(event._id)}
+              >
+                {copiedId === event._id ? "Copied ✓" : "Share"}
+              </button>
+
+              {event.status === "DRAFT" && (
+                <button
+                  style={styles.publishBtn}
+                  disabled={processingId === event._id}
+                  onClick={() => updateStatus(event._id, "publish")}
+                >
+                  Publish
+                </button>
+              )}
+
+              {event.status === "LIVE" && (
+                <>
+                  <button
+                    style={styles.endBtn}
+                    disabled={processingId === event._id}
+                    onClick={() => updateStatus(event._id, "end")}
+                  >
+                    End
+                  </button>
+
+                  <button
+                    style={styles.linkBtn}
+                    onClick={() =>
+                      navigate(`/organizer/scan?event=${event._id}`)
+                    }
+                  >
+                    Scan
+                  </button>
+                </>
+              )}
+
+              {event.status === "ENDED" && (
+                <button
+                  style={styles.deleteBtn}
+                  disabled={processingId === event._id}
+                  onClick={() => setConfirmDelete(event._id)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </section>
+    </main>
   );
 }
 
-/* ================= COMPONENTS ================= */
+/* ================= MODALS ================= */
 
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.loadingModal}>
         <div style={styles.spinner} />
-        <p style={{ marginTop: 14 }}>Loading your events…</p>
+        <p style={{ marginTop: 12 }}>Loading events…</p>
       </div>
     </div>
   );
@@ -215,7 +215,7 @@ function ConfirmModal({ onCancel, onConfirm }) {
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
         <h3>Delete Event?</h3>
-        <p style={{ marginTop: 8 }}>
+        <p style={styles.muted}>
           This action cannot be undone.
         </p>
         <div style={styles.confirmActions}>
@@ -235,48 +235,60 @@ function ConfirmModal({ onCancel, onConfirm }) {
 
 const styles = {
   page: {
-    minHeight: "100vh",
-    padding: "clamp(16px,4vw,32px)",
+    minHeight: "100svh",
+    padding: "clamp(16px,4vw,40px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
-    overflowX: "hidden",
   },
 
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
+    alignItems: "flex-start",
     gap: 16,
+    flexWrap: "wrap",
     marginBottom: 32,
   },
 
   title: {
-    fontSize: "clamp(22px,5vw,30px)",
+    fontSize: "clamp(22px,4vw,32px)",
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: 20,
   },
 
   card: {
     background: "rgba(255,255,255,0.08)",
     padding: 24,
-    borderRadius: 20,
+    borderRadius: 22,
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    gap: 16,
+    gap: 18,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    marginBottom: 6,
   },
 
   status: (status) => ({
     display: "inline-block",
-    marginTop: 8,
-    fontWeight: 700,
+    marginTop: 10,
+    padding: "4px 10px",
+    borderRadius: 999,
     fontSize: 12,
+    fontWeight: 700,
+    background:
+      status === "LIVE"
+        ? "rgba(34,242,166,0.15)"
+        : status === "ENDED"
+        ? "rgba(255,77,79,0.15)"
+        : "rgba(250,219,20,0.15)",
     color:
       status === "LIVE"
         ? "#22F2A6"
@@ -287,11 +299,11 @@ const styles = {
 
   actions: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
   },
 
-  actionBtn: {
+  publishBtn: {
     background: "#22F2A6",
     border: "none",
     padding: "8px 14px",
@@ -359,9 +371,10 @@ const styles = {
 
   empty: {
     background: "rgba(255,255,255,0.06)",
-    padding: 40,
-    borderRadius: 20,
+    padding: "clamp(24px,5vw,48px)",
+    borderRadius: 24,
     textAlign: "center",
+    marginTop: 40,
   },
 
   muted: {
@@ -375,13 +388,13 @@ const styles = {
     background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    zIndex: 1000,
+    zIndex: 2000,
   },
 
   modal: {
     background: "#1A0F2E",
-    padding: 24,
-    borderRadius: 18,
+    padding: 28,
+    borderRadius: 20,
     width: "90%",
     maxWidth: 360,
     textAlign: "center",
@@ -392,6 +405,7 @@ const styles = {
     justifyContent: "center",
     gap: 12,
     marginTop: 20,
+    flexWrap: "wrap",
   },
 
   loadingModal: {

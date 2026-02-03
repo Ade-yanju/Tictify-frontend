@@ -16,9 +16,13 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const strength = getPasswordStrength(form.password);
+  const [modal, setModal] = useState(null); // { type, message }
+
+  /* ================= VALIDATION ================= */
+
+  const emailValid = validateEmail(form.email);
+  const passwordStrength = getPasswordStrength(form.password);
   const passwordsMatch =
     form.password &&
     form.confirmPassword &&
@@ -29,11 +33,19 @@ export default function Register() {
     e.preventDefault();
     if (loading) return;
 
-    setError("");
+    // 🚫 CLIENT-SIDE GUARDS
+    if (!emailValid) {
+      return setModal({
+        type: "error",
+        message: "Please enter a valid email address",
+      });
+    }
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-      return;
+      return setModal({
+        type: "error",
+        message: "Passwords do not match",
+      });
     }
 
     setLoading(true);
@@ -42,12 +54,18 @@ export default function Register() {
         name: form.name,
         email: form.email,
         password: form.password,
-        role: "organizer", // 🔒 enforced
+        role: "organizer",
       });
 
-      navigate("/login", { replace: true });
+      setModal({
+        type: "success",
+        message: "Account created successfully 🎉",
+      });
     } catch {
-      setError("Registration failed. Please try again.");
+      setModal({
+        type: "error",
+        message: "Registration failed. Email may already exist.",
+      });
     } finally {
       setLoading(false);
     }
@@ -77,6 +95,17 @@ export default function Register() {
     <div style={styles.viewport}>
       {loading && <LoadingModal />}
 
+      {modal && (
+        <Modal
+          type={modal.type}
+          message={modal.message}
+          onClose={() => {
+            setModal(null);
+            if (modal.type === "success") navigate("/login", { replace: true });
+          }}
+        />
+      )}
+
       {/* BACK */}
       <button style={styles.backBtn} onClick={() => navigate("/")}>
         ← Back
@@ -105,6 +134,20 @@ export default function Register() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
 
+        {/* EMAIL FEEDBACK */}
+        {form.email && (
+          <p
+            style={{
+              fontSize: 12,
+              marginBottom: 12,
+              color: emailValid ? "#22F2A6" : "#ff4d4f",
+            }}
+          >
+            {emailValid ? "Valid email address" : "Invalid email format"}
+          </p>
+        )}
+
+        {/* PASSWORD */}
         <div style={styles.passwordField}>
           <input
             style={styles.input}
@@ -112,7 +155,9 @@ export default function Register() {
             placeholder="Password"
             required
             value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, password: e.target.value })
+            }
           />
           <button
             type="button"
@@ -128,16 +173,17 @@ export default function Register() {
             <div
               style={{
                 ...styles.strengthBar,
-                width: strength.width,
-                backgroundColor: strength.color,
+                width: passwordStrength.width,
+                backgroundColor: passwordStrength.color,
               }}
             />
-            <span style={{ color: strength.color, fontSize: 12 }}>
-              {strength.label}
+            <span style={{ color: passwordStrength.color, fontSize: 12 }}>
+              {passwordStrength.label}
             </span>
           </div>
         )}
 
+        {/* CONFIRM PASSWORD */}
         <div style={styles.passwordField}>
           <input
             style={styles.input}
@@ -170,10 +216,8 @@ export default function Register() {
           </p>
         )}
 
-        {error && <p style={styles.error}>{error}</p>}
-
         <button style={styles.submit} disabled={loading}>
-          {loading ? "Creating account…" : "Create Organizer Account"}
+          Create Organizer Account
         </button>
 
         <p style={styles.footer}>
@@ -191,7 +235,8 @@ export default function Register() {
   );
 }
 
-/* ================= LOADING MODAL ================= */
+/* ================= MODALS ================= */
+
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
@@ -203,7 +248,28 @@ function LoadingModal() {
   );
 }
 
-/* ================= PASSWORD STRENGTH ================= */
+function Modal({ type, message, onClose }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <h3 style={{ color: type === "error" ? "#ff4d4f" : "#22F2A6" }}>
+          {type === "error" ? "Error" : "Success"}
+        </h3>
+        <p style={{ marginTop: 10 }}>{message}</p>
+        <button style={styles.modalBtn} onClick={onClose}>
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================= HELPERS ================= */
+
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function getPasswordStrength(password) {
   if (password.length < 4)
     return { label: "Too short", width: "25%", color: "#ff4d4f" };
@@ -215,9 +281,11 @@ function getPasswordStrength(password) {
 }
 
 /* ================= STYLES ================= */
+/* (unchanged except modalBtn added) */
+
 const styles = {
   viewport: {
-    minHeight: "100vh",
+    minHeight: "100svh",
     display: "grid",
     placeItems: "center",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
@@ -245,7 +313,6 @@ const styles = {
     backdropFilter: "blur(16px)",
     padding: "clamp(24px,5vw,36px)",
     borderRadius: 24,
-    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
 
   title: { marginBottom: 6, fontSize: 24 },
@@ -263,7 +330,7 @@ const styles = {
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.06)",
     color: "#fff",
-    marginBottom: 14,
+    marginBottom: 8,
   },
 
   passwordField: { position: "relative" },
@@ -285,12 +352,6 @@ const styles = {
     height: 6,
     borderRadius: 6,
     marginBottom: 4,
-  },
-
-  error: {
-    color: "#ff4d4f",
-    fontSize: 13,
-    marginBottom: 12,
   },
 
   submit: {
@@ -327,6 +388,25 @@ const styles = {
     zIndex: 2000,
   },
 
+  modal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 18,
+    width: 320,
+    textAlign: "center",
+  },
+
+  modalBtn: {
+    marginTop: 20,
+    padding: "10px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "#22F2A6",
+    fontWeight: 700,
+    cursor: "pointer",
+    width: "100%",
+  },
+
   loadingModal: {
     background: "#1A0F2E",
     padding: 28,
@@ -345,3 +425,8 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 };
+
+/* spinner */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);

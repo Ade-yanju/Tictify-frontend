@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { fetchOrganizerDashboard } from "../../services/dashboardService";
 import { getToken, logout } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
@@ -17,29 +17,27 @@ const EMPTY_DASHBOARD = {
 
 export default function OrganizerDashboard() {
   const navigate = useNavigate();
+  const pollingRef = useRef(null);
 
   const [data, setData] = useState(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
-
-  const [modal, setModal] = useState({
-    open: false,
-    message: "",
-  });
+  const [modal, setModal] = useState({ open: false, message: "" });
 
   /* ================= LOAD DASHBOARD ================= */
   async function loadDashboard() {
     try {
       const res = await fetchOrganizerDashboard();
 
-      // ✅ HARDEN AGAINST BAD API RESPONSES
       setData({
         stats: res?.stats ?? EMPTY_DASHBOARD.stats,
         events: Array.isArray(res?.events) ? res.events : [],
       });
     } catch (err) {
+      clearInterval(pollingRef.current);
       setModal({
         open: true,
-        message: err.message || "Session expired. Please login again.",
+        message:
+          err?.message || "Your session has expired. Please login again.",
       });
     } finally {
       setLoading(false);
@@ -49,24 +47,26 @@ export default function OrganizerDashboard() {
   /* ================= SAFE POLLING ================= */
   useEffect(() => {
     loadDashboard();
-    const interval = setInterval(loadDashboard, 15000);
-    return () => clearInterval(interval);
+
+    pollingRef.current = setInterval(loadDashboard, 15000);
+    return () => clearInterval(pollingRef.current);
   }, []);
 
   /* ================= LOGOUT ================= */
   function handleLogout() {
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   return (
-    <div style={styles.page}>
-      {/* ================= LOADING MODAL ================= */}
+    <main style={styles.page}>
       {loading && <LoadingModal />}
 
-      {/* ================= ERROR MODAL ================= */}
       {modal.open && (
-        <Modal message={modal.message} onConfirm={() => navigate("/login")} />
+        <Modal
+          message={modal.message}
+          onConfirm={() => navigate("/login")}
+        />
       )}
 
       {/* ================= HEADER ================= */}
@@ -74,15 +74,17 @@ export default function OrganizerDashboard() {
         <div>
           <h1 style={styles.title}>Organizer Dashboard</h1>
           <p style={styles.muted}>
-            Welcome back, manage your events in real time
+            Manage events, sales, and revenue in real time
           </p>
         </div>
 
         <div style={styles.headerActions}>
-          <Stat
-            label="Wallet Balance"
-            value={`₦${data.stats.walletBalance.toLocaleString()}`}
-          />
+          <div style={styles.wallet}>
+            <span style={styles.walletLabel}>Wallet</span>
+            <strong style={styles.walletValue}>
+              ₦{data.stats.walletBalance.toLocaleString()}
+            </strong>
+          </div>
 
           <button
             style={styles.primaryBtn}
@@ -103,12 +105,12 @@ export default function OrganizerDashboard() {
       <section style={styles.grid}>
         <Action
           title="My Events"
-          desc="View & manage events"
+          desc="Create & manage events"
           onClick={() => navigate("/organizer/events")}
         />
         <Action
           title="Ticket Sales"
-          desc="Track sales & revenue"
+          desc="Track ticket revenue"
           onClick={() => navigate("/organizer/sales")}
         />
         <Action
@@ -118,11 +120,11 @@ export default function OrganizerDashboard() {
         />
         <Action
           title="Event Stats"
-          desc="Event Stat"
+          desc="Detailed event analytics"
           onClick={() => navigate("/organizer/stats")}
         />
         <Action
-          title="Withdraw Revenue"
+          title="Withdraw"
           desc="Transfer earnings"
           onClick={() => navigate("/organizer/withdraw")}
         />
@@ -138,22 +140,24 @@ export default function OrganizerDashboard() {
 
       {/* ================= EVENTS ================= */}
       <section style={styles.section}>
-        <h2>My Events</h2>
+        <h2 style={styles.sectionTitle}>Recent Events</h2>
 
         {data.events.length === 0 ? (
           <p style={styles.muted}>No events created yet.</p>
         ) : (
           data.events.map((event) => (
-            <div key={event._id} style={styles.event}>
-              <div style={{ minWidth: 180 }}>
-                <strong>{event.title}</strong>
+            <article key={event._id} style={styles.event}>
+              <div>
+                <strong style={styles.eventTitle}>{event.title}</strong>
                 <p style={styles.muted}>
                   {event.sold}/{event.capacity} tickets sold
                 </p>
               </div>
 
               <div style={styles.eventActions}>
-                <span style={styles.status(event.status)}>{event.status}</span>
+                <span style={styles.status(event.status)}>
+                  {event.status}
+                </span>
 
                 <button
                   style={styles.linkBtn}
@@ -164,11 +168,11 @@ export default function OrganizerDashboard() {
                   View
                 </button>
               </div>
-            </div>
+            </article>
           ))
         )}
       </section>
-    </div>
+    </main>
   );
 }
 
@@ -178,17 +182,17 @@ function Stat({ label, value }) {
   return (
     <div style={styles.stat}>
       <p style={styles.muted}>{label}</p>
-      <h2>{value}</h2>
+      <h3 style={styles.statValue}>{value}</h3>
     </div>
   );
 }
 
 function Action({ title, desc, onClick }) {
   return (
-    <div style={styles.action} onClick={onClick}>
+    <button style={styles.action} onClick={onClick}>
       <h3>{title}</h3>
       <p style={styles.muted}>{desc}</p>
-    </div>
+    </button>
   );
 }
 
@@ -197,7 +201,7 @@ function LoadingModal() {
     <div style={styles.modalOverlay}>
       <div style={styles.loadingModal}>
         <div style={styles.spinner} />
-        <p style={{ marginTop: 14 }}>Loading dashboard…</p>
+        <p style={{ marginTop: 12 }}>Loading dashboard…</p>
       </div>
     </div>
   );
@@ -207,8 +211,8 @@ function Modal({ message, onConfirm }) {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
-        <h3>Error</h3>
-        <p>{message}</p>
+        <h3>Session Error</h3>
+        <p style={styles.muted}>{message}</p>
         <button style={styles.modalBtn} onClick={onConfirm}>
           Login
         </button>
@@ -221,8 +225,8 @@ function Modal({ message, onConfirm }) {
 
 const styles = {
   page: {
-    minHeight: "100vh",
-    padding: "clamp(16px,4vw,32px)",
+    minHeight: "100svh",
+    padding: "clamp(16px,4vw,40px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -238,28 +242,49 @@ const styles = {
   },
 
   title: {
-    fontSize: "clamp(22px,5vw,30px)",
+    fontSize: "clamp(22px,4vw,32px)",
   },
 
   headerActions: {
     display: "flex",
-    flexWrap: "wrap",
     gap: 12,
+    flexWrap: "wrap",
     alignItems: "center",
+  },
+
+  wallet: {
+    background: "rgba(255,255,255,0.08)",
+    padding: "10px 16px",
+    borderRadius: 999,
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  walletLabel: {
+    fontSize: 12,
+    color: "#CFC9D6",
+  },
+
+  walletValue: {
+    fontSize: 16,
+    fontWeight: 700,
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
     gap: 16,
-    marginBottom: 32,
+    marginBottom: 36,
   },
 
   action: {
     background: "rgba(255,255,255,0.07)",
-    padding: 20,
-    borderRadius: 18,
+    padding: 22,
+    borderRadius: 20,
+    textAlign: "left",
     cursor: "pointer",
+    border: "none",
+    color: "#fff",
   },
 
   stats: {
@@ -272,39 +297,61 @@ const styles = {
   stat: {
     background: "rgba(255,255,255,0.08)",
     padding: 22,
-    borderRadius: 18,
+    borderRadius: 20,
+  },
+
+  statValue: {
+    marginTop: 6,
+    fontSize: 20,
   },
 
   section: {
     marginTop: 32,
   },
 
+  sectionTitle: {
+    marginBottom: 16,
+  },
+
   event: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 14,
     background: "rgba(255,255,255,0.05)",
     padding: 18,
-    borderRadius: 16,
-    marginTop: 16,
+    borderRadius: 18,
+    marginTop: 14,
+  },
+
+  eventTitle: {
+    fontSize: 15,
   },
 
   eventActions: {
     display: "flex",
     gap: 12,
     alignItems: "center",
+    flexWrap: "wrap",
   },
 
   status: (status) => ({
-    fontWeight: 700,
+    padding: "4px 10px",
+    borderRadius: 999,
     fontSize: 12,
+    fontWeight: 700,
+    background:
+      status === "LIVE"
+        ? "rgba(34,242,166,0.15)"
+        : status === "ENDED"
+        ? "rgba(255,77,79,0.15)"
+        : "rgba(250,219,20,0.15)",
     color:
       status === "LIVE"
         ? "#22F2A6"
         : status === "ENDED"
-          ? "#ff4d4f"
-          : "#fadb14",
+        ? "#ff4d4f"
+        : "#fadb14",
   }),
 
   primaryBtn: {
@@ -344,7 +391,7 @@ const styles = {
     background: "rgba(0,0,0,0.65)",
     display: "grid",
     placeItems: "center",
-    zIndex: 1000,
+    zIndex: 2000,
   },
 
   loadingModal: {
@@ -367,16 +414,16 @@ const styles = {
 
   modal: {
     background: "#1A0F2E",
-    padding: 24,
-    borderRadius: 18,
+    padding: 26,
+    borderRadius: 20,
     width: "90%",
     maxWidth: 360,
     textAlign: "center",
   },
 
   modalBtn: {
-    marginTop: 20,
-    padding: "10px 20px",
+    marginTop: 18,
+    padding: "10px 22px",
     borderRadius: 999,
     border: "none",
     background: "#22F2A6",

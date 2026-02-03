@@ -164,8 +164,7 @@ export default function WithdrawRevenue() {
         <h1 style={styles.title}>Withdraw Revenue</h1>
 
         <p style={styles.muted}>
-          Available balance:{" "}
-          <strong>₦{balance.toLocaleString()}</strong>
+          Available balance: <strong>₦{balance.toLocaleString()}</strong>
         </p>
 
         <label style={styles.label}>Amount (₦)</label>

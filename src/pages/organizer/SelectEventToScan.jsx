@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getToken } from "../../services/authService";
 
+/* ================= SAFE DEFAULT ================= */
+const EMPTY_EVENTS = [];
+
 export default function SelectEventToScan() {
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState(EMPTY_EVENTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,7 +47,7 @@ export default function SelectEventToScan() {
 
   return (
     <div style={styles.page}>
-      {/* ================= LOADING MODAL ================= */}
+      {/* ================= LOADING ================= */}
       {loading && <LoadingModal />}
 
       {/* ================= HEADER ================= */}
@@ -74,7 +77,7 @@ export default function SelectEventToScan() {
         </div>
       )}
 
-      {/* ================= EMPTY STATE ================= */}
+      {/* ================= EMPTY ================= */}
       {!loading && !error && events.length === 0 && (
         <div style={styles.empty}>
           <p style={styles.muted}>No active events available for scanning.</p>
@@ -89,13 +92,24 @@ export default function SelectEventToScan() {
 
       {/* ================= EVENT LIST ================= */}
       {!loading && !error && events.length > 0 && (
-        <div style={styles.list}>
+        <div style={styles.grid}>
           {events.map((event) => (
             <button
               key={event._id}
               style={styles.card}
               onClick={() => navigate(`/organizer/scan?event=${event._id}`)}
             >
+              {/* BANNER */}
+              <div style={styles.bannerWrap}>
+                <img
+                  src={event.banner}
+                  alt={event.title}
+                  style={styles.banner}
+                />
+                <span style={styles.liveBadge}>LIVE</span>
+              </div>
+
+              {/* INFO */}
               <div style={styles.cardInfo}>
                 <strong style={styles.eventTitle}>{event.title}</strong>
                 <span style={styles.small}>
@@ -114,7 +128,6 @@ export default function SelectEventToScan() {
 }
 
 /* ================= LOADING MODAL ================= */
-
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
@@ -127,7 +140,6 @@ function LoadingModal() {
 }
 
 /* ================= STYLES ================= */
-
 const styles = {
   page: {
     minHeight: "100vh",
@@ -135,6 +147,7 @@ const styles = {
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
+    overflowX: "hidden",
   },
 
   header: {
@@ -160,22 +173,52 @@ const styles = {
     fontSize: 14,
   },
 
-  list: {
+  /* GRID */
+  grid: {
     display: "grid",
-    gap: 16,
+    gap: 18,
+    gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
   },
 
   card: {
     background: "rgba(255,255,255,0.08)",
-    padding: 20,
-    borderRadius: 18,
-    display: "flex",
-    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 20,
+    display: "grid",
+    gridTemplateColumns: "72px 1fr auto",
+    gap: 14,
     alignItems: "center",
     cursor: "pointer",
     border: "none",
     color: "#fff",
     textAlign: "left",
+  },
+
+  bannerWrap: {
+    position: "relative",
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    overflow: "hidden",
+    background: "#000",
+  },
+
+  banner: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+
+  liveBadge: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    background: "#22F2A6",
+    color: "#000",
+    fontSize: 10,
+    fontWeight: 800,
+    padding: "3px 6px",
+    borderRadius: 999,
   },
 
   cardInfo: {
@@ -186,8 +229,10 @@ const styles = {
   },
 
   eventTitle: {
-    fontSize: 16,
-    marginBottom: 2,
+    fontSize: 15,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
 
   scanBtn: {
@@ -241,8 +286,7 @@ const styles = {
     cursor: "pointer",
   },
 
-  /* ===== MODAL ===== */
-
+  /* MODAL */
   modalOverlay: {
     position: "fixed",
     inset: 0,

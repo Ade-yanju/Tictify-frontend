@@ -32,40 +32,35 @@ export default function PublicEvents() {
 
   /* ================= HELPERS ================= */
 
-  const getStartingPrice = (ticketTypes = []) => {
-    const prices = ticketTypes
-      .map((t) => Number(t.price) || 0)
-      .filter((p) => p > 0);
-
-    return prices.length ? `₦${Math.min(...prices)}` : "Free";
-  };
-
   const getRemainingTickets = (event) => {
     const sold = (event.ticketTypes || []).reduce(
       (sum, t) => sum + (t.sold || 0),
       0,
     );
-    return Math.max((event.capacity || 0) - sold, 0);
+    return Math.max(event.capacity - sold, 0);
+  };
+
+  const getStartingPrice = (ticketTypes = []) => {
+    const prices = ticketTypes
+      .map((t) => Number(t.price) || 0)
+      .filter((p) => p > 0);
+    return prices.length ? `₦${Math.min(...prices)}` : "Free";
   };
 
   /**
-   * ✅ Countdown aware of start + end
+   * 🔥 EVENT STATE
    */
-  const getCountdown = (start, end) => {
+  const getEventState = (event) => {
     const now = new Date();
-    const startTime = new Date(start);
-    const endTime = new Date(end);
+    const start = new Date(event.date);
+    const end = new Date(event.endDate);
+    const remaining = getRemainingTickets(event);
 
-    if (now >= endTime) return "Event ended";
-    if (now >= startTime) return "Ongoing";
+    if (now >= end) return { label: "Event Ended", type: "ENDED" };
+    if (remaining === 0) return { label: "Sold Out", type: "SOLD_OUT" };
+    if (now >= start) return { label: "Ongoing", type: "ONGOING" };
 
-    const diff = startTime - now;
-    const hours = Math.floor(diff / 36e5);
-    const days = Math.floor(hours / 24);
-
-    return days > 0
-      ? `Starts in ${days} day${days > 1 ? "s" : ""}`
-      : `Starts in ${hours} hour${hours > 1 ? "s" : ""}`;
+    return { label: "Upcoming", type: "UPCOMING" };
   };
 
   /* ================= FILTER ================= */
@@ -78,22 +73,16 @@ export default function PublicEvents() {
     );
   }, [events, search]);
 
-  /* ================= FEATURED ================= */
-  const featuredIds = useMemo(() => {
-    return [...events]
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 3)
-      .map((e) => e._id);
-  }, [events]);
-
   return (
     <main style={styles.page}>
       {loading && <LoadingModal />}
 
-      {/* ================= HEADER ================= */}
+      {/* HEADER */}
       <header style={styles.header}>
-        <h1 style={styles.heading}>Upcoming Events</h1>
-        <p style={styles.subtitle}>Discover events happening around you</p>
+        <h1 style={styles.heading}>Events</h1>
+        <p style={styles.subtitle}>
+          Discover events happening around you
+        </p>
 
         <input
           style={styles.search}
@@ -103,17 +92,19 @@ export default function PublicEvents() {
         />
       </header>
 
-      {error && !loading && <p style={styles.error}>{error}</p>}
+      {error && <p style={styles.error}>{error}</p>}
 
-      {!loading && !error && filteredEvents.length === 0 && (
-        <p style={styles.empty}>No matching events found.</p>
+      {!loading && filteredEvents.length === 0 && (
+        <p style={styles.empty}>No events found.</p>
       )}
 
-      {/* ================= GRID ================= */}
+      {/* GRID */}
       <section style={styles.grid}>
         {filteredEvents.map((event) => {
           const remaining = getRemainingTickets(event);
-          const featured = featuredIds.includes(event._id);
+          const state = getEventState(event);
+          const disabled =
+            state.type === "ENDED" || state.type === "SOLD_OUT";
 
           return (
             <article key={event._id} style={styles.card}>
@@ -123,21 +114,19 @@ export default function PublicEvents() {
                   src={event.banner}
                   alt={event.title}
                   style={styles.image}
-                  loading="lazy"
                 />
-                {featured && <span style={styles.featured}>Featured</span>}
+                <span style={styles.badge(state.type)}>
+                  {state.label}
+                </span>
               </div>
 
               {/* BODY */}
               <div style={styles.cardBody}>
                 <h3 style={styles.title}>{event.title}</h3>
 
-                <p style={styles.meta}>📍 {event.location || "TBA"}</p>
+                <p style={styles.meta}>📍 {event.location}</p>
                 <p style={styles.meta}>
                   📅 {new Date(event.date).toDateString()}
-                </p>
-                <p style={styles.meta}>
-                  ⏳ {getCountdown(event.date, event.endDate)}
                 </p>
 
                 <p style={styles.tickets}>
@@ -152,10 +141,16 @@ export default function PublicEvents() {
                 </span>
 
                 <button
-                  style={styles.cta}
-                  onClick={() => navigate(`/events/${event._id}`)}
+                  style={{
+                    ...styles.cta,
+                    ...(disabled && styles.disabledBtn),
+                  }}
+                  disabled={disabled}
+                  onClick={() =>
+                    !disabled && navigate(`/events/${event._id}`)
+                  }
                 >
-                  View Event →
+                  {disabled ? "Unavailable" : "View Event →"}
                 </button>
               </div>
             </article>
@@ -172,7 +167,7 @@ function LoadingModal() {
     <div style={styles.modalOverlay}>
       <div style={styles.loadingModal}>
         <div style={styles.spinner} />
-        <p style={{ marginTop: 12 }}>Loading events…</p>
+        <p>Loading events…</p>
       </div>
     </div>
   );
@@ -182,47 +177,47 @@ function LoadingModal() {
 
 const styles = {
   page: {
-    minHeight: "100vh",
-    padding: "clamp(16px, 4vw, 40px)",
+    minHeight: "100svh",
+    padding: "clamp(16px, 3vw, 48px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
 
   header: {
-    maxWidth: 1280,
+    maxWidth: 1400,
     margin: "0 auto 32px",
     textAlign: "center",
   },
 
   heading: {
-    fontSize: "clamp(22px, 4vw, 36px)",
+    fontSize: "clamp(24px, 4vw, 40px)",
   },
 
   subtitle: {
     color: "#CFC9D6",
-    marginTop: 6,
     fontSize: 14,
   },
 
   search: {
     marginTop: 20,
     width: "100%",
-    maxWidth: 420,
-    padding: "12px 18px",
+    maxWidth: 480,
+    padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.06)",
     color: "#fff",
-    outline: "none",
   },
 
+  /* 🔥 RESPONSIVE GRID */
   grid: {
-    maxWidth: 1280,
+    maxWidth: 1400,
     margin: "0 auto",
     display: "grid",
     gap: 24,
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
   },
 
   card: {
@@ -231,12 +226,11 @@ const styles = {
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    height: "100%",
   },
 
   imageWrapper: {
     position: "relative",
-    height: 200,
+    aspectRatio: "16 / 9",
   },
 
   image: {
@@ -245,17 +239,22 @@ const styles = {
     objectFit: "cover",
   },
 
-  featured: {
+  badge: (type) => ({
     position: "absolute",
     top: 12,
     left: 12,
-    background: "#22F2A6",
-    color: "#000",
-    padding: "4px 12px",
+    padding: "6px 14px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
-  },
+    background:
+      type === "ONGOING"
+        ? "#22F2A6"
+        : type === "UPCOMING"
+        ? "#3b82f6"
+        : "#ff4d4f",
+    color: "#000",
+  }),
 
   cardBody: {
     padding: 16,
@@ -264,29 +263,27 @@ const styles = {
 
   title: {
     fontSize: 18,
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
   meta: {
     fontSize: 14,
     color: "#CFC9D6",
-    marginBottom: 6,
   },
 
   tickets: {
     marginTop: 10,
-    fontSize: 14,
     color: "#22F2A6",
     fontWeight: 600,
   },
 
   cardFooter: {
     padding: 16,
+    borderTop: "1px solid rgba(255,255,255,0.08)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
-    borderTop: "1px solid rgba(255,255,255,0.08)",
     flexWrap: "wrap",
   },
 
@@ -296,15 +293,21 @@ const styles = {
   },
 
   cta: {
-    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
-    border: "none",
-    padding: "10px 18px",
+    padding: "12px 20px",
     borderRadius: 999,
-    fontWeight: 600,
+    border: "none",
+    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
+    fontWeight: 700,
     cursor: "pointer",
     color: "#000",
     width: "100%",
-    maxWidth: 180,
+    maxWidth: 200,
+  },
+
+  disabledBtn: {
+    background: "rgba(255,255,255,0.2)",
+    cursor: "not-allowed",
+    color: "#999",
   },
 
   empty: {
@@ -316,16 +319,14 @@ const styles = {
   error: {
     color: "#ff4d4f",
     textAlign: "center",
-    marginBottom: 24,
   },
 
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.65)",
+    background: "rgba(0,0,0,0.6)",
     display: "grid",
     placeItems: "center",
-    zIndex: 1000,
   },
 
   loadingModal: {
@@ -333,16 +334,19 @@ const styles = {
     padding: 28,
     borderRadius: 18,
     textAlign: "center",
-    width: "90%",
-    maxWidth: 320,
   },
 
   spinner: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     border: "4px solid rgba(255,255,255,0.2)",
     borderTop: "4px solid #22F2A6",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
 };
+
+/* SPINNER */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);

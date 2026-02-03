@@ -10,16 +10,31 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [modal, setModal] = useState(null); // { type, message }
+
+  const emailValid = validateEmail(email);
+  const strength = getPasswordStrength(password);
 
   /* ================= LOGIN ================= */
   async function handleSubmit(e) {
     e.preventDefault();
     if (loading) return;
 
-    setError("");
-    setLoading(true);
+    if (!emailValid) {
+      return setModal({
+        type: "error",
+        message: "Please enter a valid email address",
+      });
+    }
 
+    if (!password) {
+      return setModal({
+        type: "error",
+        message: "Password is required",
+      });
+    }
+
+    setLoading(true);
     try {
       const res = await login({ email, password });
       const { user } = res;
@@ -33,7 +48,10 @@ export default function Login() {
         { replace: true },
       );
     } catch {
-      setError("Invalid email or password");
+      setModal({
+        type: "error",
+        message: "Invalid email or password",
+      });
     } finally {
       setLoading(false);
     }
@@ -59,11 +77,17 @@ export default function Login() {
     };
   }, [navigate]);
 
-  const strength = getPasswordStrength(password);
-
   return (
     <div style={styles.viewport}>
       {loading && <LoadingModal />}
+
+      {modal && (
+        <Modal
+          type={modal.type}
+          message={modal.message}
+          onClose={() => setModal(null)}
+        />
+      )}
 
       {/* BACK */}
       <button style={styles.backBtn} onClick={() => navigate("/")}>
@@ -84,6 +108,18 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
+        {email && (
+          <p
+            style={{
+              fontSize: 12,
+              marginBottom: 12,
+              color: emailValid ? "#22F2A6" : "#ff4d4f",
+            }}
+          >
+            {emailValid ? "Valid email address" : "Invalid email format"}
+          </p>
+        )}
 
         <div style={styles.passwordField}>
           <input
@@ -118,10 +154,8 @@ export default function Login() {
           </div>
         )}
 
-        {error && <p style={styles.error}>{error}</p>}
-
         <button style={styles.submit} disabled={loading}>
-          {loading ? "Signing in…" : "Login"}
+          Login
         </button>
 
         <p style={styles.footer}>
@@ -139,7 +173,8 @@ export default function Login() {
   );
 }
 
-/* ================= LOADING MODAL ================= */
+/* ================= MODALS ================= */
+
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
@@ -151,7 +186,28 @@ function LoadingModal() {
   );
 }
 
-/* ================= PASSWORD STRENGTH ================= */
+function Modal({ type, message, onClose }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <h3 style={{ color: type === "error" ? "#ff4d4f" : "#22F2A6" }}>
+          {type === "error" ? "Login Failed" : "Success"}
+        </h3>
+        <p style={{ marginTop: 10 }}>{message}</p>
+        <button style={styles.modalBtn} onClick={onClose}>
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================= HELPERS ================= */
+
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function getPasswordStrength(password) {
   if (password.length < 4)
     return { label: "Too short", width: "25%", color: "#ff4d4f" };
@@ -163,9 +219,10 @@ function getPasswordStrength(password) {
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   viewport: {
-    minHeight: "100vh",
+    minHeight: "100svh", // 🔥 mobile-safe
     display: "grid",
     placeItems: "center",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
@@ -194,13 +251,9 @@ const styles = {
     backdropFilter: "blur(16px)",
     padding: "clamp(24px,5vw,36px)",
     borderRadius: 24,
-    boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
 
-  title: {
-    marginBottom: 6,
-    fontSize: 24,
-  },
+  title: { marginBottom: 6, fontSize: "clamp(20px,4vw,26px)" },
 
   subtitle: {
     color: "#CFC9D6",
@@ -217,12 +270,10 @@ const styles = {
     color: "#fff",
     outline: "none",
     fontSize: 14,
-    marginBottom: 14,
+    marginBottom: 8,
   },
 
-  passwordField: {
-    position: "relative",
-  },
+  passwordField: { position: "relative" },
 
   eye: {
     position: "absolute",
@@ -235,21 +286,13 @@ const styles = {
     cursor: "pointer",
   },
 
-  strength: {
-    marginBottom: 16,
-  },
+  strength: { marginBottom: 16 },
 
   strengthBar: {
     height: 6,
     borderRadius: 6,
     marginBottom: 4,
     transition: "width 0.3s ease",
-  },
-
-  error: {
-    color: "#ff4d4f",
-    fontSize: 13,
-    marginBottom: 12,
   },
 
   submit: {
@@ -286,6 +329,25 @@ const styles = {
     zIndex: 2000,
   },
 
+  modal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 18,
+    width: 320,
+    textAlign: "center",
+  },
+
+  modalBtn: {
+    marginTop: 20,
+    padding: "10px 20px",
+    borderRadius: 999,
+    border: "none",
+    background: "#22F2A6",
+    fontWeight: 700,
+    cursor: "pointer",
+    width: "100%",
+  },
+
   loadingModal: {
     background: "#1A0F2E",
     padding: 28,
@@ -304,3 +366,8 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 };
+
+/* spinner */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);

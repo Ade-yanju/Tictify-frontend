@@ -26,7 +26,7 @@ export default function TicketSales() {
   });
 
   useEffect(() => {
-    let mounted = true; // 👈 prevents state update after unmount
+    let mounted = true;
 
     async function loadSales() {
       try {
@@ -42,7 +42,6 @@ export default function TicketSales() {
         if (!res.ok) throw new Error("Failed to load ticket sales");
 
         const json = await res.json();
-
         if (!mounted) return;
 
         setData({
@@ -65,7 +64,6 @@ export default function TicketSales() {
         });
       } catch (err) {
         if (!mounted) return;
-
         setModal({
           open: true,
           type: "error",
@@ -78,86 +76,101 @@ export default function TicketSales() {
     }
 
     loadSales();
-
     return () => {
       mounted = false;
     };
   }, []);
 
+  const earnings =
+    data.stats.totalRevenue - data.stats.platformFees;
+
   return (
     <div style={styles.page}>
-      {/* LOADING MODAL */}
+      {/* ================= LOADING ================= */}
       {loading && <LoadingModal />}
 
-      {/* ERROR MODAL */}
+      {/* ================= ERROR MODAL ================= */}
       {modal.open && (
         <Modal
           type={modal.type}
           message={modal.message}
-          onClose={() => setModal((m) => ({ ...m, open: false }))}
+          onClose={() =>
+            setModal((m) => ({ ...m, open: false }))
+          }
         />
       )}
 
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <header style={styles.header}>
         <button
           style={styles.backBtn}
-          onClick={() => navigate("/organizer/dashboard")}
+          onClick={() =>
+            navigate("/organizer/dashboard")
+          }
         >
-          ← Back
+          ← Dashboard
         </button>
 
         <div>
           <h1 style={styles.title}>Ticket Sales</h1>
           <p style={styles.muted}>
-            Track ticket purchases, fees, and earnings
+            Track ticket purchases, revenue & attendance
           </p>
         </div>
       </header>
 
-      {/* STATS */}
+      {/* ================= SUMMARY STATS ================= */}
       <section style={styles.statsGrid}>
-        <Stat title="Tickets Sold" value={data.stats.totalTickets} />
+        <Stat label="Tickets Sold" value={data.stats.totalTickets} />
         <Stat
-          title="Gross Revenue"
+          label="Gross Revenue"
           value={`₦${data.stats.totalRevenue.toLocaleString()}`}
         />
         <Stat
-          title="Platform Fees"
+          label="Platform Fees"
           value={`₦${data.stats.platformFees.toLocaleString()}`}
         />
         <Stat
-          title="Your Earnings"
-          value={`₦${(
-            data.stats.totalRevenue - data.stats.platformFees
-          ).toLocaleString()}`}
+          label="Your Earnings"
+          highlight
+          value={`₦${earnings.toLocaleString()}`}
         />
-        <Stat title="Scanned" value={data.stats.scanned} />
-        <Stat title="Pending Entry" value={data.stats.unscanned} />
+        <Stat label="Scanned" value={data.stats.scanned} />
+        <Stat
+          label="Pending Entry"
+          value={data.stats.unscanned}
+        />
       </section>
 
-      {/* EVENT BREAKDOWN */}
+      {/* ================= EVENT BREAKDOWN ================= */}
       <section style={styles.section}>
-        <h2>Sales by Event</h2>
+        <h2 style={styles.sectionTitle}>Sales by Event</h2>
 
         {data.events.length === 0 ? (
           <p style={styles.muted}>No ticket sales yet.</p>
         ) : (
           <div style={styles.list}>
             {data.events.map((event) => (
-              <div key={event.eventId} style={styles.eventCard}>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <h3 style={styles.eventTitle}>{event.title}</h3>
-                  <p style={styles.muted}>
+              <div
+                key={event.eventId}
+                style={styles.eventCard}
+              >
+                <div style={styles.eventInfo}>
+                  <strong style={styles.eventTitle}>
+                    {event.title}
+                  </strong>
+                  <span style={styles.small}>
                     {event.ticketsSold} tickets sold
-                  </p>
+                  </span>
                 </div>
 
-                <div style={styles.right}>
+                <div style={styles.eventRight}>
                   <span style={styles.revenue}>
                     ₦{event.revenue.toLocaleString()}
                   </span>
-                  <span style={styles.status(event.status)}>
+                  <span
+                    style={styles.status(event.status)}
+                  >
                     {event.status}
                   </span>
                 </div>
@@ -172,11 +185,16 @@ export default function TicketSales() {
 
 /* ================= COMPONENTS ================= */
 
-function Stat({ title, value }) {
+function Stat({ label, value, highlight }) {
   return (
-    <div style={styles.statCard}>
-      <p style={styles.muted}>{title}</p>
-      <h2 style={styles.statValue}>{value}</h2>
+    <div
+      style={{
+        ...styles.statCard,
+        ...(highlight && styles.highlight),
+      }}
+    >
+      <span style={styles.small}>{label}</span>
+      <strong style={styles.statValue}>{value}</strong>
     </div>
   );
 }
@@ -186,7 +204,9 @@ function LoadingModal() {
     <div style={styles.modalOverlay}>
       <div style={styles.loadingModal}>
         <div style={styles.spinner} />
-        <p style={{ marginTop: 16 }}>Loading ticket sales…</p>
+        <p style={{ marginTop: 14 }}>
+          Loading ticket sales…
+        </p>
       </div>
     </div>
   );
@@ -196,7 +216,14 @@ function Modal({ type, message, onClose }) {
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modal}>
-        <h3 style={{ color: type === "error" ? "#ff4d4f" : "#22F2A6" }}>
+        <h3
+          style={{
+            color:
+              type === "error"
+                ? "#ff4d4f"
+                : "#22F2A6",
+          }}
+        >
           {type === "error" ? "Error" : "Success"}
         </h3>
         <p style={{ marginTop: 10 }}>{message}</p>
@@ -208,14 +235,12 @@ function Modal({ type, message, onClose }) {
   );
 }
 
-
-
 /* ================= STYLES ================= */
 
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: "20px 16px",
+    padding: "clamp(16px,4vw,32px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
@@ -226,7 +251,7 @@ const styles = {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     marginBottom: 32,
   },
 
@@ -241,13 +266,14 @@ const styles = {
   },
 
   title: {
-    fontSize: 26,
-    margin: 0,
+    fontSize: "clamp(22px,5vw,28px)",
+    marginBottom: 4,
   },
 
   statsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(160px,1fr))",
     gap: 14,
     marginBottom: 36,
   },
@@ -258,20 +284,30 @@ const styles = {
     borderRadius: 18,
   },
 
+  highlight: {
+    background:
+      "linear-gradient(135deg,rgba(34,242,166,0.25),rgba(255,255,255,0.06))",
+  },
+
   statValue: {
+    display: "block",
     fontSize: 22,
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: 700,
   },
 
   section: {
     marginTop: 32,
   },
 
+  sectionTitle: {
+    marginBottom: 14,
+  },
+
   list: {
     display: "flex",
     flexDirection: "column",
     gap: 14,
-    marginTop: 16,
   },
 
   eventCard: {
@@ -285,12 +321,18 @@ const styles = {
     borderRadius: 16,
   },
 
-  eventTitle: {
-    fontSize: 16,
-    marginBottom: 4,
+  eventInfo: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    minWidth: 180,
   },
 
-  right: {
+  eventTitle: {
+    fontSize: 16,
+  },
+
+  eventRight: {
     display: "flex",
     alignItems: "center",
     gap: 12,
@@ -304,7 +346,7 @@ const styles = {
 
   status: (status) => ({
     fontSize: 12,
-    fontWeight: 600,
+    fontWeight: 700,
     color:
       status === "LIVE"
         ? "#22F2A6"
@@ -316,6 +358,11 @@ const styles = {
   muted: {
     color: "#CFC9D6",
     fontSize: 14,
+  },
+
+  small: {
+    fontSize: 12,
+    color: "#CFC9D6",
   },
 
   modalOverlay: {
@@ -360,7 +407,7 @@ const styles = {
     borderRadius: 999,
     border: "none",
     background: "#22F2A6",
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
   },
 };

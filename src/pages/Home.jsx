@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const logo = "/logo.png";
 
@@ -33,6 +33,25 @@ export default function Home() {
 function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  /* 🔑 RESPONSIVE DETECTION */
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const update = () => {
+      setIsMobile(mq.matches);
+      if (!mq.matches) setOpen(false);
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  /* 🔒 LOCK SCROLL WHEN MENU OPEN */
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
+  }, [open]);
 
   const scrollTo = (id) => {
     setOpen(false);
@@ -50,27 +69,36 @@ function Navbar() {
             onClick={() => scrollTo("home")}
           />
 
-          {/* DESKTOP */}
-          <div style={styles.navLinks}>
-            <NavLinks scrollTo={scrollTo} navigate={navigate} />
-          </div>
+          {/* DESKTOP NAV */}
+          {!isMobile && (
+            <div style={styles.navLinks}>
+              <NavLinks scrollTo={scrollTo} navigate={navigate} />
+            </div>
+          )}
 
-          {/* MOBILE */}
-          <button style={styles.menuBtn} onClick={() => setOpen(!open)}>
-            ☰
-          </button>
+          {/* MOBILE TOGGLE */}
+          {isMobile && (
+            <button
+              aria-label="Open menu"
+              style={styles.menuBtn}
+              onClick={() => setOpen((v) => !v)}
+            >
+              ☰
+            </button>
+          )}
         </nav>
-
-        {open && (
-          <div style={styles.mobileMenu}>
-            <NavLinks
-              scrollTo={scrollTo}
-              navigate={navigate}
-              mobile
-            />
-          </div>
-        )}
       </div>
+
+      {/* MOBILE MENU */}
+      {isMobile && open && (
+        <div style={styles.mobileMenu}>
+          <NavLinks
+            scrollTo={scrollTo}
+            navigate={navigate}
+            mobile
+          />
+        </div>
+      )}
     </header>
   );
 }
@@ -156,7 +184,7 @@ function Hero() {
   );
 }
 
-/* ================= SECTIONS (unchanged logic) ================= */
+/* ================= SECTIONS ================= */
 function Trust() {
   return (
     <section style={styles.trust}>
@@ -286,23 +314,27 @@ function PriceCard({ title, price, text }) {
   );
 }
 
-
 /* ================= STYLES ================= */
 const styles = {
   page: {
     background: "#0F0618",
     color: "#FFFFFF",
-    fontFamily: "Inter, system-ui, sans-serif",
+    fontFamily: "Inter, system-ui",
     overflowX: "hidden",
   },
 
   container: {
-    maxWidth: 1100,
+    maxWidth: 1200,
     margin: "0 auto",
-    padding: "0 20px",
+    padding: "0 clamp(16px,4vw,32px)",
   },
 
   header: {
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    backdropFilter: "blur(12px)",
+    background: "rgba(15,6,24,0.8)",
     borderBottom: "1px solid rgba(255,255,255,0.08)",
   },
 
@@ -311,28 +343,44 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    flexWrap: "wrap",
   },
 
   navLinks: {
     display: "flex",
     gap: 16,
     alignItems: "center",
-    flexWrap: "wrap",
+  },
+
+  menuBtn: {
+    background: "none",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "6px 12px",
+    borderRadius: 8,
+    fontSize: 20,
+    cursor: "pointer",
+  },
+
+  mobileMenu: {
+    display: "grid",
+    gap: 16,
+    padding: 24,
+    background: "#0F0618",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
   },
 
   logo: { height: 34, cursor: "pointer" },
 
   hero: {
-    padding: "96px 0 64px",
+    padding: "clamp(72px,10vw,120px) 0 64px",
   },
 
   heroContent: {
-    maxWidth: 600,
+    maxWidth: 620,
   },
 
   heroTitle: {
-    fontSize: "clamp(32px,5vw,48px)",
+    fontSize: "clamp(30px,5vw,52px)",
     margin: "16px 0",
   },
 
@@ -355,7 +403,6 @@ const styles = {
   marqueeViewport: {
     marginTop: 72,
     overflow: "hidden",
-    width: "100%",
   },
 
   marqueeTrack: {
@@ -367,7 +414,6 @@ const styles = {
   marqueeItem: {
     flex: "0 0 33.3333%",
     padding: "0 12px",
-    boxSizing: "border-box",
   },
 
   marqueeImage: {
@@ -387,11 +433,11 @@ const styles = {
   },
 
   section: {
-    padding: "88px 0",
+    padding: "clamp(64px,10vw,96px) 0",
   },
 
   sectionAlt: {
-    padding: "88px 0",
+    padding: "clamp(64px,10vw,96px) 0",
     background: "#170A25",
   },
 
@@ -437,6 +483,15 @@ const styles = {
     cursor: "pointer",
   },
 
+  primaryBtnFull: {
+    background: "#22F2A6",
+    border: "none",
+    padding: 14,
+    borderRadius: 999,
+    fontWeight: 600,
+    width: "100%",
+  },
+
   secondaryBtn: {
     background: "transparent",
     border: "1px solid #22F2A6",
@@ -455,6 +510,15 @@ const styles = {
     cursor: "pointer",
   },
 
+  outlineBtnFull: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: 14,
+    borderRadius: 999,
+    width: "100%",
+  },
+
   linkBtn: {
     background: "none",
     border: "none",
@@ -468,21 +532,13 @@ const styles = {
 /* ================= GLOBAL CSS ================= */
 const globalCSS = `
 @keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
-section {
-  scroll-margin-top: 80px;
-}
+section { scroll-margin-top: 96px; }
 
-@media (max-width: 768px) {
-  .marqueeItem {
-    flex: 0 0 100%;
-  }
+@media (max-width: 900px) {
+  .marqueeItem { flex: 0 0 100%; }
 }
 `;
