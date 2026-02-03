@@ -52,26 +52,33 @@ export default function MyEvents() {
   }
 
   async function deleteEvent(id) {
-    if (processingId) return;
-    setProcessingId(id);
+  if (processingId) return;
+  setProcessingId(id);
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/events/${id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${getToken()}` },
-        },
-      );
-      if (!res.ok) throw new Error("Delete failed");
-      await fetchEvents();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setProcessingId(null);
-      setConfirmDelete(null);
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/events/${id}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      },
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Delete failed");
     }
+
+    await fetchEvents();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setProcessingId(null);
+    setConfirmDelete(null);
   }
+}
+
 
   function copyEventLink(id) {
     const link = `${window.location.origin}/events/${id}`;
