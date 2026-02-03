@@ -80,9 +80,7 @@ export default function PublicEvents() {
       {/* HEADER */}
       <header style={styles.header}>
         <h1 style={styles.heading}>Events</h1>
-        <p style={styles.subtitle}>
-          Discover events happening around you
-        </p>
+        <p style={styles.subtitle}>Discover events happening around you</p>
 
         <input
           style={styles.search}
@@ -103,8 +101,7 @@ export default function PublicEvents() {
         {filteredEvents.map((event) => {
           const remaining = getRemainingTickets(event);
           const state = getEventState(event);
-          const disabled =
-            state.type === "ENDED" || state.type === "SOLD_OUT";
+          const disabled = state.type === "ENDED" || state.type === "SOLD_OUT";
 
           return (
             <article key={event._id} style={styles.card}>
@@ -115,9 +112,7 @@ export default function PublicEvents() {
                   alt={event.title}
                   style={styles.image}
                 />
-                <span style={styles.badge(state.type)}>
-                  {state.label}
-                </span>
+                <span style={styles.badge(state.type)}>{state.label}</span>
               </div>
 
               {/* BODY */}
@@ -146,9 +141,7 @@ export default function PublicEvents() {
                     ...(disabled && styles.disabledBtn),
                   }}
                   disabled={disabled}
-                  onClick={() =>
-                    !disabled && navigate(`/events/${event._id}`)
-                  }
+                  onClick={() => !disabled && navigate(`/events/${event._id}`)}
                 >
                   {disabled ? "Unavailable" : "View Event →"}
                 </button>
@@ -216,8 +209,7 @@ const styles = {
     margin: "0 auto",
     display: "grid",
     gap: 24,
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
   },
 
   card: {
@@ -230,7 +222,9 @@ const styles = {
 
   imageWrapper: {
     position: "relative",
-    aspectRatio: "16 / 9",
+    height: 140, // 👈 DEFAULT (mobile & desktop)
+    overflow: "hidden",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
   },
 
   image: {
@@ -251,8 +245,8 @@ const styles = {
       type === "ONGOING"
         ? "#22F2A6"
         : type === "UPCOMING"
-        ? "#3b82f6"
-        : "#ff4d4f",
+          ? "#3b82f6"
+          : "#ff4d4f",
     color: "#000",
   }),
 

@@ -7,7 +7,7 @@ export default function Checkout() {
   const [searchParams] = useSearchParams();
   const touchStartX = useRef(0);
 
-  const ticketName = searchParams.get("ticket");
+  const ticketParam = searchParams.get("ticket");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,8 +29,8 @@ export default function Checkout() {
 
   /* ================= LOAD EVENT ================= */
   useEffect(() => {
-    if (!id || !ticketName) {
-      setError("Invalid checkout link.");
+    if (!id) {
+      setError("This checkout link is invalid or has expired.");
       setLoading(false);
       return;
     }
@@ -40,24 +40,30 @@ export default function Checkout() {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
         );
+
         if (!res.ok) throw new Error("Event not found");
 
         const data = await res.json();
-        const selected = data.ticketTypes?.find(
-          (t) => t.name === ticketName,
-        );
 
-        if (!selected) throw new Error("Invalid ticket selection");
+        if (!Array.isArray(data.ticketTypes) || data.ticketTypes.length === 0) {
+          throw new Error("No tickets available for this event.");
+        }
+
+        // ✅ SAFE TICKET RESOLUTION
+        const resolvedTicket =
+          data.ticketTypes.find(
+            (t) => t.name.toLowerCase() === ticketParam?.toLowerCase(),
+          ) || data.ticketTypes[0];
 
         setEvent(data);
-        setTicket(selected);
+        setTicket(resolvedTicket);
       } catch (err) {
         setError(err.message || "Unable to prepare checkout.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id, ticketName]);
+  }, [id, ticketParam]);
 
   /* ================= PAYMENT ================= */
   async function handlePayment() {
@@ -82,6 +88,7 @@ export default function Checkout() {
       );
 
       const data = await res.json();
+
       if (!res.ok || !data?.paymentUrl) {
         throw new Error(data.message || "Payment initialization failed");
       }
@@ -104,6 +111,7 @@ export default function Checkout() {
 
     window.addEventListener("touchstart", start);
     window.addEventListener("touchend", end);
+
     return () => {
       window.removeEventListener("touchstart", start);
       window.removeEventListener("touchend", end);
@@ -143,7 +151,7 @@ export default function Checkout() {
       />
 
       <div style={styles.container}>
-        {/* LEFT */}
+        {/* EVENT INFO */}
         <section style={styles.left}>
           <h1 style={styles.title}>{event.title}</h1>
 
@@ -155,11 +163,12 @@ export default function Checkout() {
           <p style={styles.description}>{event.description}</p>
         </section>
 
-        {/* RIGHT */}
+        {/* CHECKOUT */}
         <aside style={styles.right}>
           <div style={styles.card}>
             <h2 style={styles.heading}>Order Summary</h2>
 
+            {/* NAME */}
             <input
               style={styles.input}
               placeholder="Full Name"
@@ -170,6 +179,7 @@ export default function Checkout() {
               <p style={styles.inputError}>Enter your full name</p>
             )}
 
+            {/* EMAIL */}
             <input
               style={styles.input}
               placeholder="Email Address"
@@ -178,15 +188,27 @@ export default function Checkout() {
               onChange={(e) => setEmail(e.target.value)}
             />
             {!emailValid && email && (
-              <p style={styles.inputError}>
-                Enter a valid email address
-              </p>
+              <p style={styles.inputError}>Enter a valid email address</p>
             )}
 
-            <div style={styles.row}>
-              <span>Ticket</span>
-              <strong>{ticket.name}</strong>
-            </div>
+            {/* TICKET SELECT (fallback-safe) */}
+            {event.ticketTypes.length > 1 && (
+              <select
+                style={styles.input}
+                value={ticket.name}
+                onChange={(e) =>
+                  setTicket(
+                    event.ticketTypes.find((t) => t.name === e.target.value),
+                  )
+                }
+              >
+                {event.ticketTypes.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name} — {t.price > 0 ? `₦${t.price}` : "Free"}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <div style={styles.divider} />
 
@@ -309,12 +331,6 @@ const styles = {
     fontSize: 12,
     color: "#ff4d4f",
     marginBottom: 10,
-  },
-
-  row: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 14,
   },
 
   divider: {
