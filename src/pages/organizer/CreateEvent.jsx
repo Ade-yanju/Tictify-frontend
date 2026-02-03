@@ -10,7 +10,8 @@ export default function CreateEvent() {
     title: "",
     description: "",
     location: "",
-    date: "",
+    startTime: "",
+    endTime: "",
     capacity: "",
     ticketTypes: [{ name: "Regular", price: "", quantity: "" }],
   });
@@ -34,21 +35,37 @@ export default function CreateEvent() {
   const addTicket = () => {
     setForm({
       ...form,
-      ticketTypes: [...form.ticketTypes, { name: "", price: "", quantity: "" }],
+      ticketTypes: [
+        ...form.ticketTypes,
+        { name: "", price: "", quantity: "" },
+      ],
     });
   };
 
   const validate = () => {
     if (!banner) return "Event banner is required";
-    if (!form.title || !form.location || !form.date || !form.capacity) {
+    if (
+      !form.title ||
+      !form.location ||
+      !form.startTime ||
+      !form.endTime ||
+      !form.capacity
+    ) {
       return "All event fields are required";
     }
+
+    if (new Date(form.endTime) <= new Date(form.startTime)) {
+      return "Event end time must be after start time";
+    }
+
     for (const t of form.ticketTypes) {
-      if (!t.name || !t.quantity) return "Ticket name & quantity required";
+      if (!t.name || !t.quantity)
+        return "Ticket name & quantity required";
       if (eventType === "PAID" && t.price === "") {
         return "Price is required for paid events";
       }
     }
+
     return null;
   };
 
@@ -63,7 +80,11 @@ export default function CreateEvent() {
       const bannerUrl = await uploadBanner();
 
       const payload = {
-        ...form,
+        title: form.title,
+        description: form.description,
+        location: form.location,
+        startTime: form.startTime,
+        endTime: form.endTime,
         status,
         banner: bannerUrl,
         capacity: Number(form.capacity),
@@ -115,7 +136,6 @@ export default function CreateEvent() {
     return data.data.url;
   };
 
-  /* ================= UI ================= */
   return (
     <div style={styles.page}>
       {loading && <LoadingModal />}
@@ -129,9 +149,8 @@ export default function CreateEvent() {
         />
       )}
 
-      {/* BACK */}
-      <button style={styles.backBtn} onClick={() => navigate("/organizer/dashboard")}>
-        ← Back to Dashboard
+      <button style={styles.backBtn} onClick={() => navigate(-1)}>
+        ← Back
       </button>
 
       <div style={styles.card}>
@@ -158,7 +177,7 @@ export default function CreateEvent() {
           {preview ? (
             <img src={preview} style={styles.bannerImg} />
           ) : (
-            <span>Click to upload event banner</span>
+            <span>Upload event banner</span>
           )}
           <input
             hidden
@@ -175,38 +194,72 @@ export default function CreateEvent() {
         {/* FORM */}
         <div style={styles.grid}>
           <input name="title" placeholder="Event title" onChange={updateField} />
-          <input name="location" placeholder="Location" onChange={updateField} />
-          <input type="datetime-local" name="date" onChange={updateField} />
-          <input type="number" name="capacity" placeholder="Capacity" onChange={updateField} />
+          <input
+            name="location"
+            placeholder="Location"
+            onChange={updateField}
+          />
+          <input
+            type="datetime-local"
+            name="startTime"
+            onChange={updateField}
+          />
+          <input
+            type="datetime-local"
+            name="endTime"
+            onChange={updateField}
+          />
+          <input
+            type="number"
+            name="capacity"
+            placeholder="Capacity"
+            onChange={updateField}
+          />
         </div>
 
         <textarea
           rows={4}
           placeholder="Event description"
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
         />
 
         {/* TICKETS */}
         <h3>Tickets</h3>
         {form.ticketTypes.map((t, i) => (
           <div key={i} style={styles.ticketRow}>
-            <input placeholder="Name" value={t.name} onChange={(e) => updateTicket(i, "name", e.target.value)} />
+            <input
+              placeholder="Name"
+              value={t.name}
+              onChange={(e) =>
+                updateTicket(i, "name", e.target.value)
+              }
+            />
             {eventType === "PAID" && (
-              <input type="number" placeholder="Price ₦" value={t.price} onChange={(e) => updateTicket(i, "price", e.target.value)} />
+              <input
+                type="number"
+                placeholder="Price ₦"
+                value={t.price}
+                onChange={(e) =>
+                  updateTicket(i, "price", e.target.value)
+                }
+              />
             )}
-            <input type="number" placeholder="Qty" value={t.quantity} onChange={(e) => updateTicket(i, "quantity", e.target.value)} />
+            <input
+              type="number"
+              placeholder="Qty"
+              value={t.quantity}
+              onChange={(e) =>
+                updateTicket(i, "quantity", e.target.value)
+              }
+            />
           </div>
         ))}
 
-        <button style={styles.addBtn} onClick={addTicket}>+ Add Ticket</button>
-
-        {/* PREVIEW */}
-        <h3>Preview</h3>
-        <div style={styles.previewCard}>
-          {preview && <img src={preview} style={styles.previewImg} />}
-          <strong>{form.title || "Event Title"}</strong>
-          <p>{form.location || "Location"} • {form.date || "Date"}</p>
-        </div>
+        <button style={styles.addBtn} onClick={addTicket}>
+          + Add Ticket
+        </button>
 
         {/* ACTIONS */}
         <div style={styles.actions}>
@@ -244,21 +297,87 @@ function Modal({ type, message, onClose }) {
 /* ================= STYLES ================= */
 const styles = {
   page: { background: "#0F0618", minHeight: "100vh", padding: 20, color: "#fff" },
-  card: { maxWidth: 900, margin: "auto", background: "rgba(255,255,255,.08)", padding: 24, borderRadius: 20 },
-  backBtn: { background: "transparent", color: "#22F2A6", border: "none", marginBottom: 12, cursor: "pointer" },
+  card: {
+    maxWidth: 900,
+    margin: "auto",
+    background: "rgba(255,255,255,.08)",
+    padding: 24,
+    borderRadius: 20,
+  },
+  backBtn: {
+    background: "transparent",
+    color: "#22F2A6",
+    border: "none",
+    marginBottom: 12,
+    cursor: "pointer",
+  },
   toggle: { display: "flex", gap: 8, marginBottom: 20 },
-  toggleBtn: { flex: 1, padding: 12, borderRadius: 999, border: "1px solid #22F2A6", background: "transparent", color: "#22F2A6" },
+  toggleBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 999,
+    border: "1px solid #22F2A6",
+    background: "transparent",
+    color: "#22F2A6",
+  },
   active: { background: "#22F2A6", color: "#000" },
-  banner: { height: 220, borderRadius: 16, background: "rgba(255,255,255,.05)", display: "grid", placeItems: "center", marginBottom: 20, cursor: "pointer" },
+  banner: {
+    height: 220,
+    borderRadius: 16,
+    background: "rgba(255,255,255,.05)",
+    display: "grid",
+    placeItems: "center",
+    marginBottom: 20,
+    cursor: "pointer",
+  },
   bannerImg: { width: "100%", height: "100%", objectFit: "cover" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 },
-  ticketRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 },
-  addBtn: { marginTop: 8, border: "1px dashed #22F2A6", background: "transparent", color: "#22F2A6", padding: 10, borderRadius: 12 },
-  previewCard: { marginTop: 12, background: "rgba(255,255,255,.06)", padding: 16, borderRadius: 16 },
-  previewImg: { width: "100%", borderRadius: 12, marginBottom: 8 },
-  actions: { display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 },
-  publish: { background: "#22F2A6", border: "none", padding: "10px 20px", borderRadius: 999 },
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", display: "grid", placeItems: "center" },
-  modal: { background: "#1A0F2E", padding: 24, borderRadius: 16, width: 320, textAlign: "center" },
-  loadingModal: { background: "#1A0F2E", padding: 24, borderRadius: 16 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+    gap: 12,
+  },
+  ticketRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+    gap: 8,
+  },
+  addBtn: {
+    marginTop: 8,
+    border: "1px dashed #22F2A6",
+    background: "transparent",
+    color: "#22F2A6",
+    padding: 10,
+    borderRadius: 12,
+  },
+  actions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 20,
+  },
+  publish: {
+    background: "#22F2A6",
+    border: "none",
+    padding: "10px 20px",
+    borderRadius: 999,
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.7)",
+    display: "grid",
+    placeItems: "center",
+  },
+  modal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 16,
+    width: 320,
+    textAlign: "center",
+  },
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 24,
+    borderRadius: 16,
+  },
 };

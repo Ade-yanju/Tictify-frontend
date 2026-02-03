@@ -11,24 +11,23 @@ export default function PublicEvents() {
 
   /* ================= LOAD EVENTS ================= */
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    async function loadEvents() {
+    (async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
         if (!res.ok) throw new Error();
 
         const data = await res.json();
-        if (mounted) setEvents(Array.isArray(data) ? data : []);
+        if (active) setEvents(Array.isArray(data) ? data : []);
       } catch {
-        if (mounted) setError("Unable to load events at the moment.");
+        if (active) setError("Unable to load events at the moment.");
       } finally {
-        if (mounted) setLoading(false);
+        if (active) setLoading(false);
       }
-    }
+    })();
 
-    loadEvents();
-    return () => (mounted = false);
+    return () => (active = false);
   }, []);
 
   /* ================= HELPERS ================= */
@@ -37,6 +36,7 @@ export default function PublicEvents() {
     const prices = ticketTypes
       .map((t) => Number(t.price) || 0)
       .filter((p) => p > 0);
+
     return prices.length ? `₦${Math.min(...prices)}` : "Free";
   };
 
@@ -48,10 +48,18 @@ export default function PublicEvents() {
     return Math.max((event.capacity || 0) - sold, 0);
   };
 
-  const getCountdown = (date) => {
-    const diff = new Date(date) - new Date();
-    if (diff <= 0) return "Starting now";
+  /**
+   * ✅ Countdown aware of start + end
+   */
+  const getCountdown = (start, end) => {
+    const now = new Date();
+    const startTime = new Date(start);
+    const endTime = new Date(end);
 
+    if (now >= endTime) return "Event ended";
+    if (now >= startTime) return "Ongoing";
+
+    const diff = startTime - now;
     const hours = Math.floor(diff / 36e5);
     const days = Math.floor(hours / 24);
 
@@ -62,10 +70,11 @@ export default function PublicEvents() {
 
   /* ================= FILTER ================= */
   const filteredEvents = useMemo(() => {
+    const q = search.toLowerCase().trim();
     return events.filter(
       (e) =>
-        e.title.toLowerCase().includes(search.toLowerCase()) ||
-        (e.location || "").toLowerCase().includes(search.toLowerCase()),
+        e.title?.toLowerCase().includes(q) ||
+        e.location?.toLowerCase().includes(q),
     );
   }, [events, search]);
 
@@ -78,7 +87,7 @@ export default function PublicEvents() {
   }, [events]);
 
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       {loading && <LoadingModal />}
 
       {/* ================= HEADER ================= */}
@@ -101,7 +110,7 @@ export default function PublicEvents() {
       )}
 
       {/* ================= GRID ================= */}
-      <div style={styles.grid}>
+      <section style={styles.grid}>
         {filteredEvents.map((event) => {
           const remaining = getRemainingTickets(event);
           const featured = featuredIds.includes(event._id);
@@ -127,7 +136,9 @@ export default function PublicEvents() {
                 <p style={styles.meta}>
                   📅 {new Date(event.date).toDateString()}
                 </p>
-                <p style={styles.meta}>⏳ {getCountdown(event.date)}</p>
+                <p style={styles.meta}>
+                  ⏳ {getCountdown(event.date, event.endDate)}
+                </p>
 
                 <p style={styles.tickets}>
                   🎟 {remaining} ticket{remaining !== 1 && "s"} left
@@ -150,13 +161,12 @@ export default function PublicEvents() {
             </article>
           );
         })}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
 /* ================= LOADING ================= */
-
 function LoadingModal() {
   return (
     <div style={styles.modalOverlay}>
@@ -173,20 +183,20 @@ function LoadingModal() {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: "clamp(16px,4vw,32px)",
+    padding: "clamp(16px, 4vw, 40px)",
     background: "#0F0618",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
 
   header: {
-    maxWidth: 1200,
+    maxWidth: 1280,
     margin: "0 auto 32px",
     textAlign: "center",
   },
 
   heading: {
-    fontSize: "clamp(22px,4vw,32px)",
+    fontSize: "clamp(22px, 4vw, 36px)",
   },
 
   subtitle: {
@@ -199,7 +209,7 @@ const styles = {
     marginTop: 20,
     width: "100%",
     maxWidth: 420,
-    padding: "12px 16px",
+    padding: "12px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.06)",
@@ -207,19 +217,17 @@ const styles = {
     outline: "none",
   },
 
-  /* ===== GRID ===== */
   grid: {
-    maxWidth: 1200,
+    maxWidth: 1280,
     margin: "0 auto",
     display: "grid",
-    gap: 20,
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 24,
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
   },
 
-  /* ===== CARD ===== */
   card: {
     background: "rgba(255,255,255,0.07)",
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -239,11 +247,11 @@ const styles = {
 
   featured: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    top: 12,
+    left: 12,
     background: "#22F2A6",
     color: "#000",
-    padding: "4px 10px",
+    padding: "4px 12px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
@@ -272,7 +280,6 @@ const styles = {
     fontWeight: 600,
   },
 
-  /* ===== FOOTER ===== */
   cardFooter: {
     padding: 16,
     display: "flex",
@@ -286,19 +293,18 @@ const styles = {
   price: {
     fontWeight: 700,
     color: "#22F2A6",
-    fontSize: 15,
   },
 
   cta: {
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     border: "none",
-    padding: "10px 16px",
+    padding: "10px 18px",
     borderRadius: 999,
     fontWeight: 600,
     cursor: "pointer",
     color: "#000",
     width: "100%",
-    maxWidth: 160,
+    maxWidth: 180,
   },
 
   empty: {
@@ -313,7 +319,6 @@ const styles = {
     marginBottom: 24,
   },
 
-  /* ===== MODAL ===== */
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -341,12 +346,3 @@ const styles = {
     animation: "spin 1s linear infinite",
   },
 };
-
-/* ===== SPINNER ===== */
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-`;
-document.head.appendChild(style);

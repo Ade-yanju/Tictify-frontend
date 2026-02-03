@@ -8,20 +8,14 @@ export default function ScanTicket() {
   const [params] = useSearchParams();
   const eventId = params.get("event");
 
+  const qrRef = useRef(null);
   const scannerRef = useRef(null);
-  const readerRef = useRef(null);
-  const startedRef = useRef(false);
 
   const [manualCode, setManualCode] = useState("");
-  const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState("");
+  const [scanning, setScanning] = useState(false);
 
-  const [modal, setModal] = useState({
-    open: false,
-    type: "success",
-    message: "",
-  });
+  const [modal, setModal] = useState(null);
 
   /* ================= GUARD ================= */
   useEffect(() => {
@@ -30,48 +24,58 @@ export default function ScanTicket() {
     }
   }, [eventId, navigate]);
 
-  /* ================= CAMERA ================= */
-  useEffect(() => {
-    if (!scanning || !eventId || !readerRef.current) return;
-    if (startedRef.current) return;
+  /* ================= START CAMERA (MOBILE SAFE) ================= */
+  const startCamera = async () => {
+    if (!qrRef.current || scanning) return;
 
-    startedRef.current = true;
+    try {
+      const scanner = new Html5Qrcode(qrRef.current.id);
+      scannerRef.current = scanner;
 
-    const scanner = new Html5Qrcode(readerRef.current.id);
-    scannerRef.current = scanner;
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras.length) throw new Error("No camera found");
 
-    // 🔑 MOBILE-SAFE START
-    setTimeout(async () => {
-      try {
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: (w, h) => {
-              const size = Math.min(w, h) * 0.7;
-              return { width: size, height: size };
-            },
-            aspectRatio: 1,
-          },
-          async (decodedText) => {
-            if (processing) return;
-            await handleScan(decodedText);
-          },
-        );
-      } catch (err) {
-        startedRef.current = false;
-        setScanning(false);
-        setModal({
-          open: true,
-          type: "error",
-          message:
-            "Unable to access camera. Please allow camera permission or use manual entry.",
-        });
+      // 🔑 ALWAYS use explicit cameraId on mobile
+      const backCamera =
+        cameras.find((c) => c.label.toLowerCase().includes("back")) ||
+        cameras[cameras.length - 1];
+
+      setScanning(true);
+
+      await scanner.start(
+        backCamera.id,
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
+          disableFlip: true,
+        },
+        async (decodedText) => {
+          if (processing) return;
+          await handleScan(decodedText);
+        },
+      );
+    } catch (err) {
+      stopCamera();
+      setModal({
+        type: "error",
+        message:
+          "Camera could not start. Please allow camera permission or use manual entry.",
+      });
+    }
+  };
+
+  /* ================= STOP CAMERA ================= */
+  const stopCamera = async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+        scannerRef.current = null;
       }
-    }, 300); // ✅ CRITICAL delay for mobile rendering
-
-    return () => stopCamera();
-  }, [scanning, eventId, processing]);
+    } catch {}
+    setScanning(false);
+  };
 
   /* ================= SCAN ================= */
   async function handleScan(code) {
@@ -81,17 +85,15 @@ export default function ScanTicket() {
       const res = await scanTicket({ code, eventId });
 
       setModal({
-        open: true,
         type: "success",
         message: res.message || "Access granted",
       });
 
-      stopCamera();
+      await stopCamera();
     } catch (err) {
       setModal({
-        open: true,
         type: "error",
-        message: err.message || "Invalid, already used, or wrong event ticket",
+        message: err.message || "Invalid, used, or wrong event ticket",
       });
     } finally {
       setTimeout(() => setProcessing(false), 1200);
@@ -102,35 +104,20 @@ export default function ScanTicket() {
   async function handleManualSubmit(e) {
     e.preventDefault();
     if (!manualCode || processing) return;
-
     await handleScan(manualCode.trim());
     setManualCode("");
   }
 
-  function stopCamera() {
-    startedRef.current = false;
-    setScanning(false);
-
-    if (scannerRef.current) {
-      scannerRef.current
-        .stop()
-        .catch(() => {})
-        .finally(() => {
-          scannerRef.current?.clear();
-          scannerRef.current = null;
-        });
-    }
-  }
+  /* ================= CLEANUP ================= */
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   return (
     <div style={styles.page}>
-      {modal.open && (
-        <Modal
-          type={modal.type}
-          message={modal.message}
-          onClose={() => setModal((m) => ({ ...m, open: false }))}
-        />
-      )}
+      {modal && <Modal {...modal} onClose={() => setModal(null)} />}
 
       {processing && (
         <div style={styles.processing}>
@@ -141,7 +128,7 @@ export default function ScanTicket() {
 
       <div style={styles.container}>
         <header style={styles.header}>
-          <h1 style={styles.title}>Scan Tickets</h1>
+          <h1>Scan Tickets</h1>
           <button
             style={styles.backBtn}
             onClick={() => navigate("/organizer/dashboard")}
@@ -150,26 +137,16 @@ export default function ScanTicket() {
           </button>
         </header>
 
-        <p style={styles.muted}>Camera is locked to this event</p>
-
-        {/* CAMERA */}
         <div style={styles.scannerBox}>
-          {scanning ? (
-            <>
-              <div ref={readerRef} id="qr-reader" style={styles.camera} />
-              <button style={styles.stopBtn} onClick={stopCamera}>
-                Stop Camera
-              </button>
-            </>
-          ) : (
-            <button
-              style={styles.primaryBtn}
-              onClick={() => {
-                setError("");
-                setScanning(true);
-              }}
-            >
+          <div id="qr-reader" ref={qrRef} style={styles.camera} />
+
+          {!scanning ? (
+            <button style={styles.primaryBtn} onClick={startCamera}>
               🎥 Start Camera Scan
+            </button>
+          ) : (
+            <button style={styles.stopBtn} onClick={stopCamera}>
+              Stop Camera
             </button>
           )}
         </div>
@@ -183,12 +160,8 @@ export default function ScanTicket() {
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
           />
-          <button style={styles.secondaryBtn} disabled={processing}>
-            Verify Code
-          </button>
+          <button style={styles.secondaryBtn}>Verify Code</button>
         </form>
-
-        {error && <p style={styles.error}>{error}</p>}
       </div>
     </div>
   );
@@ -202,7 +175,7 @@ function Modal({ type, message, onClose }) {
         <h3 style={{ color: type === "error" ? "#ff4d4f" : "#22F2A6" }}>
           {type === "error" ? "Access Denied" : "Access Granted"}
         </h3>
-        <p style={{ marginTop: 10 }}>{message}</p>
+        <p>{message}</p>
         <button style={styles.modalBtn} onClick={onClose}>
           OK
         </button>
@@ -214,171 +187,115 @@ function Modal({ type, message, onClose }) {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: "100svh", // 🔥 mobile-safe viewport
+    minHeight: "100svh",
     background: "#0F0618",
-    color: "#fff",
     display: "grid",
     placeItems: "center",
     padding: 16,
-    fontFamily: "Inter, system-ui",
+    color: "#fff",
   },
-
   container: {
     width: "100%",
     maxWidth: 420,
     textAlign: "center",
   },
-
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
-
-  title: {
-    fontSize: "clamp(20px, 4vw, 26px)",
-  },
-
-  backBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "6px 12px",
-    borderRadius: 999,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  muted: {
-    color: "#CFC9D6",
-    marginBottom: 20,
-    fontSize: 14,
-  },
-
   scannerBox: {
     background: "rgba(255,255,255,0.08)",
-    borderRadius: 20,
     padding: 16,
-    marginBottom: 20,
+    borderRadius: 20,
   },
-
   camera: {
     width: "100%",
-    height: "min(70vw, 320px)", // 🔥 critical
-    borderRadius: 12,
-    overflow: "hidden",
+    height: 320, // 🔥 MUST BE FIXED HEIGHT
     background: "#000",
-  },
-
-  stopBtn: {
-    marginTop: 12,
-    padding: 12,
-    width: "100%",
-    borderRadius: 999,
-    border: "none",
-    background: "#ff4d4f",
-    color: "#fff",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  divider: {
-    margin: "16px 0",
-    fontSize: 12,
-    color: "#888",
-  },
-
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-
-  input: {
-    padding: 14,
     borderRadius: 12,
-    border: "none",
-    outline: "none",
   },
-
   primaryBtn: {
+    marginTop: 12,
+    width: "100%",
     padding: 14,
     borderRadius: 999,
     border: "none",
     background: "#22F2A6",
     fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
   },
-
+  stopBtn: {
+    marginTop: 12,
+    width: "100%",
+    padding: 14,
+    borderRadius: 999,
+    background: "#ff4d4f",
+    color: "#fff",
+    border: "none",
+  },
+  divider: {
+    margin: "16px 0",
+    fontSize: 12,
+    color: "#aaa",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  input: {
+    padding: 14,
+    borderRadius: 12,
+    border: "none",
+  },
   secondaryBtn: {
     padding: 14,
     borderRadius: 999,
     border: "1px solid #22F2A6",
     background: "transparent",
     color: "#22F2A6",
-    fontWeight: 700,
-    cursor: "pointer",
   },
-
   processing: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.7)",
+    background: "rgba(0,0,0,.7)",
     display: "grid",
     placeItems: "center",
     zIndex: 1000,
-    color: "#fff",
-    fontWeight: 600,
   },
-
   spinner: {
     width: 36,
     height: 36,
-    border: "4px solid rgba(255,255,255,0.2)",
+    border: "4px solid rgba(255,255,255,.2)",
     borderTop: "4px solid #22F2A6",
     borderRadius: "50%",
-    marginBottom: 12,
     animation: "spin 1s linear infinite",
   },
-
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.7)",
+    background: "rgba(0,0,0,.7)",
     display: "grid",
     placeItems: "center",
-    zIndex: 999,
+    zIndex: 1000,
   },
-
   modal: {
     background: "#1A0F2E",
     padding: 24,
-    borderRadius: 20,
-    maxWidth: 320,
-    width: "100%",
+    borderRadius: 16,
+    width: 300,
   },
-
   modalBtn: {
-    marginTop: 20,
-    padding: "10px 20px",
-    borderRadius: 999,
-    border: "none",
-    background: "#22F2A6",
-    fontWeight: 700,
-    cursor: "pointer",
+    marginTop: 16,
     width: "100%",
-  },
-
-  error: {
-    color: "#ff4d4f",
-    marginTop: 12,
-    fontSize: 13,
+    padding: 12,
+    borderRadius: 999,
+    background: "#22F2A6",
+    border: "none",
   },
 };
 
 /* ===== SPINNER ===== */
 const style = document.createElement("style");
-style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+style.innerHTML = "@keyframes spin { to { transform: rotate(360deg); } }";
 document.head.appendChild(style);
