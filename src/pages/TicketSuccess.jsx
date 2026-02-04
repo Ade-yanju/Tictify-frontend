@@ -10,9 +10,7 @@ export default function TicketSuccess() {
   const [status, setStatus] = useState("LOADING");
   const [data, setData] = useState(null);
   const [message, setMessage] = useState("Preparing your ticket…");
-
   const [downloading, setDownloading] = useState(false);
-  const imagesRef = useRef({ banner: null, qr: null });
 
   /* ================= LOAD TICKET ================= */
   useEffect(() => {
@@ -54,28 +52,17 @@ export default function TicketSuccess() {
     return () => clearInterval(interval);
   }, [reference]);
 
-  /* ================= PRELOAD IMAGES ONCE ================= */
-  useEffect(() => {
-    if (!data) return;
+  /* ================= SAFE IMAGE LOADER (CORS-FREE) ================= */
+  async function loadImageAsBase64(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
 
-    const load = (src) =>
-      new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-      });
-
-    (async () => {
-      try {
-        imagesRef.current.banner = await load(data.event.banner);
-        imagesRef.current.qr = await load(data.ticket.qrImage);
-      } catch {
-        // silently fail — handled during download
-      }
-    })();
-  }, [data]);
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
 
   /* ================= PDF GENERATION ================= */
   async function downloadPDF() {
@@ -84,12 +71,9 @@ export default function TicketSuccess() {
 
     try {
       const { event, ticket } = data;
-      const banner = imagesRef.current.banner;
-      const qr = imagesRef.current.qr;
 
-      if (!banner || !qr) {
-        throw new Error("Assets not ready");
-      }
+      const bannerBase64 = await loadImageAsBase64(event.banner);
+      const qrBase64 = await loadImageAsBase64(ticket.qrImage);
 
       const doc = new jsPDF({
         orientation: "portrait",
@@ -99,38 +83,45 @@ export default function TicketSuccess() {
 
       const pageWidth = doc.internal.pageSize.getWidth();
 
+      // Background
       doc.setFillColor(245, 247, 250);
       doc.rect(0, 0, pageWidth, 842, "F");
 
-      doc.addImage(banner, "JPEG", 40, 30, pageWidth - 80, 150);
+      // Banner
+      doc.addImage(bannerBase64, "JPEG", 40, 30, pageWidth - 80, 140);
 
-      doc.setFontSize(22);
+      // Title
+      doc.setFontSize(20);
       doc.setTextColor("#111");
-      doc.text(event.title, pageWidth / 2, 215, { align: "center" });
+      doc.text(event.title, pageWidth / 2, 210, { align: "center" });
 
+      // Meta
       doc.setFontSize(12);
       doc.setTextColor("#444");
       doc.text(
         `${new Date(event.date).toDateString()} • ${event.location}`,
         pageWidth / 2,
-        238,
+        232,
         { align: "center" },
       );
 
-      doc.roundedRect(40, 265, pageWidth - 80, 120, 12, 12);
+      // Info Box
+      doc.roundedRect(40, 255, pageWidth - 80, 120, 12, 12);
       doc.setFontSize(14);
-      doc.text(`Ticket Type: ${ticket.ticketType}`, 60, 305);
-      doc.text(`Guest Email: ${ticket.buyerEmail || "—"}`, 60, 330);
-      doc.text(`Reference: ${reference}`, 60, 355);
+      doc.text(`Ticket Type: ${ticket.ticketType}`, 60, 295);
+      doc.text(`Guest Email: ${ticket.buyerEmail || "—"}`, 60, 320);
+      doc.text(`Reference: ${reference}`, 60, 345);
 
-      doc.addImage(qr, "PNG", pageWidth / 2 - 90, 410, 180, 180);
+      // QR Code
+      doc.addImage(qrBase64, "PNG", pageWidth / 2 - 80, 400, 160, 160);
 
+      // Footer
       doc.setFontSize(10);
       doc.setTextColor("#777");
       doc.text(
         "Present this ticket at the entrance • Powered by Tictify",
         pageWidth / 2,
-        640,
+        610,
         { align: "center" },
       );
 
@@ -142,7 +133,7 @@ export default function TicketSuccess() {
     }
   }
 
-  /* ================= SWIPE BACK (MOBILE ONLY) ================= */
+  /* ================= MOBILE SWIPE BACK ================= */
   useEffect(() => {
     const start = (e) => (touchStartX.current = e.touches[0].clientX);
     const end = (e) => {
@@ -167,7 +158,7 @@ export default function TicketSuccess() {
   if (status === "ERROR") {
     return (
       <div style={styles.page}>
-        <div style={styles.errorCard}>
+        <div style={styles.card}>
           <h2>Error</h2>
           <p>{message}</p>
           <button style={styles.primaryBtn} onClick={() => navigate("/")}>
@@ -216,7 +207,7 @@ export default function TicketSuccess() {
   );
 }
 
-/* ================= LOADING MODAL ================= */
+/* ================= LOADING ================= */
 function LoadingModal({ message }) {
   return (
     <div style={styles.modalOverlay}>
@@ -231,12 +222,11 @@ function LoadingModal({ message }) {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: "100vh", // ✅ desktop safe
+    minHeight: "100vh",
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    padding: "clamp(16px,4vw,40px)",
+    display: "grid",
+    placeItems: "center",
+    padding: "clamp(16px, 4vw, 48px)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
@@ -245,15 +235,14 @@ const styles = {
     width: "100%",
     maxWidth: 520,
     background: "rgba(255,255,255,0.08)",
-    padding: "clamp(24px,4vw,40px)",
+    padding: "clamp(20px, 4vw, 40px)",
     borderRadius: 24,
     textAlign: "center",
-    marginTop: 40,
   },
 
   icon: { fontSize: 56, marginBottom: 12 },
 
-  title: { fontSize: "clamp(22px,4vw,28px)" },
+  title: { fontSize: "clamp(22px, 4vw, 28px)" },
 
   subtitle: {
     fontSize: 14,
@@ -268,11 +257,12 @@ const styles = {
   },
 
   qr: {
-    width: "min(220px, 70vw)",
+    width: "100%",
+    maxWidth: 220,
     background: "#fff",
     padding: 12,
     borderRadius: 12,
-    marginBottom: 20,
+    margin: "0 auto 20px",
   },
 
   primaryBtn: {
@@ -314,8 +304,9 @@ const styles = {
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
-
-  errorCard: {
-    textAlign: "center",
-  },
 };
+
+/* SPINNER */
+const style = document.createElement("style");
+style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);
