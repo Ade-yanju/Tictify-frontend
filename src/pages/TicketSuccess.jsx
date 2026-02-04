@@ -11,6 +11,9 @@ export default function TicketSuccess() {
   const [data, setData] = useState(null);
   const [message, setMessage] = useState("Preparing your ticket…");
 
+  const [downloading, setDownloading] = useState(false);
+  const imagesRef = useRef({ banner: null, qr: null });
+
   /* ================= LOAD TICKET ================= */
   useEffect(() => {
     if (!reference) {
@@ -51,77 +54,95 @@ export default function TicketSuccess() {
     return () => clearInterval(interval);
   }, [reference]);
 
+  /* ================= PRELOAD IMAGES ONCE ================= */
+  useEffect(() => {
+    if (!data) return;
+
+    const load = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    (async () => {
+      try {
+        imagesRef.current.banner = await load(data.event.banner);
+        imagesRef.current.qr = await load(data.ticket.qrImage);
+      } catch {
+        // silently fail — handled during download
+      }
+    })();
+  }, [data]);
+
   /* ================= PDF GENERATION ================= */
   async function downloadPDF() {
-    const { event, ticket } = data;
+    if (downloading || !data) return;
+    setDownloading(true);
 
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4",
-    });
+    try {
+      const { event, ticket } = data;
+      const banner = imagesRef.current.banner;
+      const qr = imagesRef.current.qr;
 
-    const pageWidth = doc.internal.pageSize.getWidth();
+      if (!banner || !qr) {
+        throw new Error("Assets not ready");
+      }
 
-    // 🌄 BACKDROP
-    doc.setFillColor(245, 247, 250);
-    doc.rect(0, 0, pageWidth, 842, "F");
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
 
-    // 🖼 EVENT BANNER
-    const banner = await loadImage(event.banner);
-    doc.addImage(banner, "JPEG", 40, 30, pageWidth - 80, 160);
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-    // 🎟 TITLE
-    doc.setFontSize(22);
-    doc.setTextColor("#111");
-    doc.text(event.title, pageWidth / 2, 220, { align: "center" });
+      doc.setFillColor(245, 247, 250);
+      doc.rect(0, 0, pageWidth, 842, "F");
 
-    // 📅 META
-    doc.setFontSize(12);
-    doc.setTextColor("#444");
-    doc.text(
-      `${new Date(event.date).toDateString()} • ${event.location}`,
-      pageWidth / 2,
-      245,
-      { align: "center" },
-    );
+      doc.addImage(banner, "JPEG", 40, 30, pageWidth - 80, 150);
 
-    // 📄 INFO BOX
-    doc.setDrawColor(220);
-    doc.roundedRect(40, 270, pageWidth - 80, 120, 12, 12);
+      doc.setFontSize(22);
+      doc.setTextColor("#111");
+      doc.text(event.title, pageWidth / 2, 215, { align: "center" });
 
-    doc.setFontSize(14);
-    doc.text(`Ticket Type: ${ticket.ticketType}`, 60, 310);
-    doc.text(`Guest Email: ${ticket.buyerEmail || "—"}`, 60, 335);
-    doc.text(`Reference: ${reference}`, 60, 360);
+      doc.setFontSize(12);
+      doc.setTextColor("#444");
+      doc.text(
+        `${new Date(event.date).toDateString()} • ${event.location}`,
+        pageWidth / 2,
+        238,
+        { align: "center" },
+      );
 
-    // 🔳 QR CODE
-    const qr = await loadImage(ticket.qrImage);
-    doc.addImage(qr, "PNG", pageWidth / 2 - 90, 420, 180, 180);
+      doc.roundedRect(40, 265, pageWidth - 80, 120, 12, 12);
+      doc.setFontSize(14);
+      doc.text(`Ticket Type: ${ticket.ticketType}`, 60, 305);
+      doc.text(`Guest Email: ${ticket.buyerEmail || "—"}`, 60, 330);
+      doc.text(`Reference: ${reference}`, 60, 355);
 
-    // 🔒 FOOTER
-    doc.setFontSize(10);
-    doc.setTextColor("#777");
-    doc.text(
-      "Present this ticket at the entrance • Powered by Tictify",
-      pageWidth / 2,
-      640,
-      { align: "center" },
-    );
+      doc.addImage(qr, "PNG", pageWidth / 2 - 90, 410, 180, 180);
 
-    doc.save(`tictify-ticket-${reference}.pdf`);
+      doc.setFontSize(10);
+      doc.setTextColor("#777");
+      doc.text(
+        "Present this ticket at the entrance • Powered by Tictify",
+        pageWidth / 2,
+        640,
+        { align: "center" },
+      );
+
+      doc.save(`tictify-ticket-${reference}.pdf`);
+    } catch {
+      alert("Unable to generate ticket. Please refresh and try again.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  function loadImage(src) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.src = src;
-    });
-  }
-
-  /* ================= SWIPE BACK ================= */
+  /* ================= SWIPE BACK (MOBILE ONLY) ================= */
   useEffect(() => {
     const start = (e) => (touchStartX.current = e.touches[0].clientX);
     const end = (e) => {
@@ -140,11 +161,7 @@ export default function TicketSuccess() {
 
   /* ================= STATES ================= */
   if (status === "LOADING") {
-    return (
-      <div style={styles.page}>
-        <LoadingModal message={message} />
-      </div>
-    );
+    return <LoadingModal message={message} />;
   }
 
   if (status === "ERROR") {
@@ -169,7 +186,7 @@ export default function TicketSuccess() {
         <div style={styles.icon}>🎟️</div>
 
         <h1 style={styles.title}>Your Ticket Is Ready</h1>
-        <p style={styles.subtitle}>Download your official event ticket below</p>
+        <p style={styles.subtitle}>Download your official event ticket</p>
 
         <div style={styles.info}>
           <strong>{event.title}</strong>
@@ -182,8 +199,15 @@ export default function TicketSuccess() {
 
         <img src={ticket.qrImage} alt="QR Code" style={styles.qr} />
 
-        <button style={styles.primaryBtn} onClick={downloadPDF}>
-          Download Ticket (PDF)
+        <button
+          style={{
+            ...styles.primaryBtn,
+            opacity: downloading ? 0.6 : 1,
+          }}
+          disabled={downloading}
+          onClick={downloadPDF}
+        >
+          {downloading ? "Preparing PDF…" : "Download Ticket (PDF)"}
         </button>
 
         <p style={styles.ref}>Reference: {reference}</p>
@@ -207,11 +231,12 @@ function LoadingModal({ message }) {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: "100svh",
+    minHeight: "100vh", // ✅ desktop safe
     background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
-    display: "grid",
-    placeItems: "center",
-    padding: "clamp(16px,4vw,32px)",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    padding: "clamp(16px,4vw,40px)",
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
@@ -220,16 +245,15 @@ const styles = {
     width: "100%",
     maxWidth: 520,
     background: "rgba(255,255,255,0.08)",
-    padding: "clamp(28px,5vw,40px)",
+    padding: "clamp(24px,4vw,40px)",
     borderRadius: 24,
     textAlign: "center",
+    marginTop: 40,
   },
 
   icon: { fontSize: 56, marginBottom: 12 },
 
-  title: {
-    fontSize: "clamp(22px,4vw,28px)",
-  },
+  title: { fontSize: "clamp(22px,4vw,28px)" },
 
   subtitle: {
     fontSize: 14,
@@ -265,5 +289,33 @@ const styles = {
     fontSize: 12,
     color: "#9F97B2",
     wordBreak: "break-all",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.65)",
+    display: "grid",
+    placeItems: "center",
+  },
+
+  loadingModal: {
+    background: "#1A0F2E",
+    padding: 28,
+    borderRadius: 18,
+    textAlign: "center",
+  },
+
+  spinner: {
+    width: 34,
+    height: 34,
+    border: "4px solid rgba(255,255,255,0.2)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  },
+
+  errorCard: {
+    textAlign: "center",
   },
 };

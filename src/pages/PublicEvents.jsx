@@ -170,7 +170,7 @@ function LoadingModal() {
 
 const styles = {
   page: {
-    minHeight: "100svh",
+    minHeight: "100vh", // ✅ desktop-safe
     padding: "clamp(16px, 3vw, 48px)",
     background: "#0F0618",
     color: "#fff",
@@ -178,7 +178,7 @@ const styles = {
   },
 
   header: {
-    maxWidth: 1400,
+    maxWidth: 1200,
     margin: "0 auto 32px",
     textAlign: "center",
   },
@@ -195,7 +195,7 @@ const styles = {
   search: {
     marginTop: 20,
     width: "100%",
-    maxWidth: 480,
+    maxWidth: 420,
     padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.15)",
@@ -203,28 +203,25 @@ const styles = {
     color: "#fff",
   },
 
-  /* 🔥 RESPONSIVE GRID */
   grid: {
-    maxWidth: 1400,
+    maxWidth: 1200,
     margin: "0 auto",
     display: "grid",
-    gap: 24,
-    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+    gap: 20,
+    gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
   },
 
   card: {
     background: "rgba(255,255,255,0.07)",
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
   },
 
   imageWrapper: {
-    position: "relative",
-    height: 140, // 👈 DEFAULT (mobile & desktop)
+    height: 120, // 👈 smaller & consistent
     overflow: "hidden",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
   },
 
   image: {
@@ -235,11 +232,11 @@ const styles = {
 
   badge: (type) => ({
     position: "absolute",
-    top: 12,
-    left: 12,
-    padding: "6px 14px",
+    top: 10,
+    left: 10,
+    padding: "6px 12px",
     borderRadius: 999,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
     background:
       type === "ONGOING"
@@ -251,51 +248,49 @@ const styles = {
   }),
 
   cardBody: {
-    padding: 16,
-    flexGrow: 1,
+    padding: 14,
   },
 
   title: {
-    fontSize: 18,
-    marginBottom: 8,
+    fontSize: 16,
+    marginBottom: 6,
   },
 
   meta: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#CFC9D6",
   },
 
   tickets: {
-    marginTop: 10,
+    marginTop: 8,
     color: "#22F2A6",
     fontWeight: 600,
+    fontSize: 13,
   },
 
   cardFooter: {
-    padding: 16,
+    padding: 14,
     borderTop: "1px solid rgba(255,255,255,0.08)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
+    gap: 10,
   },
 
   price: {
     fontWeight: 700,
     color: "#22F2A6",
+    fontSize: 14,
   },
 
   cta: {
-    padding: "12px 20px",
+    padding: "10px 16px",
     borderRadius: 999,
     border: "none",
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
     fontWeight: 700,
     cursor: "pointer",
     color: "#000",
-    width: "100%",
-    maxWidth: 200,
   },
 
   disabledBtn: {
