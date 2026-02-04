@@ -53,7 +53,6 @@ export default function PublicEvents() {
   const getEventState = (event) => {
     const now = new Date();
     const start = new Date(event.date);
-    const end = new Date(event.endDate);
     const remaining = getRemainingTickets(event);
 
     if (remaining === 0) return { label: "Sold Out", type: "SOLD_OUT" };
@@ -67,9 +66,7 @@ export default function PublicEvents() {
     const q = search.toLowerCase().trim();
 
     return events.filter((e) => {
-      const end = new Date(e.endDate);
-
-      if (now >= end) return false; // 🔥 HARD BLOCK
+      if (new Date(e.endDate) <= now) return false; // safety net
 
       return (
         e.title?.toLowerCase().includes(q) ||
