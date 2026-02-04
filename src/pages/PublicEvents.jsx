@@ -56,21 +56,26 @@ export default function PublicEvents() {
     const end = new Date(event.endDate);
     const remaining = getRemainingTickets(event);
 
-    if (now >= end) return { label: "Event Ended", type: "ENDED" };
     if (remaining === 0) return { label: "Sold Out", type: "SOLD_OUT" };
-    if (now >= start) return { label: "Ongoing", type: "ONGOING" };
-
-    return { label: "Upcoming", type: "UPCOMING" };
+    if (now < start) return { label: "Upcoming", type: "UPCOMING" };
+    return { label: "Ongoing", type: "ONGOING" };
   };
 
   /* ================= FILTER ================= */
   const filteredEvents = useMemo(() => {
+    const now = new Date();
     const q = search.toLowerCase().trim();
-    return events.filter(
-      (e) =>
+
+    return events.filter((e) => {
+      const end = new Date(e.endDate);
+
+      if (now >= end) return false; // 🔥 HARD BLOCK
+
+      return (
         e.title?.toLowerCase().includes(q) ||
-        e.location?.toLowerCase().includes(q),
-    );
+        e.location?.toLowerCase().includes(q)
+      );
+    });
   }, [events, search]);
 
   return (
