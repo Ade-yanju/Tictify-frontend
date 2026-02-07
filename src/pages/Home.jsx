@@ -9,28 +9,19 @@ const Icons = {
       <path fill="currentColor" d="M4 6h16v4a2 2 0 010 4v4H4v-4a2 2 0 010-4z" />
     </svg>
   ),
-
   calendar: (
     <svg viewBox="0 0 24 24" width="20" height="20">
-      <path
-        fill="currentColor"
-        d="M7 2v2H5a2 2 0 00-2 2v14h18V6a2 2 0 00-2-2h-2V2h-2v2H9V2H7zm12 8H5v8h14v-8z"
-      />
+      <path fill="currentColor" d="M7 2v2H5a2 2 0 00-2 2v14h18V6a2 2 0 00-2-2h-2V2h-2v2H9V2H7zm12 8H5v8h14v-8z"/>
     </svg>
   ),
-
   chart: (
     <svg viewBox="0 0 24 24" width="20" height="20">
-      <path fill="currentColor" d="M5 9h3v10H5zm5-4h3v14h-3zm5 7h3v7h-3z" />
+      <path fill="currentColor" d="M5 9h3v10H5zm5-4h3v14h-3zm5 7h3v7h-3z"/>
     </svg>
   ),
-
   lightning: (
     <svg viewBox="0 0 24 24" width="20" height="20">
-      <path
-        fill="currentColor"
-        d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"
-      />
+      <path fill="currentColor" d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
     </svg>
   ),
 };
@@ -57,37 +48,25 @@ export default function Home() {
 
 function Navbar() {
   const navigate = useNavigate();
-  const [mobile, setMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width:900px)");
-    const update = () => setMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
 
   return (
     <header style={styles.header}>
-      <div style={styles.container}>
+      <div className="container">
         <nav style={styles.nav}>
           <img src="/logo.png" style={styles.logo} />
 
-          {!mobile && (
-            <div style={styles.navLinks}>
-              <button style={styles.linkBtn}>Home</button>
-              <button style={styles.linkBtn} onClick={() => navigate("/events")}>
-                Discover
-              </button>
-
-              <button style={styles.outlineBtn} onClick={() => navigate("/login")}>
-                Login
-              </button>
-              <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
-                Sign Up
-              </button>
-            </div>
-          )}
+          <div style={styles.navLinks}>
+            <button style={styles.linkBtn}>Home</button>
+            <button style={styles.linkBtn} onClick={() => navigate("/events")}>
+              Discover
+            </button>
+            <button style={styles.outlineBtn} onClick={() => navigate("/login")}>
+              Login
+            </button>
+            <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
+              Sign Up
+            </button>
+          </div>
         </nav>
       </div>
     </header>
@@ -103,11 +82,11 @@ function Hero() {
     <section style={styles.hero}>
       <div style={styles.heroGlow} />
 
-      <div style={styles.container}>
+      <div className="container">
         <div className="fade-up" style={styles.heroContent}>
           <span style={styles.badge}>{Icons.ticket} Event Ticketing Platform</span>
 
-          <h1 style={styles.heroTitle}>
+          <h1 className="heroTitle" style={styles.heroTitle}>
             Your Gateway to <br /> Unforgettable Experiences
           </h1>
 
@@ -115,7 +94,7 @@ function Hero() {
             Discover concerts, conferences and campus events happening around you.
           </p>
 
-          <div style={styles.heroButtons}>
+          <div className="heroButtons" style={styles.heroButtons}>
             <button style={styles.primaryBtn} onClick={() => navigate("/events")}>
               Explore Events
             </button>
@@ -138,15 +117,25 @@ function FeaturedEvents() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
-      const data = await res.json();
-      setEvents(data.filter((e) => e.status === "LIVE").slice(0, 6));
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
+        const data = await res.json();
+
+        const liveEvents = data.filter(e => e.status === "LIVE");
+
+        // 🔥 IMPORTANT: never duplicate events
+        setEvents(liveEvents.slice(0, 3));
+      } catch {
+        setEvents([]);
+      }
     })();
   }, []);
 
+  if (!events.length) return null;
+
   return (
     <section style={styles.section}>
-      <div style={styles.container}>
+      <div className="container">
         <div style={styles.sectionHeader}>
           <h2>Featured Live Events</h2>
           <button style={styles.viewAll} onClick={() => navigate("/events")}>
@@ -154,8 +143,8 @@ function FeaturedEvents() {
           </button>
         </div>
 
-        <div style={styles.grid}>
-          {events.map((event) => (
+        <div className="grid">
+          {events.map(event => (
             <article
               key={event._id}
               className="card-animate"
@@ -163,7 +152,6 @@ function FeaturedEvents() {
               onClick={() => navigate(`/events/${event._id}`)}
             >
               <img src={event.banner} style={styles.eventImg} />
-
               <div style={styles.eventBody}>
                 <h4>{event.title}</h4>
                 <p style={styles.muted}>
@@ -185,7 +173,7 @@ function OrganizerCTA() {
 
   return (
     <section style={styles.organizer}>
-      <div style={styles.container}>
+      <div className="container">
         <div className="fade-up" style={styles.organizerBox}>
           <div>
             <h2>Host Your Own Event</h2>
@@ -210,10 +198,10 @@ function OrganizerCTA() {
 function Benefits() {
   return (
     <section style={styles.sectionAlt}>
-      <div style={styles.container}>
+      <div className="container">
         <h2 style={styles.center}>Why Tictify</h2>
 
-        <div style={styles.grid}>
+        <div className="grid">
           <Feature icon={Icons.calendar} title="Event Scheduling" />
           <Feature icon={Icons.chart} title="Sales Analytics" />
           <Feature icon={Icons.lightning} title="Instant QR Entry" />
@@ -263,8 +251,6 @@ function Footer() {
 const styles = {
   page: { background: "#0F0618", color: "#fff", fontFamily: "Inter" },
 
-  container: { maxWidth: 1200, margin: "0 auto", padding: "0 20px" },
-
   header: {
     position: "sticky",
     top: 0,
@@ -284,7 +270,7 @@ const styles = {
 
   navLinks: { display: "flex", gap: 16 },
 
-  hero: { padding: "150px 0 100px", position: "relative" },
+  hero: { padding: "140px 0 80px", position: "relative" },
 
   heroGlow: {
     position: "absolute",
@@ -298,7 +284,7 @@ const styles = {
 
   heroContent: { maxWidth: 640 },
 
-  heroTitle: { fontSize: "clamp(36px,6vw,60px)" },
+  heroTitle: { fontSize: "clamp(32px,5vw,60px)" },
 
   heroText: { color: "#CFC9D6", margin: "16px 0 28px" },
 
@@ -306,12 +292,6 @@ const styles = {
 
   section: { padding: "90px 0" },
   sectionAlt: { padding: "90px 0", background: "#170A25" },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
-    gap: 24,
-  },
 
   eventCard: {
     background: "#170A25",
@@ -323,6 +303,12 @@ const styles = {
   eventImg: { width: "100%", height: 170, objectFit: "cover" },
 
   eventBody: { padding: 14 },
+
+  organizer: { padding: "90px 0" },
+
+  organizerBox: { display: "flex", justifyContent: "space-between", flexWrap: "wrap" },
+
+  hostImg: { width: 260 },
 
   card: {
     background: "rgba(255,255,255,0.05)",
@@ -338,12 +324,6 @@ const styles = {
     display: "inline-flex",
     marginBottom: 12,
   },
-
-  organizer: { padding: "90px 0" },
-
-  organizerBox: { display: "flex", justifyContent: "space-between", flexWrap: "wrap" },
-
-  hostImg: { width: 260 },
 
   cta: { padding: 120, textAlign: "center" },
 
@@ -389,32 +369,33 @@ const styles = {
   center: { textAlign: "center", marginBottom: 40 },
 };
 
-/* ================= ANIMATION CSS ================= */
+/* ================= GLOBAL RESPONSIVE CSS ================= */
 
 const globalCSS = `
-.fade-up {
-  animation: fadeUp 0.7s ease forwards;
+.container { width:100%; margin:auto; padding:0 16px; max-width:1200px; }
+.grid { display:grid; gap:20px; grid-template-columns:1fr; }
+
+/* Tablet */
+@media (min-width:600px){
+  .container{max-width:760px;}
+  .grid{grid-template-columns:repeat(2,1fr);}
 }
 
-.card-animate {
-  transition: transform .25s ease, box-shadow .25s ease;
+/* Laptop */
+@media (min-width:1024px){
+  .container{max-width:1100px;}
+  .grid{grid-template-columns:repeat(3,1fr);}
 }
 
-.card-animate:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+/* Desktop */
+@media (min-width:1440px){
+  .container{max-width:1320px;}
+  .grid{grid-template-columns:repeat(4,1fr);}
 }
 
-button {
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-
-button:hover {
-  transform: translateY(-2px);
-}
-
-@keyframes fadeUp {
-  from { opacity:0; transform: translateY(30px); }
-  to { opacity:1; transform: translateY(0); }
-}
+/* Animations */
+.fade-up{animation:fadeUp .7s ease forwards;}
+.card-animate{transition:transform .25s ease, box-shadow .25s ease;}
+.card-animate:hover{transform:translateY(-6px); box-shadow:0 20px 40px rgba(0,0,0,.35);}
+@keyframes fadeUp{from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);}}
 `;
