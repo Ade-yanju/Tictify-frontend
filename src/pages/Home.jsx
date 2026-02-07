@@ -13,9 +13,7 @@ const heroImages = [
 
 export default function Home() {
   return (
-    <div style={styles.page}>
-      <style>{globalCSS}</style>
-
+    <div className="home">
       <Navbar />
       <Hero />
       <Trust />
@@ -25,158 +23,82 @@ export default function Home() {
       <Pricing />
       <CTA />
       <Footer />
+
+      <style>{css}</style>
     </div>
   );
 }
 
 /* ================= NAVBAR ================= */
+
 function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  /* 🔑 RESPONSIVE DETECTION */
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 900px)");
-    const update = () => {
-      setIsMobile(mq.matches);
-      if (!mq.matches) setOpen(false);
-    };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  /* 🔒 LOCK SCROLL WHEN MENU OPEN */
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => (document.body.style.overflow = "");
-  }, [open]);
-
-  const scrollTo = (id) => {
-    setOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
 
   return (
-    <header style={styles.header}>
-      <div style={styles.container}>
-        <nav style={styles.nav}>
-          <img
-            src={logo}
-            alt="Tictify"
-            style={styles.logo}
-            onClick={() => scrollTo("home")}
-          />
+    <header className="nav">
+      <div className="nav-inner">
+        <img src={logo} className="logo" />
 
-          {/* DESKTOP NAV */}
-          {!isMobile && (
-            <div style={styles.navLinks}>
-              <NavLinks scrollTo={scrollTo} navigate={navigate} />
-            </div>
-          )}
+        <div className="nav-links desktop">
+          <button>Home</button>
+          <button onClick={() => navigate("/events")}>Discover</button>
+          <button onClick={() => navigate("/login")}>Login</button>
+          <button className="primary" onClick={() => navigate("/register")}>
+            Sign Up
+          </button>
+        </div>
 
-          {/* MOBILE TOGGLE */}
-          {isMobile && (
-            <button
-              aria-label="Open menu"
-              style={styles.menuBtn}
-              onClick={() => setOpen((v) => !v)}
-            >
-              ☰
-            </button>
-          )}
-        </nav>
+        <button className="mobile-toggle" onClick={() => setOpen(!open)}>
+          ☰
+        </button>
       </div>
 
-      {/* MOBILE MENU */}
-      {isMobile && open && (
-        <div style={styles.mobileMenu}>
-          <NavLinks
-            scrollTo={scrollTo}
-            navigate={navigate}
-            mobile
-          />
+      {open && (
+        <div className="mobile-menu">
+          <button onClick={() => navigate("/events")}>Discover</button>
+          <button onClick={() => navigate("/login")}>Login</button>
+          <button className="primary" onClick={() => navigate("/register")}>
+            Sign Up
+          </button>
         </div>
       )}
     </header>
   );
 }
 
-function NavLinks({ scrollTo, navigate, mobile }) {
-  return (
-    <>
-      <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
-        Home
-      </button>
-      <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
-        Discover
-      </button>
-      <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
-        Pricing
-      </button>
-
-      <button
-        style={mobile ? styles.outlineBtnFull : styles.outlineBtn}
-        onClick={() => navigate("/login")}
-      >
-        Login
-      </button>
-
-      <button
-        style={mobile ? styles.primaryBtnFull : styles.primaryBtn}
-        onClick={() => navigate("/register")}
-      >
-        Sign Up
-      </button>
-    </>
-  );
-}
-
 /* ================= HERO ================= */
+
 function Hero() {
   const navigate = useNavigate();
 
   return (
-    <section id="home" style={styles.hero}>
-      <div style={styles.container}>
-        <div style={styles.heroContent}>
-          <span style={styles.badge}>🎟️ Event Ticketing Platform</span>
+    <section className="hero">
+      <div className="hero-inner">
+        <span className="badge">🎟️ Event Ticketing Platform</span>
 
-          <h1 style={styles.heroTitle}>
-            Sell Event Tickets <br /> The Smart Way
-          </h1>
+        <h1>Sell Event Tickets The Smart Way</h1>
 
-          <p style={styles.heroText}>
-            Create events, sell tickets, and manage entry with secure QR codes —
-            built for organizers and guests.
-          </p>
+        <p>
+          Create events, sell tickets, and manage entry with secure QR codes.
+        </p>
 
-          <div style={styles.heroButtons}>
-            <button
-              style={styles.primaryBtn}
-              onClick={() => navigate("/login")}
-            >
-              Create an Event
-            </button>
+        <div className="hero-buttons">
+          <button className="primary" onClick={() => navigate("/login")}>
+            Create Event
+          </button>
 
-            <button
-              style={styles.secondaryBtn}
-              onClick={() => navigate("/events")}
-            >
-              Browse Events
-            </button>
-          </div>
+          <button className="outline" onClick={() => navigate("/events")}>
+            Browse Events
+          </button>
         </div>
       </div>
 
       {/* MARQUEE */}
-      <div style={styles.marqueeViewport}>
-        <div style={styles.marqueeTrack}>
+      <div className="marquee">
+        <div className="track">
           {[...heroImages, ...heroImages].map((img, i) => (
-            <div key={i} style={styles.marqueeItem}>
-              <img src={img} alt="Event" style={styles.marqueeImage} />
-            </div>
+            <img key={i} src={img} />
           ))}
         </div>
       </div>
@@ -184,361 +106,187 @@ function Hero() {
   );
 }
 
-/* ================= SECTIONS ================= */
+/* ================= TRUST ================= */
+
 function Trust() {
   return (
-    <section style={styles.trust}>
-      <div style={styles.container}>
-        <p style={styles.trustText}>
-          Trusted by campus promoters, communities, and event organizers across Nigeria.
-        </p>
-      </div>
+    <section className="trust">
+      Trusted by campus promoters and event organizers across Nigeria
     </section>
   );
 }
+
+/* ================= GUESTS ================= */
 
 function Guests() {
   return (
-    <section id="guests" style={styles.sectionAlt}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>For Guests</h2>
-        <div style={styles.grid}>
-          <Card title="Instant Tickets" text="Receive your e-ticket instantly." />
-          <Card title="QR Code Entry" text="Fast and secure event entry." />
-          <Card title="Stress-Free Access" text="No printing. No queues." />
-        </div>
+    <section className="section alt">
+      <h2>For Guests</h2>
+      <div className="grid">
+        <Card title="Instant Tickets" text="Receive e-ticket immediately." />
+        <Card title="QR Entry" text="Fast event check-in." />
+        <Card title="No Stress" text="No printing. No queues." />
       </div>
     </section>
   );
 }
+
+/* ================= ORGANIZERS ================= */
 
 function Organizers() {
   return (
-    <section style={styles.section}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>For Organizers</h2>
-        <div style={styles.grid}>
-          <Card title="Create Events" text="Set up events in minutes." />
-          <Card title="Secure Payments" text="Powered by ErcasPay." />
-          <Card title="Live Analytics" text="Track sales in real time." />
-        </div>
+    <section className="section">
+      <h2>For Organizers</h2>
+      <div className="grid">
+        <Card title="Create Events" text="Launch in minutes." />
+        <Card title="Secure Payments" text="Powered by ErcasPay." />
+        <Card title="Analytics" text="Track ticket sales live." />
       </div>
     </section>
   );
 }
+
+/* ================= HOW IT WORKS ================= */
 
 function HowItWorks() {
   return (
-    <section style={styles.sectionAlt}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>How It Works</h2>
-        <div style={styles.grid}>
-          <Step number="01" title="Create Event" text="Add details and tickets." />
-          <Step number="02" title="Sell Tickets" text="Guests pay & get QR codes." />
-          <Step number="03" title="Scan & Admit" text="Prevent fraud at entry." />
-        </div>
+    <section className="section alt">
+      <h2>How It Works</h2>
+      <div className="grid">
+        <Step number="01" title="Create Event" text="Add tickets & details" />
+        <Step number="02" title="Sell Tickets" text="Guests pay securely" />
+        <Step number="03" title="Scan Entry" text="Prevent fraud" />
       </div>
     </section>
   );
 }
+
+/* ================= PRICING ================= */
 
 function Pricing() {
   return (
-    <section id="pricing" style={styles.section}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>Simple Pricing</h2>
-        <div style={styles.grid}>
-          <PriceCard title="Free" price="₦0" text="For free events." />
-          <PriceCard title="Pro" price="3% + ₦80" text="Pay per ticket sold." />
-        </div>
+    <section className="section">
+      <h2>Pricing</h2>
+      <div className="grid">
+        <Card title="Free" text="₦0 for free events" />
+        <Card title="Pro" text="3% + ₦80 per ticket" />
       </div>
     </section>
   );
 }
+
+/* ================= CTA ================= */
 
 function CTA() {
   const navigate = useNavigate();
+
   return (
-    <section style={styles.cta}>
-      <div style={styles.container}>
-        <h2>Start Selling Tickets Today</h2>
-        <p style={styles.mutedText}>Create your first event in minutes.</p>
-        <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
-          Get Started
-        </button>
-      </div>
+    <section className="cta">
+      <h2>Start Selling Tickets Today</h2>
+      <button className="primary" onClick={() => navigate("/register")}>
+        Get Started
+      </button>
     </section>
   );
 }
 
+/* ================= FOOTER ================= */
+
 function Footer() {
   return (
-    <footer style={styles.footer}>
-      <div style={styles.container}>
-        <img src={logo} alt="Tictify" style={styles.logo} />
-        <p style={styles.mutedText}>
-          © {new Date().getFullYear()} Tictify. All rights reserved.
-        </p>
-      </div>
+    <footer className="footer">
+      <img src={logo} />
+      <p>© {new Date().getFullYear()} Tictify</p>
     </footer>
   );
 }
 
 /* ================= REUSABLE ================= */
+
 function Card({ title, text }) {
   return (
-    <div style={styles.card}>
+    <div className="card">
       <h3>{title}</h3>
-      <p style={styles.mutedText}>{text}</p>
+      <p>{text}</p>
     </div>
   );
 }
 
 function Step({ number, title, text }) {
   return (
-    <div style={styles.card}>
-      <span style={styles.stepNumber}>{number}</span>
+    <div className="card">
+      <span className="step">{number}</span>
       <h3>{title}</h3>
-      <p style={styles.mutedText}>{text}</p>
+      <p>{text}</p>
     </div>
   );
 }
 
-function PriceCard({ title, price, text }) {
-  return (
-    <div style={{ ...styles.card, textAlign: "center" }}>
-      <h3>{title}</h3>
-      <h2 style={{ color: "#22F2A6", margin: "12px 0" }}>{price}</h2>
-      <p style={styles.mutedText}>{text}</p>
-    </div>
-  );
+/* ================= RESPONSIVE CSS ================= */
+
+const css = `
+.home{background:#0F0618;color:#fff;font-family:Inter, sans-serif}
+
+/* NAV */
+.nav{position:sticky;top:0;background:rgba(15,6,24,.9);backdrop-filter:blur(10px)}
+.nav-inner{max-width:1200px;margin:auto;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.logo{height:34px}
+.nav-links{display:flex;gap:18px}
+.mobile-toggle{display:none}
+
+/* HERO */
+.hero{padding:90px 20px;text-align:center}
+.hero-inner{max-width:700px;margin:auto}
+.hero h1{font-size:clamp(28px,5vw,56px)}
+.hero p{color:#bbb;margin:16px 0 28px}
+.hero-buttons{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* MARQUEE */
+.marquee{overflow:hidden;margin-top:60px}
+.track{display:flex;width:200%;animation:scroll 35s linear infinite}
+.track img{width:300px;height:180px;object-fit:cover;margin-right:14px;border-radius:14px}
+
+/* SECTIONS */
+.section{padding:80px 20px;text-align:center}
+.alt{background:#170A25}
+.grid{max-width:1100px;margin:auto;display:grid;gap:24px}
+
+/* CTA */
+.cta{text-align:center;padding:90px 20px}
+
+/* FOOTER */
+.footer{text-align:center;padding:40px;border-top:1px solid rgba(255,255,255,.1)}
+
+/* BUTTONS */
+.primary{background:#22F2A6;border:none;padding:12px 26px;border-radius:999px;color:black}
+.outline{border:1px solid #22F2A6;background:none;color:#22F2A6;padding:12px 26px;border-radius:999px}
+
+/* RESPONSIVE */
+
+/* phones */
+@media(max-width:600px){
+.grid{grid-template-columns:1fr}
+.nav-links.desktop{display:none}
+.mobile-toggle{display:block;background:none;border:none;color:white;font-size:22px}
 }
 
-/* ================= STYLES ================= */
-const styles = {
-  page: {
-    background: "#0F0618",
-    color: "#FFFFFF",
-    fontFamily: "Inter, system-ui",
-    overflowX: "hidden",
-  },
-
-  container: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "0 clamp(16px,4vw,32px)",
-  },
-
-  header: {
-    position: "sticky",
-    top: 0,
-    zIndex: 1000,
-    backdropFilter: "blur(12px)",
-    background: "rgba(15,6,24,0.8)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  nav: {
-    height: 72,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  navLinks: {
-    display: "flex",
-    gap: 16,
-    alignItems: "center",
-  },
-
-  menuBtn: {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#fff",
-    padding: "6px 12px",
-    borderRadius: 8,
-    fontSize: 20,
-    cursor: "pointer",
-  },
-
-  mobileMenu: {
-    display: "grid",
-    gap: 16,
-    padding: 24,
-    background: "#0F0618",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  logo: { height: 34, cursor: "pointer" },
-
-  hero: {
-    padding: "clamp(72px,10vw,120px) 0 64px",
-  },
-
-  heroContent: {
-    maxWidth: 620,
-  },
-
-  heroTitle: {
-    fontSize: "clamp(30px,5vw,52px)",
-    margin: "16px 0",
-  },
-
-  heroText: {
-    color: "#CFC9D6",
-    marginBottom: 28,
-  },
-
-  heroButtons: {
-    display: "flex",
-    gap: 14,
-    flexWrap: "wrap",
-  },
-
-  badge: {
-    color: "#22F2A6",
-    fontSize: 14,
-  },
-
-  marqueeViewport: {
-    marginTop: 72,
-    overflow: "hidden",
-  },
-
-  marqueeTrack: {
-    display: "flex",
-    width: "200%",
-    animation: "marquee 40s linear infinite",
-  },
-
-  marqueeItem: {
-    flex: "0 0 33.3333%",
-    padding: "0 12px",
-  },
-
-  marqueeImage: {
-    width: "100%",
-    height: 220,
-    objectFit: "cover",
-    borderRadius: 18,
-  },
-
-  trust: {
-    padding: "32px 0",
-    textAlign: "center",
-  },
-
-  trustText: {
-    color: "#9F97B2",
-  },
-
-  section: {
-    padding: "clamp(64px,10vw,96px) 0",
-  },
-
-  sectionAlt: {
-    padding: "clamp(64px,10vw,96px) 0",
-    background: "#170A25",
-  },
-
-  sectionTitle: {
-    textAlign: "center",
-    marginBottom: 48,
-    fontSize: 32,
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
-    gap: 28,
-  },
-
-  card: {
-    background: "rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    padding: 28,
-  },
-
-  stepNumber: {
-    color: "#22F2A6",
-    fontWeight: 600,
-  },
-
-  cta: {
-    padding: "96px 0",
-    textAlign: "center",
-  },
-
-  footer: {
-    padding: "40px 0",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  primaryBtn: {
-    background: "#22F2A6",
-    border: "none",
-    padding: "12px 26px",
-    borderRadius: 999,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  primaryBtnFull: {
-    background: "#22F2A6",
-    border: "none",
-    padding: 14,
-    borderRadius: 999,
-    fontWeight: 600,
-    width: "100%",
-  },
-
-  secondaryBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "12px 26px",
-    borderRadius: 999,
-    cursor: "pointer",
-  },
-
-  outlineBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "10px 22px",
-    borderRadius: 999,
-    cursor: "pointer",
-  },
-
-  outlineBtnFull: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: 14,
-    borderRadius: 999,
-    width: "100%",
-  },
-
-  linkBtn: {
-    background: "none",
-    border: "none",
-    color: "#FFFFFF",
-    cursor: "pointer",
-  },
-
-  mutedText: { color: "#CFC9D6" },
-};
-
-/* ================= GLOBAL CSS ================= */
-const globalCSS = `
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* tablets */
+@media(min-width:601px) and (max-width:1023px){
+.grid{grid-template-columns:repeat(2,1fr)}
 }
 
-section { scroll-margin-top: 96px; }
+/* laptop */
+@media(min-width:1024px){
+.grid{grid-template-columns:repeat(3,1fr)}
+}
 
-@media (max-width: 900px) {
-  .marqueeItem { flex: 0 0 100%; }
+/* desktop */
+@media(min-width:1400px){
+.grid{grid-template-columns:repeat(4,1fr)}
+}
+
+@keyframes scroll{
+from{transform:translateX(0)}
+to{transform:translateX(-50%)}
 }
 `;
