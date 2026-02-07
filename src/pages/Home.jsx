@@ -1,16 +1,52 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-const logo = "/logo.png";
+/* ================= SVG ICON SYSTEM ================= */
+
+const Icons = {
+  ticket: (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path fill="currentColor" d="M4 6h16v4a2 2 0 010 4v4H4v-4a2 2 0 010-4z" />
+    </svg>
+  ),
+
+  calendar: (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path
+        fill="currentColor"
+        d="M7 2v2H5a2 2 0 00-2 2v14h18V6a2 2 0 00-2-2h-2V2h-2v2H9V2H7zm12 8H5v8h14v-8z"
+      />
+    </svg>
+  ),
+
+  chart: (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path fill="currentColor" d="M5 9h3v10H5zm5-4h3v14h-3zm5 7h3v7h-3z" />
+    </svg>
+  ),
+
+  lightning: (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path
+        fill="currentColor"
+        d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"
+      />
+    </svg>
+  ),
+};
+
+/* ================= MAIN ================= */
 
 export default function Home() {
   return (
     <div style={styles.page}>
+      <style>{globalCSS}</style>
+
       <Navbar />
       <Hero />
       <FeaturedEvents />
       <OrganizerCTA />
-      <TrustStrip />
+      <Benefits />
       <CTA />
       <Footer />
     </div>
@@ -18,13 +54,13 @@ export default function Home() {
 }
 
 /* ================= NAVBAR ================= */
+
 function Navbar() {
   const navigate = useNavigate();
   const [mobile, setMobile] = useState(false);
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 900px)");
+    const mq = window.matchMedia("(max-width:900px)");
     const update = () => setMobile(mq.matches);
     update();
     mq.addEventListener("change", update);
@@ -35,7 +71,7 @@ function Navbar() {
     <header style={styles.header}>
       <div style={styles.container}>
         <nav style={styles.nav}>
-          <img src={logo} style={styles.logo} />
+          <img src="/logo.png" style={styles.logo} />
 
           {!mobile && (
             <div style={styles.navLinks}>
@@ -52,49 +88,31 @@ function Navbar() {
               </button>
             </div>
           )}
-
-          {mobile && (
-            <button style={styles.menuBtn} onClick={() => setOpen(!open)}>
-              ☰
-            </button>
-          )}
         </nav>
       </div>
-
-      {mobile && open && (
-        <div style={styles.mobileMenu}>
-          <button style={styles.linkBtn}>Home</button>
-          <button style={styles.linkBtn} onClick={() => navigate("/events")}>
-            Discover
-          </button>
-          <button style={styles.outlineBtnFull} onClick={() => navigate("/login")}>
-            Login
-          </button>
-          <button style={styles.primaryBtnFull} onClick={() => navigate("/register")}>
-            Sign Up
-          </button>
-        </div>
-      )}
     </header>
   );
 }
 
 /* ================= HERO ================= */
+
 function Hero() {
   const navigate = useNavigate();
 
   return (
     <section style={styles.hero}>
-      <div style={styles.heroOverlay} />
+      <div style={styles.heroGlow} />
 
       <div style={styles.container}>
-        <div style={styles.heroContent}>
+        <div className="fade-up" style={styles.heroContent}>
+          <span style={styles.badge}>{Icons.ticket} Event Ticketing Platform</span>
+
           <h1 style={styles.heroTitle}>
             Your Gateway to <br /> Unforgettable Experiences
           </h1>
 
           <p style={styles.heroText}>
-            Discover live events, concerts, campus shows and conferences happening near you.
+            Discover concerts, conferences and campus events happening around you.
           </p>
 
           <div style={styles.heroButtons}>
@@ -113,33 +131,17 @@ function Hero() {
 }
 
 /* ================= FEATURED EVENTS ================= */
+
 function FeaturedEvents() {
   const navigate = useNavigate();
-
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
-
     (async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
-        const data = await res.json();
-
-        const live = (Array.isArray(data) ? data : [])
-          .filter((e) => e.status === "LIVE")
-          .slice(0, 6);
-
-        if (active) setEvents(live);
-      } catch {
-        if (active) setEvents([]);
-      } finally {
-        if (active) setLoading(false);
-      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
+      const data = await res.json();
+      setEvents(data.filter((e) => e.status === "LIVE").slice(0, 6));
     })();
-
-    return () => (active = false);
   }, []);
 
   return (
@@ -147,38 +149,29 @@ function FeaturedEvents() {
       <div style={styles.container}>
         <div style={styles.sectionHeader}>
           <h2>Featured Live Events</h2>
-
           <button style={styles.viewAll} onClick={() => navigate("/events")}>
-            View all live events →
+            View all →
           </button>
         </div>
 
-        <div style={styles.eventGrid}>
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={styles.skeletonCard} />
-              ))
-            : events.map((event) => (
-                <article
-                  key={event._id}
-                  style={styles.eventCard}
-                  onClick={() => navigate(`/events/${event._id}`)}
-                >
-                  <img
-                    src={event.banner}
-                    alt={event.title}
-                    style={styles.eventImg}
-                    loading="lazy"
-                  />
+        <div style={styles.grid}>
+          {events.map((event) => (
+            <article
+              key={event._id}
+              className="card-animate"
+              style={styles.eventCard}
+              onClick={() => navigate(`/events/${event._id}`)}
+            >
+              <img src={event.banner} style={styles.eventImg} />
 
-                  <div style={styles.eventBody}>
-                    <h4>{event.title}</h4>
-                    <p style={styles.muted}>
-                      {new Date(event.date).toDateString()}
-                    </p>
-                  </div>
-                </article>
-              ))}
+              <div style={styles.eventBody}>
+                <h4>{event.title}</h4>
+                <p style={styles.muted}>
+                  {new Date(event.date).toDateString()}
+                </p>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -186,13 +179,14 @@ function FeaturedEvents() {
 }
 
 /* ================= ORGANIZER CTA ================= */
+
 function OrganizerCTA() {
   const navigate = useNavigate();
 
   return (
     <section style={styles.organizer}>
       <div style={styles.container}>
-        <div style={styles.organizerBox}>
+        <div className="fade-up" style={styles.organizerBox}>
           <div>
             <h2>Host Your Own Event</h2>
             <p style={styles.muted}>
@@ -211,21 +205,40 @@ function OrganizerCTA() {
   );
 }
 
-/* ================= TRUST ================= */
-function TrustStrip() {
+/* ================= BENEFITS ================= */
+
+function Benefits() {
   return (
-    <section style={styles.trust}>
-      Trusted by campus organizers, communities and creators across Nigeria.
+    <section style={styles.sectionAlt}>
+      <div style={styles.container}>
+        <h2 style={styles.center}>Why Tictify</h2>
+
+        <div style={styles.grid}>
+          <Feature icon={Icons.calendar} title="Event Scheduling" />
+          <Feature icon={Icons.chart} title="Sales Analytics" />
+          <Feature icon={Icons.lightning} title="Instant QR Entry" />
+        </div>
+      </div>
     </section>
   );
 }
 
+function Feature({ icon, title }) {
+  return (
+    <div className="card-animate" style={styles.card}>
+      <div style={styles.iconCircle}>{icon}</div>
+      <h3>{title}</h3>
+    </div>
+  );
+}
+
 /* ================= CTA ================= */
+
 function CTA() {
   const navigate = useNavigate();
 
   return (
-    <section style={styles.cta}>
+    <section className="fade-up" style={styles.cta}>
       <h2>Ready for your next adventure?</h2>
       <button style={styles.primaryBtn} onClick={() => navigate("/events")}>
         Discover Events
@@ -235,31 +248,28 @@ function CTA() {
 }
 
 /* ================= FOOTER ================= */
+
 function Footer() {
   return (
     <footer style={styles.footer}>
-      <img src={logo} style={styles.logo} />
+      <img src="/logo.png" style={styles.logo} />
       <p style={styles.muted}>© {new Date().getFullYear()} Tictify</p>
     </footer>
   );
 }
 
 /* ================= STYLES ================= */
+
 const styles = {
   page: { background: "#0F0618", color: "#fff", fontFamily: "Inter" },
 
-  container: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "0 20px",
-  },
+  container: { maxWidth: 1200, margin: "0 auto", padding: "0 20px" },
 
   header: {
     position: "sticky",
     top: 0,
-    background: "rgba(15,6,24,0.9)",
     backdropFilter: "blur(10px)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(15,6,24,0.85)",
     zIndex: 1000,
   },
 
@@ -270,45 +280,37 @@ const styles = {
     alignItems: "center",
   },
 
-  logo: { height: 32 },
+  logo: { height: 34 },
 
-  navLinks: { display: "flex", gap: 16, alignItems: "center" },
+  navLinks: { display: "flex", gap: 16 },
 
-  hero: {
-    position: "relative",
-    padding: "140px 0 100px",
-    background:
-      "radial-gradient(circle at 30% 20%, rgba(124,58,237,0.5), transparent), #0F0618",
-  },
+  hero: { padding: "150px 0 100px", position: "relative" },
 
-  heroOverlay: {
+  heroGlow: {
     position: "absolute",
-    inset: 0,
-    background:
-      "linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(15,6,24,0.9))",
+    width: 600,
+    height: 600,
+    background: "radial-gradient(#7C3AED, transparent)",
+    filter: "blur(120px)",
+    top: -200,
+    left: -200,
   },
 
-  heroContent: { position: "relative", maxWidth: 640 },
+  heroContent: { maxWidth: 640 },
 
   heroTitle: { fontSize: "clamp(36px,6vw,60px)" },
 
   heroText: { color: "#CFC9D6", margin: "16px 0 28px" },
 
-  heroButtons: { display: "flex", gap: 14, flexWrap: "wrap" },
+  heroButtons: { display: "flex", gap: 14 },
 
   section: { padding: "90px 0" },
+  sectionAlt: { padding: "90px 0", background: "#170A25" },
 
-  sectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 24,
-    alignItems: "center",
-  },
-
-  eventGrid: {
+  grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
-    gap: 22,
+    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+    gap: 24,
   },
 
   eventCard: {
@@ -316,36 +318,32 @@ const styles = {
     borderRadius: 18,
     overflow: "hidden",
     cursor: "pointer",
-    transition: "transform .2s",
   },
 
   eventImg: { width: "100%", height: 170, objectFit: "cover" },
 
   eventBody: { padding: 14 },
 
-  skeletonCard: {
-    height: 240,
-    background: "rgba(255,255,255,0.08)",
+  card: {
+    background: "rgba(255,255,255,0.05)",
+    padding: 26,
     borderRadius: 18,
+    textAlign: "center",
   },
 
-  organizer: { padding: "90px 0", background: "#170A25" },
-
-  organizerBox: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 30,
+  iconCircle: {
+    background: "rgba(34,242,166,0.15)",
+    padding: 12,
+    borderRadius: 999,
+    display: "inline-flex",
+    marginBottom: 12,
   },
+
+  organizer: { padding: "90px 0" },
+
+  organizerBox: { display: "flex", justifyContent: "space-between", flexWrap: "wrap" },
 
   hostImg: { width: 260 },
-
-  trust: {
-    textAlign: "center",
-    padding: 40,
-    color: "#9F97B2",
-  },
 
   cta: { padding: 120, textAlign: "center" },
 
@@ -379,30 +377,44 @@ const styles = {
 
   muted: { color: "#CFC9D6" },
 
+  badge: {
+    display: "inline-flex",
+    gap: 8,
+    alignItems: "center",
+    color: "#22F2A6",
+  },
+
   viewAll: { background: "none", border: "none", color: "#22F2A6" },
 
-  menuBtn: {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#fff",
-    padding: "6px 12px",
-    borderRadius: 8,
-  },
-
-  mobileMenu: { padding: 24, display: "grid", gap: 14 },
-
-  outlineBtnFull: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 999,
-    border: "1px solid #22F2A6",
-  },
-
-  primaryBtnFull: {
-    width: "100%",
-    padding: 14,
-    borderRadius: 999,
-    background: "#22F2A6",
-    border: "none",
-  },
+  center: { textAlign: "center", marginBottom: 40 },
 };
+
+/* ================= ANIMATION CSS ================= */
+
+const globalCSS = `
+.fade-up {
+  animation: fadeUp 0.7s ease forwards;
+}
+
+.card-animate {
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.card-animate:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+}
+
+button {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(30px); }
+  to { opacity:1; transform: translateY(0); }
+}
+`;
