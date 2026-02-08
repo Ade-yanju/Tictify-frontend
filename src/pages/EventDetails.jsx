@@ -144,8 +144,8 @@ const styles = {
 
   banner: {
     width: "100%",
-    height: "100%",
-    maxHeight: 320,
+    height: "80%",
+    maxHeight: 420,
     objectFit: "cover",
     objectPosition: "center",
     display: "block",
