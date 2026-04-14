@@ -10,9 +10,9 @@ export default function PaymentPending() {
   const reference = searchParams.get("ref");
 
   const touchStartX = useRef(0);
-  const attempts = useRef(0);
 
   const [status, setStatus] = useState("PENDING");
+  const [attempts, setAttempts] = useState(0);
   // PENDING | FAILED | ERROR
 
   const [message, setMessage] = useState(
@@ -50,7 +50,7 @@ export default function PaymentPending() {
     }
 
     const interval = setInterval(async () => {
-      attempts.current++;
+      setAttempts((prev) => prev + 1);
 
       try {
         const res = await fetch(
@@ -72,21 +72,27 @@ export default function PaymentPending() {
           return;
         }
 
-        if (attempts.current >= MAX_ATTEMPTS) {
-          clearInterval(interval);
-          setStatus("ERROR");
-          setMessage(
-            "Verification is taking longer than expected. Your payment may still succeed.",
-          );
-        }
-      } catch {
-        if (attempts.current >= MAX_ATTEMPTS) {
-          clearInterval(interval);
-          setStatus("ERROR");
-          setMessage(
-            "Unable to verify payment at the moment. Please refresh or contact support.",
-          );
-        }
+        setAttempts((prev) => {
+          if (prev >= MAX_ATTEMPTS) {
+            clearInterval(interval);
+            setStatus("ERROR");
+            setMessage(
+              "Verification is taking longer than expected. Your payment may still succeed.",
+            );
+          }
+          return prev;
+        });
+      } catch (error) {
+        setAttempts((prev) => {
+          if (prev >= MAX_ATTEMPTS) {
+            clearInterval(interval);
+            setStatus("ERROR");
+            setMessage(
+              "Unable to verify payment at the moment. Please refresh or contact support.",
+            );
+          }
+          return prev;
+        });
       }
     }, POLL_INTERVAL);
 
