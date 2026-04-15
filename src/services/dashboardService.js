@@ -1,17 +1,18 @@
 import { getToken, logout } from "./authService";
 
-const API = "https://tictify-backend.onrender.com/api/dashboard";
+const API_BASE = "https://tictify-backend.onrender.com/api/dashboard";
 
 export async function fetchOrganizerDashboard() {
   const token = getToken();
 
   if (!token) {
-    throw { type: "AUTH", message: "Not authenticated" };
+    throw { type: "AUTH", message: "No session found. Please login." };
   }
 
-  const res = await fetch(`${API}/organizer`, {
+  const res = await fetch(`${API_BASE}/organizer`, {
     headers: {
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
   });
 
@@ -21,10 +22,7 @@ export async function fetchOrganizerDashboard() {
   }
 
   if (!res.ok) {
-    throw {
-      type: "SERVER",
-      message: "Failed to load dashboard. Try again.",
-    };
+    throw { type: "SERVER", message: "Server error. Could not sync wallet." };
   }
 
   return res.json();
