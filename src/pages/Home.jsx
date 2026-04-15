@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 const logo = "/logo.png";
-
 const heroImages = [
   "/hero/hero1.jpg",
   "/hero/hero2.jpg",
@@ -15,153 +14,108 @@ export default function Home() {
   return (
     <div style={styles.page}>
       <style>{globalCSS}</style>
-
+      <div style={styles.noiseOverlay} /> {/* 2026 Texture Trend */}
       <Navbar />
       <Hero />
-      <Trust />
-      <Guests />
-      <Organizers />
+      <BrandStrip />
+      <FeaturesBento />
       <HowItWorks />
-      <Pricing />
+      <PricingGrid />
       <CTA />
       <Footer />
     </div>
   );
 }
 
-/* ================= NAVBAR ================= */
+/* ================= NAV (Floating Glass) ================= */
 function Navbar() {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  /* 🔑 RESPONSIVE DETECTION */
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 900px)");
-    const update = () => {
-      setIsMobile(mq.matches);
-      if (!mq.matches) setOpen(false);
-    };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  /* 🔒 LOCK SCROLL WHEN MENU OPEN */
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => (document.body.style.overflow = "");
-  }, [open]);
-
-  const scrollTo = (id) => {
-    setOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
-    <header style={styles.header}>
-      <div style={styles.container}>
-        <nav style={styles.nav}>
-          <img
-            src={logo}
-            alt="Tictify"
-            style={styles.logo}
-            onClick={() => scrollTo("home")}
-          />
-
-          {/* DESKTOP NAV */}
-          {!isMobile && (
-            <div style={styles.navLinks}>
-              <NavLinks scrollTo={scrollTo} navigate={navigate} />
-            </div>
-          )}
-
-          {/* MOBILE TOGGLE */}
-          {isMobile && (
-            <button
-              aria-label="Open menu"
-              style={styles.menuBtn}
-              onClick={() => setOpen((v) => !v)}
-            >
-              ☰
-            </button>
-          )}
-        </nav>
-      </div>
-
-      {/* MOBILE MENU */}
-      {isMobile && open && (
-        <div style={styles.mobileMenu}>
-          <NavLinks
-            scrollTo={scrollTo}
-            navigate={navigate}
-            mobile
-          />
+    <nav
+      style={{
+        ...styles.navWrapper,
+        backgroundColor: scrolled ? "rgba(3, 3, 3, 0.7)" : "transparent",
+        backdropFilter: scrolled ? "blur(20px)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.08)" : "none",
+      }}
+    >
+      <div style={styles.containerNav}>
+        <img src={logo} alt="Tictify" style={styles.logo} />
+        <div style={styles.navLinks}>
+          <button
+            style={styles.linkBtn}
+            onClick={() =>
+              document
+                .getElementById("features")
+                .scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Features
+          </button>
+          <button
+            style={styles.linkBtn}
+            onClick={() =>
+              document
+                .getElementById("pricing")
+                .scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Pricing
+          </button>
+          <button
+            style={styles.outlineBtnSmall}
+            onClick={() => navigate("/login")}
+          >
+            Login
+          </button>
+          <button
+            style={styles.primaryBtnSmall}
+            onClick={() => navigate("/register")}
+          >
+            Get Started
+          </button>
         </div>
-      )}
-    </header>
+      </div>
+    </nav>
   );
 }
 
-function NavLinks({ scrollTo, navigate, mobile }) {
-  return (
-    <>
-      <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
-        Home
-      </button>
-      <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
-        Discover
-      </button>
-      <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
-        Pricing
-      </button>
-
-      <button
-        style={mobile ? styles.outlineBtnFull : styles.outlineBtn}
-        onClick={() => navigate("/login")}
-      >
-        Login
-      </button>
-
-      <button
-        style={mobile ? styles.primaryBtnFull : styles.primaryBtn}
-        onClick={() => navigate("/register")}
-      >
-        Sign Up
-      </button>
-    </>
-  );
-}
-
-/* ================= HERO ================= */
+/* ================= HERO (Aura Lighting) ================= */
 function Hero() {
   const navigate = useNavigate();
-
   return (
-    <section id="home" style={styles.hero}>
+    <section style={styles.heroSection}>
+      <div style={styles.auraLight} />
       <div style={styles.container}>
         <div style={styles.heroContent}>
-          <span style={styles.badge}>🎟️ Event Ticketing Platform</span>
-
+          <div style={styles.pillBadge}>
+            ✨ Now integrated with Paystack Transfer
+          </div>
           <h1 style={styles.heroTitle}>
-            Sell Event Tickets <br /> The Smart Way
+            The infrastructure for <br />
+            <span style={styles.gradientText}>Modern Events.</span>
           </h1>
-
-          <p style={styles.heroText}>
-            Create events, sell tickets, and manage entry with secure QR codes —
-            built for organizers and guests.
+          <p style={styles.heroSubtitle}>
+            Issue secure QR tickets, automate instant payouts, and scale your
+            audience with Tictify's next-gen ticketing engine.
           </p>
-
-          <div style={styles.heroButtons}>
+          <div style={styles.heroBtnGroup}>
             <button
-              style={styles.primaryBtn}
-              onClick={() => navigate("/login")}
+              style={styles.primaryBtnHero}
+              onClick={() => navigate("/register")}
             >
-              Create an Event
+              Start Organizing
             </button>
-
             <button
-              style={styles.secondaryBtn}
+              style={styles.secondaryBtnHero}
               onClick={() => navigate("/events")}
             >
               Browse Events
@@ -170,12 +124,11 @@ function Hero() {
         </div>
       </div>
 
-      {/* MARQUEE */}
-      <div style={styles.marqueeViewport}>
+      <div style={styles.marqueeContainer}>
         <div style={styles.marqueeTrack}>
           {[...heroImages, ...heroImages].map((img, i) => (
-            <div key={i} style={styles.marqueeItem}>
-              <img src={img} alt="Event" style={styles.marqueeImage} />
+            <div key={i} style={styles.marqueeCard}>
+              <img src={img} alt="Event" style={styles.marqueeImg} />
             </div>
           ))}
         </div>
@@ -184,72 +137,115 @@ function Hero() {
   );
 }
 
-/* ================= SECTIONS ================= */
-function Trust() {
+/* ================= FEATURES (The Bento Grid) ================= */
+function FeaturesBento() {
   return (
-    <section style={styles.trust}>
+    <section id="features" style={styles.section}>
       <div style={styles.container}>
-        <p style={styles.trustText}>
-          Trusted by campus promoters, communities, and event organizers across Nigeria.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function Guests() {
-  return (
-    <section id="guests" style={styles.sectionAlt}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>For Guests</h2>
-        <div style={styles.grid}>
-          <Card title="Instant Tickets" text="Receive your e-ticket instantly." />
-          <Card title="QR Code Entry" text="Fast and secure event entry." />
-          <Card title="Stress-Free Access" text="No printing. No queues." />
+        <h2 style={styles.sectionTitle}>
+          Built for Scale. <br /> Designed for Simplicity.
+        </h2>
+        <div style={styles.bentoGrid}>
+          <div style={{ ...styles.bentoCard, gridColumn: "span 2" }}>
+            <span style={styles.iconBox}>⚡</span>
+            <h3>Instant Payouts</h3>
+            <p>
+              Withdraw revenue to your bank account instantly via Paystack. No
+              more waiting 3-5 business days.
+            </p>
+          </div>
+          <div style={styles.bentoCard}>
+            <span style={styles.iconBox}>🔒</span>
+            <h3>QR Anti-Fraud</h3>
+            <p>
+              Proprietary high-speed scanning to prevent ticket duplication.
+            </p>
+          </div>
+          <div style={styles.bentoCard}>
+            <span style={styles.iconBox}>📊</span>
+            <h3>Live Intel</h3>
+            <p>Watch ticket sales and check-ins happen in real-time.</p>
+          </div>
+          <div style={{ ...styles.bentoCard, gridColumn: "span 2" }}>
+            <span style={styles.iconBox}>📱</span>
+            <h3>Guest Wallet</h3>
+            <p>
+              Guests keep all tickets in one secure, digital vault — accessible
+              even without internet.
+            </p>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Organizers() {
+/* ================= PRICING ================= */
+function PricingGrid() {
   return (
-    <section style={styles.section}>
+    <section id="pricing" style={styles.sectionAlt}>
       <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>For Organizers</h2>
-        <div style={styles.grid}>
-          <Card title="Create Events" text="Set up events in minutes." />
-          <Card title="Secure Payments" text="Powered by ErcasPay." />
-          <Card title="Live Analytics" text="Track sales in real time." />
+        <div style={styles.pricingHeader}>
+          <h2>Straightforward Pricing</h2>
+          <p>Only pay when you sell. No hidden monthly fees.</p>
+        </div>
+        <div style={styles.pricingGrid}>
+          <div style={styles.priceCard}>
+            <p style={styles.cardLabel}>FREE EVENTS</p>
+            <h3 style={styles.priceValue}>₦0</h3>
+            <p style={styles.priceMeta}>Per ticket</p>
+            <ul style={styles.priceList}>
+              <li>Unlimited free tickets</li>
+              <li>QR Code scanning</li>
+              <li>Basic analytics</li>
+            </ul>
+          </div>
+          <div style={{ ...styles.priceCard, border: "1px solid #22F2A6" }}>
+            <div style={styles.featuredBadge}>MOST POPULAR</div>
+            <p style={styles.cardLabel}>PRO ORGANIZER</p>
+            <h3 style={styles.priceValue}>3% + ₦80</h3>
+            <p style={styles.priceMeta}>Per paid ticket</p>
+            <ul style={styles.priceList}>
+              <li>Instant Withdrawals</li>
+              <li>Priority Admin Support</li>
+              <li>Advanced Sales Intel</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/* ================= FOOTER / CTA ================= */
+function BrandStrip() {
+  return (
+    <div style={styles.brandStrip}>
+      <p>TRUSTED BY OVER 500+ CAMPUS COMMUNITIES AND NIGERIAN PROMOTERS</p>
+    </div>
   );
 }
 
 function HowItWorks() {
   return (
-    <section style={styles.sectionAlt}>
+    <section style={styles.section}>
       <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>How It Works</h2>
-        <div style={styles.grid}>
-          <Step number="01" title="Create Event" text="Add details and tickets." />
-          <Step number="02" title="Sell Tickets" text="Guests pay & get QR codes." />
-          <Step number="03" title="Scan & Admit" text="Prevent fraud at entry." />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Pricing() {
-  return (
-    <section id="pricing" style={styles.section}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>Simple Pricing</h2>
-        <div style={styles.grid}>
-          <PriceCard title="Free" price="₦0" text="For free events." />
-          <PriceCard title="Pro" price="3% + ₦80" text="Pay per ticket sold." />
+        <div style={styles.stepGrid}>
+          <div style={styles.stepItem}>
+            <div style={styles.stepNumber}>1</div>
+            <h4>Configure</h4>
+            <p>Set event dates and ticket tiers in seconds.</p>
+          </div>
+          <div style={styles.stepItem}>
+            <div style={styles.stepNumber}>2</div>
+            <h4>Broadcast</h4>
+            <p>Share your unique link or embed on your site.</p>
+          </div>
+          <div style={styles.stepItem}>
+            <div style={styles.stepNumber}>3</div>
+            <h4>Receive</h4>
+            <p>Revenue lands in your Tictify wallet immediately.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -259,12 +255,16 @@ function Pricing() {
 function CTA() {
   const navigate = useNavigate();
   return (
-    <section style={styles.cta}>
-      <div style={styles.container}>
-        <h2>Start Selling Tickets Today</h2>
-        <p style={styles.mutedText}>Create your first event in minutes.</p>
-        <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
-          Get Started
+    <section style={styles.ctaContainer}>
+      <div style={styles.ctaCard}>
+        <h2>
+          Ready to host your next <br /> big thing?
+        </h2>
+        <button
+          style={styles.primaryBtnHero}
+          onClick={() => navigate("/register")}
+        >
+          Create My First Event
         </button>
       </div>
     </section>
@@ -275,270 +275,297 @@ function Footer() {
   return (
     <footer style={styles.footer}>
       <div style={styles.container}>
-        <img src={logo} alt="Tictify" style={styles.logo} />
-        <p style={styles.mutedText}>
-          © {new Date().getFullYear()} Tictify. All rights reserved.
-        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "20px",
+          }}
+        >
+          <img src={logo} alt="Tictify" style={{ height: 30 }} />
+          <p style={styles.muted}>
+            © 2026 Tictify Technologies. Built for the next generation of
+            experiences.
+          </p>
+        </div>
       </div>
     </footer>
   );
 }
 
-/* ================= REUSABLE ================= */
-function Card({ title, text }) {
-  return (
-    <div style={styles.card}>
-      <h3>{title}</h3>
-      <p style={styles.mutedText}>{text}</p>
-    </div>
-  );
-}
-
-function Step({ number, title, text }) {
-  return (
-    <div style={styles.card}>
-      <span style={styles.stepNumber}>{number}</span>
-      <h3>{title}</h3>
-      <p style={styles.mutedText}>{text}</p>
-    </div>
-  );
-}
-
-function PriceCard({ title, price, text }) {
-  return (
-    <div style={{ ...styles.card, textAlign: "center" }}>
-      <h3>{title}</h3>
-      <h2 style={{ color: "#22F2A6", margin: "12px 0" }}>{price}</h2>
-      <p style={styles.mutedText}>{text}</p>
-    </div>
-  );
-}
-
-/* ================= STYLES ================= */
+/* ================= STYLES (2026 SV THEME) ================= */
 const styles = {
   page: {
-    background: "#0F0618",
-    color: "#FFFFFF",
-    fontFamily: "Inter, system-ui",
+    backgroundColor: "#030303",
+    color: "#fff",
+    fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
     overflowX: "hidden",
   },
-
-  container: {
+  noiseOverlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')",
+    opacity: 0.05,
+    pointerEvents: "none",
+    zIndex: 9999,
+  },
+  container: { maxWidth: 1200, margin: "0 auto", padding: "0 24px" },
+  containerNav: {
     maxWidth: 1200,
     margin: "0 auto",
-    padding: "0 clamp(16px,4vw,32px)",
-  },
-
-  header: {
-    position: "sticky",
-    top: 0,
-    zIndex: 1000,
-    backdropFilter: "blur(12px)",
-    background: "rgba(15,6,24,0.8)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  nav: {
-    height: 72,
+    padding: "0 24px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    height: "100%",
   },
-
-  navLinks: {
-    display: "flex",
-    gap: 16,
-    alignItems: "center",
+  navWrapper: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 72,
+    zIndex: 1000,
+    transition: "all 0.3s ease",
   },
+  navLinks: { display: "flex", gap: "24px", alignItems: "center" },
+  logo: { height: 28, cursor: "pointer" },
 
-  menuBtn: {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#fff",
-    padding: "6px 12px",
-    borderRadius: 8,
-    fontSize: 20,
-    cursor: "pointer",
+  heroSection: {
+    padding: "160px 0 100px",
+    position: "relative",
+    textAlign: "center",
   },
-
-  mobileMenu: {
-    display: "grid",
-    gap: 16,
-    padding: 24,
-    background: "#0F0618",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
+  auraLight: {
+    position: "absolute",
+    top: "-10%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "80%",
+    height: "60%",
+    background:
+      "radial-gradient(circle, rgba(34,242,166,0.1) 0%, transparent 70%)",
+    pointerEvents: "none",
   },
-
-  logo: { height: 34, cursor: "pointer" },
-
-  hero: {
-    padding: "clamp(72px,10vw,120px) 0 64px",
+  pillBadge: {
+    display: "inline-block",
+    padding: "8px 16px",
+    borderRadius: "99px",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    fontSize: "13px",
+    color: "#22F2A6",
+    marginBottom: "24px",
   },
-
-  heroContent: {
-    maxWidth: 620,
-  },
-
   heroTitle: {
-    fontSize: "clamp(30px,5vw,52px)",
-    margin: "16px 0",
+    fontSize: "clamp(40px, 8vw, 84px)",
+    fontWeight: 800,
+    lineHeight: 1,
+    letterSpacing: "-0.04em",
+    marginBottom: "24px",
   },
-
-  heroText: {
-    color: "#CFC9D6",
-    marginBottom: 28,
+  gradientText: {
+    background: "linear-gradient(90deg, #22F2A6, #7CFF9B)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
   },
-
-  heroButtons: {
+  heroSubtitle: {
+    fontSize: "clamp(16px, 2vw, 20px)",
+    color: "#9F97B2",
+    maxWidth: "600px",
+    margin: "0 auto 40px",
+    lineHeight: 1.6,
+  },
+  heroBtnGroup: {
     display: "flex",
-    gap: 14,
+    gap: "16px",
+    justifyContent: "center",
     flexWrap: "wrap",
   },
 
-  badge: {
-    color: "#22F2A6",
-    fontSize: 14,
-  },
-
-  marqueeViewport: {
-    marginTop: 72,
+  marqueeContainer: {
+    marginTop: "100px",
     overflow: "hidden",
+    position: "relative",
   },
-
   marqueeTrack: {
     display: "flex",
-    width: "200%",
     animation: "marquee 40s linear infinite",
+    width: "max-content",
   },
-
-  marqueeItem: {
-    flex: "0 0 33.3333%",
-    padding: "0 12px",
+  marqueeCard: {
+    width: "300px",
+    height: "200px",
+    margin: "0 10px",
+    flexShrink: 0,
   },
-
-  marqueeImage: {
+  marqueeImg: {
     width: "100%",
-    height: 220,
+    height: "100%",
     objectFit: "cover",
-    borderRadius: 18,
+    borderRadius: "20px",
+    border: "1px solid rgba(255,255,255,0.1)",
   },
 
-  trust: {
-    padding: "32px 0",
+  brandStrip: {
+    padding: "40px 0",
     textAlign: "center",
+    fontSize: "12px",
+    letterSpacing: "0.2em",
+    color: "#666",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
   },
 
-  trustText: {
+  section: { padding: "100px 0" },
+  sectionAlt: { padding: "100px 0", backgroundColor: "#080808" },
+  sectionTitle: {
+    fontSize: "clamp(32px, 5vw, 48px)",
+    fontWeight: 700,
+    marginBottom: "60px",
+    letterSpacing: "-0.02em",
+  },
+
+  bentoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "20px",
+  },
+  bentoCard: {
+    background: "#111",
+    border: "1px solid rgba(255,255,255,0.05)",
+    padding: "40px",
+    borderRadius: "32px",
+    transition: "all 0.3s ease",
+    position: "relative",
+    overflow: "hidden",
+  },
+  iconBox: { fontSize: "32px", marginBottom: "20px", display: "block" },
+
+  pricingGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 450px))",
+    gap: "30px",
+    justifyContent: "center",
+  },
+  priceCard: {
+    background: "#111",
+    padding: "48px",
+    borderRadius: "32px",
+    position: "relative",
+  },
+  featuredBadge: {
+    position: "absolute",
+    top: "20px",
+    right: "20px",
+    background: "#22F2A6",
+    color: "#000",
+    fontSize: "10px",
+    fontWeight: 800,
+    padding: "4px 10px",
+    borderRadius: "99px",
+  },
+  priceValue: { fontSize: "48px", fontWeight: 800, margin: "10px 0" },
+  priceMeta: { color: "#666", marginBottom: "30px" },
+  priceList: {
+    listStyle: "none",
+    padding: 0,
+    display: "grid",
+    gap: "15px",
     color: "#9F97B2",
   },
 
-  section: {
-    padding: "clamp(64px,10vw,96px) 0",
-  },
-
-  sectionAlt: {
-    padding: "clamp(64px,10vw,96px) 0",
-    background: "#170A25",
-  },
-
-  sectionTitle: {
+  ctaContainer: { padding: "100px 24px" },
+  ctaCard: {
+    maxWidth: "1000px",
+    margin: "0 auto",
+    background: "linear-gradient(135deg, #111 0%, #050505 100%)",
+    padding: "80px 40px",
+    borderRadius: "48px",
     textAlign: "center",
-    marginBottom: 48,
-    fontSize: 32,
+    border: "1px solid rgba(255,255,255,0.05)",
   },
 
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
-    gap: 28,
+  stepGrid: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "40px",
+    flexWrap: "wrap",
   },
-
-  card: {
-    background: "rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    padding: 28,
-  },
-
+  stepItem: { flex: 1, minWidth: "250px" },
   stepNumber: {
+    fontSize: "14px",
     color: "#22F2A6",
-    fontWeight: 600,
+    fontWeight: 800,
+    marginBottom: "16px",
+    borderBottom: "2px solid #22F2A6",
+    display: "inline-block",
+    width: "30px",
   },
 
-  cta: {
-    padding: "96px 0",
-    textAlign: "center",
-  },
+  footer: { padding: "60px 0", borderTop: "1px solid rgba(255,255,255,0.05)" },
+  muted: { color: "#666", fontSize: "14px" },
 
-  footer: {
-    padding: "40px 0",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  primaryBtn: {
+  /* Buttons */
+  primaryBtnSmall: {
     background: "#22F2A6",
+    color: "#000",
     border: "none",
-    padding: "12px 26px",
-    borderRadius: 999,
-    fontWeight: 600,
+    padding: "10px 20px",
+    borderRadius: "99px",
+    fontWeight: 700,
     cursor: "pointer",
+    fontSize: "14px",
   },
-
-  primaryBtnFull: {
+  primaryBtnHero: {
     background: "#22F2A6",
+    color: "#000",
     border: "none",
-    padding: 14,
-    borderRadius: 999,
+    padding: "18px 36px",
+    borderRadius: "99px",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: "16px",
+    transition: "transform 0.2s ease",
+  },
+  secondaryBtnHero: {
+    background: "rgba(255,255,255,0.05)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.1)",
+    padding: "18px 36px",
+    borderRadius: "99px",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  outlineBtnSmall: {
+    background: "transparent",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.2)",
+    padding: "10px 20px",
+    borderRadius: "99px",
     fontWeight: 600,
-    width: "100%",
-  },
-
-  secondaryBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "12px 26px",
-    borderRadius: 999,
     cursor: "pointer",
+    fontSize: "14px",
   },
-
-  outlineBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "10px 22px",
-    borderRadius: 999,
-    cursor: "pointer",
-  },
-
-  outlineBtnFull: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: 14,
-    borderRadius: 999,
-    width: "100%",
-  },
-
   linkBtn: {
     background: "none",
     border: "none",
-    color: "#FFFFFF",
+    color: "#9F97B2",
     cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 500,
   },
-
-  mutedText: { color: "#CFC9D6" },
 };
 
-/* ================= GLOBAL CSS ================= */
 const globalCSS = `
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-section { scroll-margin-top: 96px; }
-
-@media (max-width: 900px) {
-  .marqueeItem { flex: 0 0 100%; }
-}
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { -webkit-font-smoothing: antialiased; }
+  button:hover { transform: translateY(-2px); opacity: 0.9; }
 `;

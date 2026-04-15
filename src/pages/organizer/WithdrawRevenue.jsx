@@ -2,12 +2,25 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
+// Popular Nigerian banks with their Paystack bank codes
+const NIGERIAN_BANKS = [
+  { code: "", name: "-- Select Bank --" },
+  { code: "044", name: "Access Bank" },
+  { code: "011", name: "First Bank of Nigeria" },
+  { code: "058", name: "Guaranty Trust Bank (GTB)" },
+  { code: "50211", name: "Kuda Bank" },
+  { code: "50515", name: "Moniepoint MFB" },
+  { code: "100004", name: "OPay" },
+  { code: "033", name: "United Bank for Africa (UBA)" },
+  { code: "057", name: "Zenith Bank" },
+];
+
 export default function WithdrawRevenue() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     amount: "",
-    bankName: "",
+    bankCode: "",
     accountNumber: "",
     accountName: "",
   });
@@ -30,9 +43,7 @@ export default function WithdrawRevenue() {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/dashboard/organizer`,
           {
-            headers: {
-              Authorization: `Bearer ${getToken()}`,
-            },
+            headers: { Authorization: `Bearer ${getToken()}` },
           },
         );
 
@@ -46,7 +57,6 @@ export default function WithdrawRevenue() {
         setLoadingBalance(false);
       }
     }
-
     loadBalance();
   }, []);
 
@@ -62,7 +72,7 @@ export default function WithdrawRevenue() {
     if (
       !amount ||
       amount <= 0 ||
-      !form.bankName ||
+      !form.bankCode ||
       !form.accountNumber ||
       !form.accountName
     ) {
@@ -86,6 +96,9 @@ export default function WithdrawRevenue() {
     setLoading(true);
 
     try {
+      // Find the bank name based on the selected code
+      const selectedBank = NIGERIAN_BANKS.find((b) => b.code === form.bankCode);
+
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/withdrawals/request`,
         {
@@ -97,7 +110,8 @@ export default function WithdrawRevenue() {
           body: JSON.stringify({
             amount,
             bankDetails: {
-              bankName: form.bankName.trim(),
+              bankName: selectedBank.name,
+              bankCode: form.bankCode, // Required for Paystack
               accountNumber: form.accountNumber.trim(),
               accountName: form.accountName.trim(),
             },
@@ -105,26 +119,21 @@ export default function WithdrawRevenue() {
         },
       );
 
-      if (!res.ok) throw new Error("Withdrawal request failed");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Withdrawal request failed");
+      }
 
       setSubmitted(true);
 
       setModal({
         open: true,
         type: "success",
-        message:
-          "Withdrawal request sent successfully. Awaiting admin approval.",
+        message: "Withdrawal successful! Funds have been sent to your account.",
       });
 
-      // Optimistic UI update
       setBalance((prev) => prev - amount);
-
-      setForm({
-        amount: "",
-        bankName: "",
-        accountNumber: "",
-        accountName: "",
-      });
+      setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
     } catch (err) {
       setModal({
         open: true,
@@ -138,10 +147,8 @@ export default function WithdrawRevenue() {
 
   return (
     <div style={styles.page}>
-      {/* ================= LOADING MODALS ================= */}
       {(loading || loadingBalance) && <LoadingModal />}
 
-      {/* ================= INFO MODAL ================= */}
       {modal.open && (
         <Modal
           type={modal.type}
@@ -150,9 +157,7 @@ export default function WithdrawRevenue() {
         />
       )}
 
-      {/* ================= CARD ================= */}
       <form style={styles.card} onSubmit={submit}>
-        {/* BACK */}
         <button
           type="button"
           style={styles.backBtn}
@@ -178,14 +183,19 @@ export default function WithdrawRevenue() {
           onChange={updateField}
         />
 
-        <label style={styles.label}>Bank Name</label>
-        <input
+        <label style={styles.label}>Bank</label>
+        <select
           style={styles.input}
-          name="bankName"
-          placeholder="Access Bank"
-          value={form.bankName}
+          name="bankCode"
+          value={form.bankCode}
           onChange={updateField}
-        />
+        >
+          {NIGERIAN_BANKS.map((bank) => (
+            <option key={bank.code} value={bank.code}>
+              {bank.name}
+            </option>
+          ))}
+        </select>
 
         <label style={styles.label}>Account Number</label>
         <input
@@ -200,7 +210,7 @@ export default function WithdrawRevenue() {
         <input
           style={styles.input}
           name="accountName"
-          placeholder="Your name"
+          placeholder="Your account name"
           value={form.accountName}
           onChange={updateField}
         />
@@ -217,14 +227,12 @@ export default function WithdrawRevenue() {
         </button>
 
         <p style={styles.note}>
-          ⏳ Withdrawals are processed after admin approval.
+          ⏳ Withdrawals are processed instantly via Paystack.
         </p>
       </form>
     </div>
   );
 }
-
-/* ================= MODALS ================= */
 
 function LoadingModal() {
   return (
@@ -250,8 +258,6 @@ function Modal({ type, message, onClose }) {
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles = {
   page: {
     minHeight: "100vh",
@@ -262,7 +268,6 @@ const styles = {
     color: "#fff",
     fontFamily: "Inter, system-ui",
   },
-
   card: {
     width: "100%",
     maxWidth: 420,
@@ -272,7 +277,6 @@ const styles = {
     borderRadius: 24,
     boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
   },
-
   backBtn: {
     background: "transparent",
     border: "none",
@@ -281,25 +285,9 @@ const styles = {
     marginBottom: 12,
     cursor: "pointer",
   },
-
-  title: {
-    marginBottom: 8,
-    fontSize: 24,
-  },
-
-  muted: {
-    color: "#CFC9D6",
-    fontSize: 14,
-    marginBottom: 24,
-  },
-
-  label: {
-    fontSize: 13,
-    color: "#CFC9D6",
-    marginBottom: 6,
-    display: "block",
-  },
-
+  title: { marginBottom: 8, fontSize: 24 },
+  muted: { color: "#CFC9D6", fontSize: 14, marginBottom: 24 },
+  label: { fontSize: 13, color: "#CFC9D6", marginBottom: 6, display: "block" },
   input: {
     width: "100%",
     padding: "14px 16px",
@@ -309,8 +297,8 @@ const styles = {
     color: "#fff",
     marginBottom: 16,
     outline: "none",
+    appearance: "none",
   },
-
   primaryBtn: {
     width: "100%",
     padding: 14,
@@ -320,15 +308,9 @@ const styles = {
     fontWeight: 600,
     cursor: "pointer",
     marginTop: 10,
+    color: "#000",
   },
-
-  note: {
-    marginTop: 16,
-    fontSize: 12,
-    color: "#CFC9D6",
-    textAlign: "center",
-  },
-
+  note: { marginTop: 16, fontSize: 12, color: "#CFC9D6", textAlign: "center" },
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -337,7 +319,6 @@ const styles = {
     placeItems: "center",
     zIndex: 1000,
   },
-
   modal: {
     background: "#1A0F2E",
     padding: 24,
@@ -346,14 +327,12 @@ const styles = {
     width: "100%",
     textAlign: "center",
   },
-
   loadingModal: {
     background: "#1A0F2E",
     padding: 24,
     borderRadius: 18,
     fontWeight: 600,
   },
-
   modalBtn: {
     marginTop: 20,
     padding: "10px 20px",
@@ -362,5 +341,6 @@ const styles = {
     background: "#22F2A6",
     fontWeight: 600,
     cursor: "pointer",
+    color: "#000",
   },
 };
