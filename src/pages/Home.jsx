@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 const logo = "/logo.png";
+
 const heroImages = [
   "/hero/hero1.jpg",
   "/hero/hero2.jpg",
@@ -14,242 +15,163 @@ export default function Home() {
   return (
     <div style={styles.page}>
       <style>{globalCSS}</style>
-      <div style={styles.noiseOverlay} />
+
       <Navbar />
       <Hero />
-      <BrandStrip />
-      <FeaturesBento />
+      <Trust />
+      <Guests />
+      <Organizers />
       <HowItWorks />
-      <PricingGrid />
+      <Pricing />
       <CTA />
       <Footer />
     </div>
   );
 }
 
-/* ================= NAV (Responsive Drawer) ================= */
+/* ================= NAVBAR ================= */
 function Navbar() {
   const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
+  /* 🔑 RESPONSIVE DETECTION */
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const mq = window.matchMedia("(max-width: 900px)");
+    const update = () => {
+      setIsMobile(mq.matches);
+      if (!mq.matches) setOpen(false);
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
   }, []);
 
+  /* 🔒 LOCK SCROLL WHEN MENU OPEN */
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
+  }, [open]);
+
+  const scrollTo = (id) => {
+    setOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <nav
-      style={{
-        ...styles.navWrapper,
-        backgroundColor:
-          scrolled || menuOpen ? "rgba(3, 3, 3, 0.85)" : "transparent",
-        backdropFilter: scrolled || menuOpen ? "blur(20px)" : "none",
-      }}
-    >
-      <div style={styles.containerNav}>
-        <img
-          src={logo}
-          alt="Tictify"
-          style={styles.logo}
-          onClick={() => navigate("/")}
-        />
-
-        {/* Hamburger */}
-        <div
-          className="mobile-only"
-          onClick={() => setMenuOpen(!menuOpen)}
-          style={styles.hamburger}
-        >
-          <div
-            style={{
-              ...styles.line,
-              transform: menuOpen
-                ? "rotate(45deg) translate(5px, 5px)"
-                : "none",
-            }}
+    <header style={styles.header}>
+      <div style={styles.container}>
+        <nav style={styles.nav}>
+          <img
+            src={logo}
+            alt="Tictify"
+            style={styles.logo}
+            onClick={() => scrollTo("home")}
           />
-          <div style={{ ...styles.line, opacity: menuOpen ? 0 : 1 }} />
-          <div
-            style={{
-              ...styles.line,
-              transform: menuOpen
-                ? "rotate(-45deg) translate(7px, -7px)"
-                : "none",
-            }}
-          />
-        </div>
 
-        <div
-          className={`nav-menu ${menuOpen ? "open" : ""}`}
-          style={styles.navLinks}
-        >
-          <a
-            href="#features"
-            style={styles.linkBtn}
-            onClick={() => setMenuOpen(false)}
-          >
-            Features
-          </a>
-          <a
-            href="#pricing"
-            style={styles.linkBtn}
-            onClick={() => setMenuOpen(false)}
-          >
-            Pricing
-          </a>
-          <button
-            style={styles.outlineBtnSmall}
-            onClick={() => navigate("/login")}
-          >
-            Login
-          </button>
-          <button
-            style={styles.primaryBtnSmall}
-            onClick={() => navigate("/register")}
-          >
-            Get Started
-          </button>
-        </div>
+          {/* DESKTOP NAV */}
+          {!isMobile && (
+            <div style={styles.navLinks}>
+              <NavLinks scrollTo={scrollTo} navigate={navigate} />
+            </div>
+          )}
+
+          {/* MOBILE TOGGLE */}
+          {isMobile && (
+            <button
+              aria-label="Open menu"
+              style={styles.menuBtn}
+              onClick={() => setOpen((v) => !v)}
+            >
+              ☰
+            </button>
+          )}
+        </nav>
       </div>
-    </nav>
+
+      {/* MOBILE MENU */}
+      {isMobile && open && (
+        <div style={styles.mobileMenu}>
+          <NavLinks scrollTo={scrollTo} navigate={navigate} mobile />
+        </div>
+      )}
+    </header>
   );
 }
 
-/* ================= HERO (Fluid Text) ================= */
+function NavLinks({ scrollTo, navigate, mobile }) {
+  return (
+    <>
+      <button style={styles.linkBtn} onClick={() => scrollTo("home")}>
+        Home
+      </button>
+      <button style={styles.linkBtn} onClick={() => scrollTo("guests")}>
+        Discover
+      </button>
+      <button style={styles.linkBtn} onClick={() => scrollTo("pricing")}>
+        Pricing
+      </button>
+
+      <button
+        style={mobile ? styles.outlineBtnFull : styles.outlineBtn}
+        onClick={() => navigate("/login")}
+      >
+        Login
+      </button>
+
+      <button
+        style={mobile ? styles.primaryBtnFull : styles.primaryBtn}
+        onClick={() => navigate("/register")}
+      >
+        Sign Up
+      </button>
+    </>
+  );
+}
+
+/* ================= HERO ================= */
 function Hero() {
   const navigate = useNavigate();
+
   return (
-    <section style={styles.heroSection}>
-      <div style={styles.auraLight} />
+    <section id="home" style={styles.hero}>
       <div style={styles.container}>
-        <div className="fade-in">
-          <div style={styles.pillBadge}>✨ Secure Payouts via Paystack</div>
+        <div style={styles.heroContent}>
+          <span style={styles.badge}>🎟️ Event Ticketing Platform</span>
+
           <h1 style={styles.heroTitle}>
-            Modern Infrastructure <br />
-            <span style={styles.gradientText}>For Global Events.</span>
+            Sell Event Tickets <br /> The Smart Way
           </h1>
-          <p style={styles.heroSubtitle}>
-            The high-performance ticketing engine for organizers who demand
-            speed, security, and instant liquidity.
+
+          <p style={styles.heroText}>
+            Create events, sell tickets, and manage entry with secure QR codes —
+            built for organizers and guests.
           </p>
-          <div style={styles.heroBtnGroup}>
+
+          <div style={styles.heroButtons}>
             <button
-              style={styles.primaryBtnHero}
-              onClick={() => navigate("/register")}
+              style={styles.primaryBtn}
+              onClick={() => navigate("/login")}
             >
-              Host an Event
+              Create an Event
             </button>
+
             <button
-              style={styles.secondaryBtnHero}
+              style={styles.secondaryBtn}
               onClick={() => navigate("/events")}
             >
-              Find Experiences
+              Browse Events
             </button>
           </div>
         </div>
       </div>
 
-      <div style={styles.marqueeContainer}>
-        <div className="marquee-track" style={styles.marqueeTrack}>
+      {/* MARQUEE */}
+      <div style={styles.marqueeViewport}>
+        <div style={styles.marqueeTrack}>
           {[...heroImages, ...heroImages].map((img, i) => (
-            <img key={i} src={img} alt="Event" style={styles.marqueeImg} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ================= FEATURES (The Bento) ================= */
-function FeaturesBento() {
-  return (
-    <section id="features" style={styles.section}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>Engineered for Scale.</h2>
-        <div className="responsive-grid">
-          <div className="bento-card span-2" style={styles.bentoCard}>
-            <span style={styles.iconBox}>⚡</span>
-            <h3>Instant Payouts</h3>
-            <p>Direct-to-bank settlements the moment a ticket is sold.</p>
-          </div>
-          <div className="bento-card" style={styles.bentoCard}>
-            <span style={styles.iconBox}>🔒</span>
-            <h3>Anti-Fraud</h3>
-            <p>Encrypted QR tokens that regenerate every 30 seconds.</p>
-          </div>
-          <div className="bento-card" style={styles.bentoCard}>
-            <span style={styles.iconBox}>📊</span>
-            <h3>Analytics</h3>
-            <p>Real-time ingress and sales velocity tracking.</p>
-          </div>
-          <div className="bento-card span-2" style={styles.bentoCard}>
-            <span style={styles.iconBox}>📱</span>
-            <h3>Native Wallet</h3>
-            <p>Offline-first ticket access for areas with poor connectivity.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ================= PRICING ================= */
-function PricingGrid() {
-  return (
-    <section id="pricing" style={styles.sectionAlt}>
-      <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>Simple Economics.</h2>
-        <div className="responsive-grid">
-          <div style={styles.priceCard}>
-            <p style={styles.cardLabel}>COMMUNITY</p>
-            <h3 style={styles.priceValue}>
-              ₦0<span style={{ fontSize: "1rem" }}> /ticket</span>
-            </h3>
-            <ul style={styles.priceList}>
-              <li>✓ Free Events Forever</li>
-              <li>✓ Basic QR Check-in</li>
-            </ul>
-          </div>
-          <div style={{ ...styles.priceCard, border: "1px solid #22F2A6" }}>
-            <div style={styles.featuredBadge}>PRO</div>
-            <p style={styles.cardLabel}>PROFESSIONAL</p>
-            <h3 style={styles.priceValue}>3% + ₦80</h3>
-            <ul style={styles.priceList}>
-              <li>✓ Instant Withdrawals</li>
-              <li>✓ Custom Branding</li>
-              <li>✓ API Access</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BrandStrip() {
-  return (
-    <div style={styles.brandStrip}>
-      <p>TRUSTED BY 500+ NIGERIAN PROMOTERS</p>
-    </div>
-  );
-}
-
-function HowItWorks() {
-  return (
-    <section style={styles.section}>
-      <div style={styles.container}>
-        <div className="step-flex">
-          {[
-            { n: "01", t: "Configure", d: "Define tiers and rules." },
-            { n: "02", t: "Broadcast", d: "Deploy links everywhere." },
-            { n: "03", t: "Settle", d: "Funds hit your bank instantly." },
-          ].map((s, i) => (
-            <div key={i} style={styles.stepItem}>
-              <div style={styles.stepNumber}>{s.n}</div>
-              <h4>{s.t}</h4>
-              <p style={{ color: "#666" }}>{s.d}</p>
+            <div key={i} style={styles.marqueeItem}>
+              <img src={img} alt="Event" style={styles.marqueeImage} />
             </div>
           ))}
         </div>
@@ -258,16 +180,104 @@ function HowItWorks() {
   );
 }
 
-function CTA() {
+/* ================= SECTIONS ================= */
+function Trust() {
   return (
-    <section style={styles.ctaContainer}>
-      <div style={styles.ctaCard}>
-        <h2
-          style={{ fontSize: "clamp(1.5rem, 5vw, 3rem)", marginBottom: "2rem" }}
-        >
-          The future of events is here.
-        </h2>
-        <button style={styles.primaryBtnHero}>Create Your Event</button>
+    <section style={styles.trust}>
+      <div style={styles.container}>
+        <p style={styles.trustText}>
+          Trusted by campus promoters, communities, and event organizers across
+          Nigeria.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Guests() {
+  return (
+    <section id="guests" style={styles.sectionAlt}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>For Guests</h2>
+        <div style={styles.grid}>
+          <Card
+            title="Instant Tickets"
+            text="Receive your e-ticket instantly."
+          />
+          <Card title="QR Code Entry" text="Fast and secure event entry." />
+          <Card title="Stress-Free Access" text="No printing. No queues." />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Organizers() {
+  return (
+    <section style={styles.section}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>For Organizers</h2>
+        <div style={styles.grid}>
+          <Card title="Create Events" text="Set up events in minutes." />
+          <Card title="Secure Payments" text="Powered by ErcasPay." />
+          <Card title="Live Analytics" text="Track sales in real time." />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  return (
+    <section style={styles.sectionAlt}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>How It Works</h2>
+        <div style={styles.grid}>
+          <Step
+            number="01"
+            title="Create Event"
+            text="Add details and tickets."
+          />
+          <Step
+            number="02"
+            title="Sell Tickets"
+            text="Guests pay & get QR codes."
+          />
+          <Step
+            number="03"
+            title="Scan & Admit"
+            text="Prevent fraud at entry."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section id="pricing" style={styles.section}>
+      <div style={styles.container}>
+        <h2 style={styles.sectionTitle}>Simple Pricing</h2>
+        <div style={styles.grid}>
+          <PriceCard title="Free" price="₦0" text="For free events." />
+          <PriceCard title="Pro" price="3% + ₦80" text="Pay per ticket sold." />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTA() {
+  const navigate = useNavigate();
+  return (
+    <section style={styles.cta}>
+      <div style={styles.container}>
+        <h2>Start Selling Tickets Today</h2>
+        <p style={styles.mutedText}>Create your first event in minutes.</p>
+        <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
+          Get Started
+        </button>
       </div>
     </section>
   );
@@ -277,284 +287,270 @@ function Footer() {
   return (
     <footer style={styles.footer}>
       <div style={styles.container}>
-        <div className="footer-flex">
-          <img src={logo} alt="Tictify" style={{ height: 24 }} />
-          <p style={styles.muted}>
-            © 2026 Tictify. Modern ticketing for modern creators.
-          </p>
-        </div>
+        <img src={logo} alt="Tictify" style={styles.logo} />
+        <p style={styles.mutedText}>
+          © {new Date().getFullYear()} Tictify. All rights reserved.
+        </p>
       </div>
     </footer>
+  );
+}
+
+/* ================= REUSABLE ================= */
+function Card({ title, text }) {
+  return (
+    <div style={styles.card}>
+      <h3>{title}</h3>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
+  );
+}
+
+function Step({ number, title, text }) {
+  return (
+    <div style={styles.card}>
+      <span style={styles.stepNumber}>{number}</span>
+      <h3>{title}</h3>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
+  );
+}
+
+function PriceCard({ title, price, text }) {
+  return (
+    <div style={{ ...styles.card, textAlign: "center" }}>
+      <h3>{title}</h3>
+      <h2 style={{ color: "#22F2A6", margin: "12px 0" }}>{price}</h2>
+      <p style={styles.mutedText}>{text}</p>
+    </div>
   );
 }
 
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    backgroundColor: "#030303",
-    color: "#fff",
-    fontFamily: "Inter, system-ui, sans-serif",
+    background: "#0F0618",
+    color: "#FFFFFF",
+    fontFamily: "Inter, system-ui",
     overflowX: "hidden",
   },
-  noiseOverlay: {
-    position: "fixed",
-    inset: 0,
-    backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')",
-    opacity: 0.04,
-    pointerEvents: "none",
-    zIndex: 9999,
-  },
-  container: { maxWidth: 1200, margin: "0 auto", padding: "0 5vw" },
-  containerNav: {
+
+  container: {
     maxWidth: 1200,
     margin: "0 auto",
-    padding: "0 5vw",
+    padding: "0 clamp(16px,4vw,32px)",
+  },
+
+  header: {
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    backdropFilter: "blur(12px)",
+    background: "rgba(15,6,24,0.8)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+  },
+
+  nav: {
+    height: 72,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    height: "100%",
-  },
-  navWrapper: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    zIndex: 1000,
-    transition: "0.3s ease",
-  },
-  navLinks: { display: "flex", gap: "2rem", alignItems: "center" },
-  logo: { height: 24, cursor: "pointer" },
-  hamburger: {
-    display: "none",
-    flexDirection: "column",
-    gap: "6px",
-    cursor: "pointer",
-  },
-  line: {
-    width: "25px",
-    height: "2px",
-    backgroundColor: "#fff",
-    transition: "0.3s",
   },
 
-  heroSection: {
-    padding: "160px 0 80px",
-    position: "relative",
-    textAlign: "center",
-  },
-  auraLight: {
-    position: "absolute",
-    top: "-20%",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "100%",
-    height: "80%",
-    background:
-      "radial-gradient(circle, rgba(34,242,166,0.08) 0%, transparent 70%)",
-    pointerEvents: "none",
-  },
-  pillBadge: {
-    display: "inline-block",
-    padding: "6px 14px",
-    borderRadius: "99px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    fontSize: "0.8rem",
-    color: "#22F2A6",
-    marginBottom: "2rem",
-  },
-  heroTitle: {
-    fontSize: "clamp(2.5rem, 8vw, 5rem)",
-    fontWeight: 850,
-    lineHeight: 1,
-    letterSpacing: "-0.04em",
-    marginBottom: "1.5rem",
-  },
-  gradientText: {
-    background: "linear-gradient(90deg, #22F2A6, #7CFF9B)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-  },
-  heroSubtitle: {
-    fontSize: "clamp(1rem, 2vw, 1.25rem)",
-    color: "#9F97B2",
-    maxWidth: "650px",
-    margin: "0 auto 3rem",
-    lineHeight: 1.6,
-  },
-  heroBtnGroup: {
+  navLinks: {
     display: "flex",
-    gap: "1rem",
-    justifyContent: "center",
+    gap: 16,
+    alignItems: "center",
+  },
+
+  menuBtn: {
+    background: "none",
+    border: "1px solid rgba(255,255,255,0.3)",
+    color: "#fff",
+    padding: "6px 12px",
+    borderRadius: 8,
+    fontSize: 20,
+    cursor: "pointer",
+  },
+
+  mobileMenu: {
+    display: "grid",
+    gap: 16,
+    padding: 24,
+    background: "#0F0618",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+  },
+
+  logo: { height: 34, cursor: "pointer" },
+
+  hero: {
+    padding: "clamp(72px,10vw,120px) 0 64px",
+  },
+
+  heroContent: {
+    maxWidth: 620,
+  },
+
+  heroTitle: {
+    fontSize: "clamp(30px,5vw,52px)",
+    margin: "16px 0",
+  },
+
+  heroText: {
+    color: "#CFC9D6",
+    marginBottom: 28,
+  },
+
+  heroButtons: {
+    display: "flex",
+    gap: 14,
     flexWrap: "wrap",
   },
 
-  marqueeContainer: {
-    marginTop: "100px",
+  badge: {
+    color: "#22F2A6",
+    fontSize: 14,
+  },
+
+  marqueeViewport: {
+    marginTop: 72,
     overflow: "hidden",
-    position: "relative",
   },
-  marqueeTrack: { display: "flex", gap: "20px", width: "max-content" },
-  marqueeImg: {
-    width: "clamp(200px, 30vw, 350px)",
-    height: "220px",
+
+  marqueeTrack: {
+    display: "flex",
+    width: "200%",
+    animation: "marquee 40s linear infinite",
+  },
+
+  marqueeItem: {
+    flex: "0 0 33.3333%",
+    padding: "0 12px",
+  },
+
+  marqueeImage: {
+    width: "100%",
+    height: 220,
     objectFit: "cover",
-    borderRadius: "24px",
-    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 18,
   },
 
-  brandStrip: {
-    padding: "40px 0",
+  trust: {
+    padding: "32px 0",
     textAlign: "center",
-    fontSize: "0.7rem",
-    letterSpacing: "0.3em",
-    color: "#555",
   },
-  section: { padding: "100px 0" },
-  sectionAlt: { padding: "100px 0", backgroundColor: "#080808" },
+
+  trustText: {
+    color: "#9F97B2",
+  },
+
+  section: {
+    padding: "clamp(64px,10vw,96px) 0",
+  },
+
+  sectionAlt: {
+    padding: "clamp(64px,10vw,96px) 0",
+    background: "#170A25",
+  },
+
   sectionTitle: {
-    fontSize: "clamp(2rem, 5vw, 3rem)",
-    fontWeight: 800,
-    marginBottom: "4rem",
     textAlign: "center",
+    marginBottom: 48,
+    fontSize: 32,
   },
 
-  bentoCard: {
-    background: "#111",
-    border: "1px solid rgba(255,255,255,0.05)",
-    padding: "3rem",
-    borderRadius: "32px",
-  },
-  iconBox: { fontSize: "2rem", marginBottom: "1.5rem", display: "block" },
-
-  priceCard: {
-    background: "#111",
-    padding: "3rem",
-    borderRadius: "32px",
-    position: "relative",
-    textAlign: "center",
-  },
-  featuredBadge: {
-    position: "absolute",
-    top: "20px",
-    right: "20px",
-    background: "#22F2A6",
-    color: "#000",
-    fontSize: "10px",
-    fontWeight: 800,
-    padding: "4px 12px",
-    borderRadius: "99px",
-  },
-  priceValue: { fontSize: "3.5rem", fontWeight: 800, margin: "1rem 0" },
-  priceList: {
-    listStyle: "none",
-    padding: 0,
-    marginTop: "2rem",
-    textAlign: "left",
+  grid: {
     display: "grid",
-    gap: "10px",
+    gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+    gap: 28,
   },
 
-  stepItem: { flex: 1, minWidth: "250px" },
+  card: {
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    padding: 28,
+  },
+
   stepNumber: {
     color: "#22F2A6",
-    fontWeight: 900,
-    fontSize: "1.5rem",
-    marginBottom: "1rem",
+    fontWeight: 600,
   },
 
-  ctaContainer: { padding: "100px 5vw" },
-  ctaCard: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    background: "linear-gradient(135deg, #111, #050505)",
-    padding: "80px 40px",
-    borderRadius: "48px",
+  cta: {
+    padding: "96px 0",
     textAlign: "center",
-    border: "1px solid rgba(255,255,255,0.05)",
   },
-  footer: { padding: "60px 0", borderTop: "1px solid rgba(255,255,255,0.05)" },
-  muted: { color: "#555", fontSize: "0.9rem" },
 
-  primaryBtnSmall: {
+  footer: {
+    padding: "40px 0",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+  },
+
+  primaryBtn: {
     background: "#22F2A6",
-    color: "#000",
     border: "none",
-    padding: "12px 24px",
-    borderRadius: "99px",
-    fontWeight: 700,
+    padding: "12px 26px",
+    borderRadius: 999,
+    fontWeight: 600,
     cursor: "pointer",
   },
-  primaryBtnHero: {
+
+  primaryBtnFull: {
     background: "#22F2A6",
-    color: "#000",
     border: "none",
-    padding: "20px 40px",
-    borderRadius: "99px",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontSize: "1.1rem",
+    padding: 14,
+    borderRadius: 999,
+    fontWeight: 600,
+    width: "100%",
   },
-  secondaryBtnHero: {
-    background: "rgba(255,255,255,0.05)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.1)",
-    padding: "20px 40px",
-    borderRadius: "99px",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontSize: "1.1rem",
-  },
-  outlineBtnSmall: {
+
+  secondaryBtn: {
     background: "transparent",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.2)",
-    padding: "12px 24px",
-    borderRadius: "99px",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "12px 26px",
+    borderRadius: 999,
     cursor: "pointer",
   },
-  linkBtn: {
-    textDecoration: "none",
-    color: "#9F97B2",
-    fontSize: "0.9rem",
-    fontWeight: 500,
+
+  outlineBtn: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: "10px 22px",
+    borderRadius: 999,
+    cursor: "pointer",
   },
+
+  outlineBtnFull: {
+    background: "transparent",
+    border: "1px solid #22F2A6",
+    color: "#22F2A6",
+    padding: 14,
+    borderRadius: 999,
+    width: "100%",
+  },
+
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#FFFFFF",
+    cursor: "pointer",
+  },
+
+  mutedText: { color: "#CFC9D6" },
 };
 
+/* ================= GLOBAL CSS ================= */
 const globalCSS = `
-  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  
-  .marquee-track { animation: marquee 40s linear infinite; }
-  .responsive-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-  }
-  .step-flex { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; text-align: center; }
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
 
-  @media (max-width: 800px) {
-    .mobile-only { display: flex !important; }
-    .nav-menu {
-      position: fixed; top: 0; right: -100%; width: 100%; height: 100vh;
-      background: #030303; flex-direction: column; justify-content: center;
-      transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .nav-menu.open { right: 0; }
-    .span-2 { grid-column: span 1 !important; }
-    .bento-card { padding: 2rem !important; }
-  }
+section { scroll-margin-top: 96px; }
 
-  @media (min-width: 801px) {
-    .span-2 { grid-column: span 2; }
-  }
-
-  .footer-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
-  @media (max-width: 600px) { .footer-flex { justify-content: center; text-align: center; } }
-
-  button:hover { transform: translateY(-3px); filter: brightness(1.1); transition: 0.2s; }
-  .fade-in { animation: fadeIn 1s ease-out; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 900px) {
+  .marqueeItem { flex: 0 0 100%; }
+}
 `;
