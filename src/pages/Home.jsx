@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <div style={styles.page}>
       <style>{globalCSS}</style>
-      <div style={styles.noiseOverlay} /> {/* 2026 Texture Trend */}
+      <div style={styles.noiseOverlay} />
       <Navbar />
       <Hero />
       <BrandStrip />
@@ -27,10 +27,11 @@ export default function Home() {
   );
 }
 
-/* ================= NAV (Floating Glass) ================= */
+/* ================= NAV (Responsive Glass) ================= */
 function Navbar() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -42,31 +43,47 @@ function Navbar() {
     <nav
       style={{
         ...styles.navWrapper,
-        backgroundColor: scrolled ? "rgba(3, 3, 3, 0.7)" : "transparent",
+        backgroundColor:
+          scrolled || mobileMenuOpen ? "rgba(3, 3, 3, 0.9)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
         borderBottom: scrolled ? "1px solid rgba(255,255,255,0.08)" : "none",
       }}
     >
       <div style={styles.containerNav}>
         <img src={logo} alt="Tictify" style={styles.logo} />
-        <div style={styles.navLinks}>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="mobile-toggle"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          style={styles.menuToggle}
+        >
+          {mobileMenuOpen ? "✕" : "☰"}
+        </button>
+
+        <div
+          className={`nav-links ${mobileMenuOpen ? "active" : ""}`}
+          style={styles.navLinks}
+        >
           <button
             style={styles.linkBtn}
-            onClick={() =>
+            onClick={() => {
               document
                 .getElementById("features")
-                .scrollIntoView({ behavior: "smooth" })
-            }
+                .scrollIntoView({ behavior: "smooth" });
+              setMobileMenuOpen(false);
+            }}
           >
             Features
           </button>
           <button
             style={styles.linkBtn}
-            onClick={() =>
+            onClick={() => {
               document
                 .getElementById("pricing")
-                .scrollIntoView({ behavior: "smooth" })
-            }
+                .scrollIntoView({ behavior: "smooth" });
+              setMobileMenuOpen(false);
+            }}
           >
             Pricing
           </button>
@@ -88,7 +105,7 @@ function Navbar() {
   );
 }
 
-/* ================= HERO (Aura Lighting) ================= */
+/* ================= HERO (Responsive Aura) ================= */
 function Hero() {
   const navigate = useNavigate();
   return (
@@ -96,16 +113,14 @@ function Hero() {
       <div style={styles.auraLight} />
       <div style={styles.container}>
         <div style={styles.heroContent}>
-          <div style={styles.pillBadge}>
-            ✨ Now integrated with Paystack Transfer
-          </div>
+          <div style={styles.pillBadge}>✨ Now integrated with Paystack</div>
           <h1 style={styles.heroTitle}>
             The infrastructure for <br />
             <span style={styles.gradientText}>Modern Events.</span>
           </h1>
           <p style={styles.heroSubtitle}>
             Issue secure QR tickets, automate instant payouts, and scale your
-            audience with Tictify's next-gen ticketing engine.
+            audience.
           </p>
           <div style={styles.heroBtnGroup}>
             <button
@@ -127,7 +142,7 @@ function Hero() {
       <div style={styles.marqueeContainer}>
         <div style={styles.marqueeTrack}>
           {[...heroImages, ...heroImages].map((img, i) => (
-            <div key={i} style={styles.marqueeCard}>
+            <div key={i} className="marquee-card" style={styles.marqueeCard}>
               <img src={img} alt="Event" style={styles.marqueeImg} />
             </div>
           ))}
@@ -137,42 +152,32 @@ function Hero() {
   );
 }
 
-/* ================= FEATURES (The Bento Grid) ================= */
+/* ================= FEATURES (Responsive Bento) ================= */
 function FeaturesBento() {
   return (
     <section id="features" style={styles.section}>
       <div style={styles.container}>
-        <h2 style={styles.sectionTitle}>
-          Built for Scale. <br /> Designed for Simplicity.
-        </h2>
-        <div style={styles.bentoGrid}>
-          <div style={{ ...styles.bentoCard, gridColumn: "span 2" }}>
+        <h2 style={styles.sectionTitle}>Built for Scale.</h2>
+        <div className="bento-grid" style={styles.bentoGrid}>
+          <div className="bento-card span-2" style={styles.bentoCard}>
             <span style={styles.iconBox}>⚡</span>
             <h3>Instant Payouts</h3>
-            <p>
-              Withdraw revenue to your bank account instantly via Paystack. No
-              more waiting 3-5 business days.
-            </p>
+            <p>Withdraw revenue to your bank account instantly via Paystack.</p>
           </div>
-          <div style={styles.bentoCard}>
+          <div className="bento-card" style={styles.bentoCard}>
             <span style={styles.iconBox}>🔒</span>
             <h3>QR Anti-Fraud</h3>
-            <p>
-              Proprietary high-speed scanning to prevent ticket duplication.
-            </p>
+            <p>High-speed scanning to prevent ticket duplication.</p>
           </div>
-          <div style={styles.bentoCard}>
+          <div className="bento-card" style={styles.bentoCard}>
             <span style={styles.iconBox}>📊</span>
             <h3>Live Intel</h3>
-            <p>Watch ticket sales and check-ins happen in real-time.</p>
+            <p>Watch ticket sales happen in real-time.</p>
           </div>
-          <div style={{ ...styles.bentoCard, gridColumn: "span 2" }}>
+          <div className="bento-card span-2" style={styles.bentoCard}>
             <span style={styles.iconBox}>📱</span>
             <h3>Guest Wallet</h3>
-            <p>
-              Guests keep all tickets in one secure, digital vault — accessible
-              even without internet.
-            </p>
+            <p>Keep all tickets in one secure, digital vault.</p>
           </div>
         </div>
       </div>
@@ -180,35 +185,30 @@ function FeaturesBento() {
   );
 }
 
-/* ================= PRICING ================= */
+/* ================= PRICING (Stacking Grid) ================= */
 function PricingGrid() {
   return (
     <section id="pricing" style={styles.sectionAlt}>
       <div style={styles.container}>
         <div style={styles.pricingHeader}>
-          <h2>Straightforward Pricing</h2>
-          <p>Only pay when you sell. No hidden monthly fees.</p>
+          <h2 style={styles.sectionTitle}>Pricing</h2>
         </div>
-        <div style={styles.pricingGrid}>
+        <div className="pricing-grid" style={styles.pricingGrid}>
           <div style={styles.priceCard}>
             <p style={styles.cardLabel}>FREE EVENTS</p>
             <h3 style={styles.priceValue}>₦0</h3>
-            <p style={styles.priceMeta}>Per ticket</p>
             <ul style={styles.priceList}>
               <li>Unlimited free tickets</li>
               <li>QR Code scanning</li>
-              <li>Basic analytics</li>
             </ul>
           </div>
           <div style={{ ...styles.priceCard, border: "1px solid #22F2A6" }}>
             <div style={styles.featuredBadge}>MOST POPULAR</div>
             <p style={styles.cardLabel}>PRO ORGANIZER</p>
             <h3 style={styles.priceValue}>3% + ₦80</h3>
-            <p style={styles.priceMeta}>Per paid ticket</p>
             <ul style={styles.priceList}>
               <li>Instant Withdrawals</li>
-              <li>Priority Admin Support</li>
-              <li>Advanced Sales Intel</li>
+              <li>Priority Support</li>
             </ul>
           </div>
         </div>
@@ -217,11 +217,10 @@ function PricingGrid() {
   );
 }
 
-/* ================= FOOTER / CTA ================= */
 function BrandStrip() {
   return (
     <div style={styles.brandStrip}>
-      <p>TRUSTED BY OVER 500+ CAMPUS COMMUNITIES AND NIGERIAN PROMOTERS</p>
+      <p style={{ padding: "0 20px" }}>TRUSTED BY 500+ CAMPUS COMMUNITIES</p>
     </div>
   );
 }
@@ -230,21 +229,18 @@ function HowItWorks() {
   return (
     <section style={styles.section}>
       <div style={styles.container}>
-        <div style={styles.stepGrid}>
+        <div className="step-grid" style={styles.stepGrid}>
           <div style={styles.stepItem}>
             <div style={styles.stepNumber}>1</div>
             <h4>Configure</h4>
-            <p>Set event dates and ticket tiers in seconds.</p>
           </div>
           <div style={styles.stepItem}>
             <div style={styles.stepNumber}>2</div>
             <h4>Broadcast</h4>
-            <p>Share your unique link or embed on your site.</p>
           </div>
           <div style={styles.stepItem}>
             <div style={styles.stepNumber}>3</div>
             <h4>Receive</h4>
-            <p>Revenue lands in your Tictify wallet immediately.</p>
           </div>
         </div>
       </div>
@@ -253,19 +249,11 @@ function HowItWorks() {
 }
 
 function CTA() {
-  const navigate = useNavigate();
   return (
     <section style={styles.ctaContainer}>
-      <div style={styles.ctaCard}>
-        <h2>
-          Ready to host your next <br /> big thing?
-        </h2>
-        <button
-          style={styles.primaryBtnHero}
-          onClick={() => navigate("/register")}
-        >
-          Create My First Event
-        </button>
+      <div className="cta-card" style={styles.ctaCard}>
+        <h2>Ready to host?</h2>
+        <button style={styles.primaryBtnHero}>Create My First Event</button>
       </div>
     </section>
   );
@@ -276,6 +264,7 @@ function Footer() {
     <footer style={styles.footer}>
       <div style={styles.container}>
         <div
+          className="footer-content"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -284,23 +273,19 @@ function Footer() {
             gap: "20px",
           }}
         >
-          <img src={logo} alt="Tictify" style={{ height: 30 }} />
-          <p style={styles.muted}>
-            © 2026 Tictify Technologies. Built for the next generation of
-            experiences.
-          </p>
+          <img src={logo} alt="Tictify" style={{ height: 24 }} />
+          <p style={styles.muted}>© 2026 Tictify Technologies.</p>
         </div>
       </div>
     </footer>
   );
 }
 
-/* ================= STYLES (2026 SV THEME) ================= */
 const styles = {
   page: {
     backgroundColor: "#030303",
     color: "#fff",
-    fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+    fontFamily: "Inter, sans-serif",
     overflowX: "hidden",
   },
   noiseOverlay: {
@@ -331,10 +316,18 @@ const styles = {
     transition: "all 0.3s ease",
   },
   navLinks: { display: "flex", gap: "24px", alignItems: "center" },
-  logo: { height: 28, cursor: "pointer" },
+  menuToggle: {
+    display: "none",
+    background: "none",
+    border: "none",
+    color: "#fff",
+    fontSize: "24px",
+    cursor: "pointer",
+  },
+  logo: { height: 24 },
 
   heroSection: {
-    padding: "160px 0 100px",
+    padding: "140px 0 60px",
     position: "relative",
     textAlign: "center",
   },
@@ -355,16 +348,15 @@ const styles = {
     borderRadius: "99px",
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.1)",
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#22F2A6",
-    marginBottom: "24px",
+    marginBottom: "20px",
   },
   heroTitle: {
-    fontSize: "clamp(40px, 8vw, 84px)",
+    fontSize: "clamp(32px, 8vw, 72px)",
     fontWeight: 800,
-    lineHeight: 1,
-    letterSpacing: "-0.04em",
-    marginBottom: "24px",
+    lineHeight: 1.1,
+    marginBottom: "20px",
   },
   gradientText: {
     background: "linear-gradient(90deg, #22F2A6, #7CFF9B)",
@@ -372,93 +364,78 @@ const styles = {
     WebkitTextFillColor: "transparent",
   },
   heroSubtitle: {
-    fontSize: "clamp(16px, 2vw, 20px)",
+    fontSize: "clamp(16px, 2vw, 18px)",
     color: "#9F97B2",
-    maxWidth: "600px",
-    margin: "0 auto 40px",
-    lineHeight: 1.6,
+    maxWidth: "500px",
+    margin: "0 auto 32px",
+    lineHeight: 1.5,
   },
   heroBtnGroup: {
     display: "flex",
-    gap: "16px",
+    gap: "12px",
     justifyContent: "center",
     flexWrap: "wrap",
   },
 
-  marqueeContainer: {
-    marginTop: "100px",
-    overflow: "hidden",
-    position: "relative",
-  },
+  marqueeContainer: { marginTop: "60px", overflow: "hidden" },
   marqueeTrack: {
     display: "flex",
-    animation: "marquee 40s linear infinite",
+    animation: "marquee 30s linear infinite",
     width: "max-content",
   },
-  marqueeCard: {
-    width: "300px",
-    height: "200px",
-    margin: "0 10px",
-    flexShrink: 0,
-  },
+  marqueeCard: { width: "260px", height: "180px", margin: "0 8px" },
   marqueeImg: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    borderRadius: "20px",
-    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "16px",
   },
 
   brandStrip: {
-    padding: "40px 0",
+    padding: "30px 0",
     textAlign: "center",
-    fontSize: "12px",
-    letterSpacing: "0.2em",
-    color: "#666",
+    fontSize: "11px",
+    color: "#444",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   },
-
-  section: { padding: "100px 0" },
-  sectionAlt: { padding: "100px 0", backgroundColor: "#080808" },
+  section: { padding: "80px 0" },
+  sectionAlt: { padding: "80px 0", backgroundColor: "#080808" },
   sectionTitle: {
-    fontSize: "clamp(32px, 5vw, 48px)",
+    fontSize: "clamp(28px, 5vw, 42px)",
     fontWeight: 700,
-    marginBottom: "60px",
-    letterSpacing: "-0.02em",
+    marginBottom: "40px",
   },
 
   bentoGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "20px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "16px",
   },
   bentoCard: {
     background: "#111",
+    padding: "32px",
+    borderRadius: "24px",
     border: "1px solid rgba(255,255,255,0.05)",
-    padding: "40px",
-    borderRadius: "32px",
-    transition: "all 0.3s ease",
-    position: "relative",
-    overflow: "hidden",
   },
-  iconBox: { fontSize: "32px", marginBottom: "20px", display: "block" },
+  iconBox: { fontSize: "28px", marginBottom: "16px", display: "block" },
 
   pricingGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 450px))",
-    gap: "30px",
-    justifyContent: "center",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "20px",
+    maxWidth: "900px",
+    margin: "0 auto",
   },
   priceCard: {
     background: "#111",
-    padding: "48px",
-    borderRadius: "32px",
+    padding: "40px",
+    borderRadius: "24px",
     position: "relative",
   },
   featuredBadge: {
     position: "absolute",
-    top: "20px",
-    right: "20px",
+    top: "16px",
+    right: "16px",
     background: "#22F2A6",
     color: "#000",
     fontSize: "10px",
@@ -466,88 +443,68 @@ const styles = {
     padding: "4px 10px",
     borderRadius: "99px",
   },
-  priceValue: { fontSize: "48px", fontWeight: 800, margin: "10px 0" },
-  priceMeta: { color: "#666", marginBottom: "30px" },
+  priceValue: { fontSize: "40px", fontWeight: 800, margin: "10px 0" },
   priceList: {
     listStyle: "none",
     padding: 0,
-    display: "grid",
-    gap: "15px",
     color: "#9F97B2",
+    fontSize: "14px",
   },
 
-  ctaContainer: { padding: "100px 24px" },
+  stepGrid: { display: "flex", justifyContent: "space-between", gap: "30px" },
+  stepItem: { flex: 1 },
+  stepNumber: {
+    color: "#22F2A6",
+    fontWeight: 800,
+    borderBottom: "2px solid #22F2A6",
+    marginBottom: "12px",
+    width: "24px",
+  },
+
+  ctaContainer: { padding: "60px 24px" },
   ctaCard: {
     maxWidth: "1000px",
     margin: "0 auto",
-    background: "linear-gradient(135deg, #111 0%, #050505 100%)",
-    padding: "80px 40px",
-    borderRadius: "48px",
+    background: "#111",
+    padding: "60px 20px",
+    borderRadius: "32px",
     textAlign: "center",
-    border: "1px solid rgba(255,255,255,0.05)",
   },
+  footer: { padding: "40px 0", borderTop: "1px solid rgba(255,255,255,0.05)" },
+  muted: { color: "#666", fontSize: "12px" },
 
-  stepGrid: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "40px",
-    flexWrap: "wrap",
-  },
-  stepItem: { flex: 1, minWidth: "250px" },
-  stepNumber: {
-    fontSize: "14px",
-    color: "#22F2A6",
-    fontWeight: 800,
-    marginBottom: "16px",
-    borderBottom: "2px solid #22F2A6",
-    display: "inline-block",
-    width: "30px",
-  },
-
-  footer: { padding: "60px 0", borderTop: "1px solid rgba(255,255,255,0.05)" },
-  muted: { color: "#666", fontSize: "14px" },
-
-  /* Buttons */
   primaryBtnSmall: {
     background: "#22F2A6",
-    color: "#000",
     border: "none",
-    padding: "10px 20px",
+    padding: "10px 18px",
     borderRadius: "99px",
     fontWeight: 700,
     cursor: "pointer",
-    fontSize: "14px",
   },
   primaryBtnHero: {
     background: "#22F2A6",
-    color: "#000",
     border: "none",
-    padding: "18px 36px",
+    padding: "16px 32px",
     borderRadius: "99px",
     fontWeight: 700,
     cursor: "pointer",
-    fontSize: "16px",
-    transition: "transform 0.2s ease",
   },
   secondaryBtnHero: {
     background: "rgba(255,255,255,0.05)",
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.1)",
-    padding: "18px 36px",
+    padding: "16px 32px",
     borderRadius: "99px",
     fontWeight: 700,
     cursor: "pointer",
-    fontSize: "16px",
   },
   outlineBtnSmall: {
     background: "transparent",
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.2)",
-    padding: "10px 20px",
+    padding: "10px 18px",
     borderRadius: "99px",
-    fontWeight: 600,
     cursor: "pointer",
-    fontSize: "14px",
   },
   linkBtn: {
     background: "none",
@@ -555,17 +512,29 @@ const styles = {
     color: "#9F97B2",
     cursor: "pointer",
     fontSize: "14px",
-    fontWeight: 500,
   },
 };
 
 const globalCSS = `
-  @keyframes marquee {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { -webkit-font-smoothing: antialiased; }
-  button:hover { transform: translateY(-2px); opacity: 0.9; }
+  
+  /* Responsive Breakpoints */
+  @media (max-width: 768px) {
+    .mobile-toggle { display: block !important; z-index: 1001; }
+    .nav-links {
+      position: fixed; top: 0; right: -100%; width: 80%; height: 100vh;
+      background: #030303; flex-direction: column; justify-content: center;
+      transition: 0.3s ease; z-index: 1000; box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    }
+    .nav-links.active { right: 0; }
+    .span-2 { grid-column: span 1 !important; }
+    .step-grid { flex-direction: column; }
+    .marquee-card { width: 200px !important; height: 140px !important; }
+    .footer-content { flex-direction: column; text-align: center; }
+  }
+
+  button:active { transform: scale(0.95); }
+  button:hover { opacity: 0.8; }
 `;
