@@ -1,70 +1,33 @@
-/* ═══════════════════════════════════════════════════════
-   TicketSuccess.jsx  — Tictify 2026 Redesign
-═══════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-function injectStyles(id, content) {
-  if (typeof document !== "undefined" && !document.getElementById(id)) {
-    const el = document.createElement("style");
-    el.id = id;
-    el.innerHTML = content;
-    document.head.appendChild(el);
-  }
-}
-
-const BASE_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg:#080910; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08);
-    --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12);
-    --text:#F0EDE8; --muted:#7A7870; --danger:#E05C5C; --live:#6BF0A0; --warn:#E8B44A;
-    --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif; --r:24px; --r-sm:12px;
-  }
-  html { font-size:16px; }
-  body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; }
-  button { font-family:var(--font-b); outline:none; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes successPop {
-    0% { transform:scale(0) rotate(-10deg); opacity:0; }
-    60% { transform:scale(1.15) rotate(3deg); opacity:1; }
-    100% { transform:scale(1) rotate(0deg); opacity:1; }
-  }
-  @keyframes confettiFloat {
-    0%,100% { transform:translateY(0) rotate(0deg); }
-    50% { transform:translateY(-8px) rotate(5deg); }
-  }
-  @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; } }
-`;
+import { useNavigate, useParams } from "react-router-dom";
+import jsPDF from "jspdf";
 
 export default function TicketSuccess() {
-  injectStyles("tictify-base", BASE_CSS);
-
+  const { reference } = useParams();
   const navigate = useNavigate();
   const touchStartX = useRef(0);
 
-  const urlParams = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : "",
-  );
-  const reference = urlParams.get("ref");
-
   const [status, setStatus] = useState("LOADING");
   const [data, setData] = useState(null);
-  const [message, setMessage] = useState("Preparing your ticket…");
+  const [message, setMessage] = useState("Preparing your ticket...");
+
+  // Action States
   const [downloading, setDownloading] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
 
+  /* ================= LOAD TICKET ================= */
   useEffect(() => {
     if (!reference) {
       setStatus("ERROR");
       setMessage("Invalid ticket reference");
       return;
     }
+
     let attempts = 0;
+    const MAX_ATTEMPTS = 15; // Increased slightly for cloud processing latency
+
     const interval = setInterval(async () => {
       attempts++;
       try {
@@ -72,12 +35,14 @@ export default function TicketSuccess() {
           `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
         );
         const result = await res.json();
+
         if (result?.status === "READY") {
           clearInterval(interval);
           setData(result);
           setStatus("READY");
         }
-        if (attempts >= 15) {
+
+        if (attempts >= MAX_ATTEMPTS) {
           clearInterval(interval);
           setStatus("ERROR");
           setMessage("Ticket taking longer than expected. Please refresh.");
@@ -88,11 +53,16 @@ export default function TicketSuccess() {
         setMessage("Unable to load ticket data.");
       }
     }, 1200);
+
     return () => clearInterval(interval);
   }, [reference]);
 
+  /* ================= EMAIL DELIVERY (SENDCHAMP) ================= */
   async function handleSendEmail() {
-    if (!emailInput.includes("@")) return alert("Enter a valid email address.");
+    if (!emailInput || !emailInput.includes("@")) {
+      return alert("Please enter a valid email address.");
+    }
+
     setSendingEmail(true);
     try {
       const res = await fetch(
@@ -103,81 +73,88 @@ export default function TicketSuccess() {
           body: JSON.stringify({ email: emailInput, reference }),
         },
       );
+
       if (res.ok) {
-        alert("Ticket sent! Check your inbox.");
+        alert("Success! Check your inbox (and spam folder) for your ticket.");
         setShowEmailModal(false);
-      } else alert("Email delivery failed. Please try downloading the PDF.");
-    } catch {
+      } else {
+        alert("Email delivery failed. Please try again or download the PDF.");
+      }
+    } catch (err) {
       alert("Network error. Please check your connection.");
     } finally {
       setSendingEmail(false);
     }
   }
 
+  /* ================= SAFE IMAGE LOADER ================= */
+  async function loadImageAsBase64(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /* ================= PDF GENERATION ================= */
   async function downloadPDF() {
     if (downloading || !data) return;
     setDownloading(true);
+
     try {
-      const { default: jsPDF } = await import("jspdf");
       const { event, ticket } = data;
+      const bannerBase64 = await loadImageAsBase64(event.banner);
+      const qrBase64 = await loadImageAsBase64(ticket.qrImage);
 
-      const toBase64 = async (url) => {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        return new Promise((res) => {
-          const r = new FileReader();
-          r.onloadend = () => res(r.result);
-          r.readAsDataURL(blob);
-        });
-      };
-
-      const [bannerB64, qrB64] = await Promise.all([
-        toBase64(event.banner),
-        toBase64(ticket.qrImage),
-      ]);
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",
         format: "a4",
       });
-      const W = doc.internal.pageSize.getWidth();
+      const pageWidth = doc.internal.pageSize.getWidth();
 
       doc.setFillColor(245, 247, 250);
-      doc.rect(0, 0, W, 842, "F");
-      doc.addImage(bannerB64, "JPEG", 40, 30, W - 80, 140);
+      doc.rect(0, 0, pageWidth, 842, "F");
+      doc.addImage(bannerBase64, "JPEG", 40, 30, pageWidth - 80, 140);
       doc.setFontSize(20);
       doc.setTextColor("#111111");
-      doc.text(event.title, W / 2, 210, { align: "center" });
+      doc.text(event.title, pageWidth / 2, 210, { align: "center" });
       doc.setFontSize(12);
       doc.setTextColor("#444444");
       doc.text(
         `${new Date(event.date).toDateString()} • ${event.location}`,
-        W / 2,
+        pageWidth / 2,
         232,
         { align: "center" },
       );
-      doc.roundedRect(40, 255, W - 80, 120, 12, 12);
+      doc.roundedRect(40, 255, pageWidth - 80, 120, 12, 12);
       doc.setFontSize(14);
       doc.text(`Ticket Type: ${ticket.ticketType}`, 60, 295);
       doc.text(`Guest Email: ${ticket.buyerEmail || "—"}`, 60, 320);
       doc.text(`Reference: ${reference}`, 60, 345);
-      doc.addImage(qrB64, "PNG", W / 2 - 80, 400, 160, 160);
+      doc.addImage(qrBase64, "PNG", pageWidth / 2 - 80, 400, 160, 160);
       doc.setFontSize(10);
       doc.setTextColor("#777777");
       doc.text(
-        "Present this ticket at the entrance · Powered by Tictify",
-        W / 2,
+        "Present this ticket at the entrance • Powered by Tictify",
+        pageWidth / 2,
         610,
         { align: "center" },
       );
+
       doc.save(`tictify-ticket-${reference}.pdf`);
-    } catch {
-      alert("PDF generation failed. You can still use the QR code on screen.");
+    } catch (err) {
+      alert(
+        "PDF generation failed. You can still use the QR code shown on screen.",
+      );
     } finally {
       setDownloading(false);
     }
   }
 
+  /* ================= MOBILE NAVIGATION ================= */
   useEffect(() => {
     const start = (e) => (touchStartX.current = e.touches[0].clientX);
     const end = (e) => {
@@ -192,91 +169,15 @@ export default function TicketSuccess() {
     };
   }, [navigate]);
 
-  if (status === "LOADING") {
-    return (
-      <div
-        style={{
-          minHeight: "100svh",
-          background: "var(--bg)",
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              border: "3px solid var(--border)",
-              borderTopColor: "var(--gold)",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 20px",
-            }}
-          />
-          <p
-            style={{
-              fontFamily: "var(--font-h)",
-              fontWeight: 600,
-              marginBottom: 6,
-            }}
-          >
-            Generating your ticket…
-          </p>
-          <p style={{ fontSize: 13, color: "var(--muted)" }}>{message}</p>
-        </div>
-      </div>
-    );
-  }
+  if (status === "LOADING") return <LoadingModal message={message} />;
 
   if (status === "ERROR") {
     return (
-      <div
-        style={{
-          minHeight: "100svh",
-          background: "var(--bg)",
-          display: "grid",
-          placeItems: "center",
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            width: "min(100%,400px)",
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r)",
-            padding: "clamp(28px,6vw,44px)",
-            textAlign: "center",
-            animation: "fadeUp .4s ease",
-          }}
-        >
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-          <h2
-            style={{
-              fontFamily: "var(--font-h)",
-              fontWeight: 700,
-              marginBottom: 10,
-            }}
-          >
-            Error
-          </h2>
-          <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24 }}>
-            {message}
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            style={{
-              padding: "13px 28px",
-              borderRadius: 999,
-              border: "none",
-              background: "linear-gradient(135deg,#E8C96A,#F5E196)",
-              color: "#080910",
-              fontFamily: "var(--font-h)",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+      <div style={styles.page}>
+        <div style={styles.card}>
+          <h2 style={{ color: "#FF4D4D" }}>Error</h2>
+          <p>{message}</p>
+          <button style={styles.primaryBtn} onClick={() => navigate("/")}>
             Return Home
           </button>
         </div>
@@ -287,322 +188,71 @@ export default function TicketSuccess() {
   const { event, ticket } = data;
 
   return (
-    <div
-      style={{
-        minHeight: "100svh",
-        background: "var(--bg)",
-        display: "grid",
-        placeItems: "center",
-        padding: "clamp(16px,5vw,40px)",
-        fontFamily: "var(--font-b)",
-      }}
-    >
-      <div
-        style={{
-          width: "min(100%, 480px)",
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--r)",
-          overflow: "hidden",
-          animation: "fadeUp .4s ease",
-          boxShadow: "0 40px 80px rgba(0,0,0,.6)",
-        }}
-      >
-        {/* Success header */}
-        <div
-          style={{
-            padding:
-              "clamp(28px,6vw,44px) clamp(24px,5vw,40px) clamp(20px,4vw,32px)",
-            background:
-              "linear-gradient(135deg, rgba(232,201,106,.08), rgba(107,240,160,.05))",
-            borderBottom: "1px solid var(--border)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 56,
-              lineHeight: 1,
-              marginBottom: 16,
-              display: "inline-block",
-              animation: "successPop .6s cubic-bezier(.34,1.56,.64,1) both",
-            }}
-          >
-            🎟️
-          </div>
-          <h1
-            style={{
-              fontFamily: "var(--font-h)",
-              fontSize: "clamp(22px,4vw,28px)",
-              fontWeight: 800,
-              letterSpacing: "-.02em",
-              marginBottom: 8,
-            }}
-          >
-            You're in!
-          </h1>
-          <p style={{ fontSize: 14, color: "var(--muted)" }}>
-            Your ticket is confirmed and ready.
-          </p>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={styles.icon}>🎟️</div>
+        <h1 style={styles.title}>Purchase Successful</h1>
+        <p style={styles.subtitle}>Your official entry ticket is ready.</p>
+
+        <div style={styles.infoBox}>
+          <h3 style={styles.eventTitle}>{event.title}</h3>
+          <p style={styles.eventMeta}>{new Date(event.date).toDateString()}</p>
+          <p style={styles.eventMeta}>{event.location}</p>
+          <div style={styles.badge}>{ticket.ticketType}</div>
         </div>
 
-        {/* Event info */}
-        <div style={{ padding: "24px clamp(24px,5vw,40px)" }}>
-          <div
+        <img src={ticket.qrImage} alt="Entry QR" style={styles.qrCode} />
+
+        <div style={styles.actionGroup}>
+          <button
             style={{
-              padding: "20px",
-              borderRadius: 16,
-              border: "1px dashed rgba(232,201,106,.3)",
-              background: "var(--gold-dim)",
-              marginBottom: 24,
+              ...styles.primaryBtn,
+              width: "100%",
+              opacity: downloading ? 0.7 : 1,
             }}
+            disabled={downloading}
+            onClick={downloadPDF}
           >
-            <h3
-              style={{
-                fontFamily: "var(--font-h)",
-                fontWeight: 700,
-                fontSize: 17,
-                marginBottom: 8,
-              }}
-            >
-              {event.title}
-            </h3>
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--muted)",
-                marginBottom: 4,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              📅 {new Date(event.date).toDateString()}
-            </p>
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--muted)",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              📍 {event.location}
-            </p>
-            <span
-              style={{
-                display: "inline-block",
-                marginTop: 14,
-                padding: "4px 14px",
-                borderRadius: 999,
-                background: "rgba(232,201,106,.15)",
-                color: "var(--gold)",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: ".08em",
-                textTransform: "uppercase",
-                fontFamily: "var(--font-h)",
-              }}
-            >
-              {ticket.ticketType}
-            </span>
-          </div>
+            {downloading ? "Generating PDF..." : "Download PDF Ticket"}
+          </button>
 
-          {/* QR Code */}
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div
-              style={{
-                display: "inline-block",
-                background: "#fff",
-                padding: 14,
-                borderRadius: 16,
-                boxShadow: "0 8px 32px rgba(232,201,106,.15)",
-              }}
-            >
-              <img
-                src={ticket.qrImage}
-                alt="Entry QR Code"
-                style={{
-                  width: "min(180px,50vw)",
-                  height: "auto",
-                  display: "block",
-                }}
-              />
-            </div>
-            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 10 }}>
-              Scan at entrance
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              marginBottom: 20,
-            }}
+          <button
+            style={{ ...styles.secondaryBtn, width: "100%" }}
+            onClick={() => setShowEmailModal(true)}
           >
-            <button
-              onClick={downloadPDF}
-              disabled={downloading}
-              style={{
-                width: "100%",
-                padding: "16px",
-                borderRadius: 999,
-                border: "none",
-                background: downloading
-                  ? "rgba(255,255,255,.07)"
-                  : "linear-gradient(135deg,#E8C96A,#F5E196)",
-                color: downloading ? "var(--muted)" : "#080910",
-                fontFamily: "var(--font-h)",
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: downloading ? "not-allowed" : "pointer",
-                transition: "opacity .2s",
-              }}
-            >
-              {downloading ? "Generating PDF…" : "⬇ Download PDF Ticket"}
-            </button>
-
-            <button
-              onClick={() => setShowEmailModal(true)}
-              style={{
-                width: "100%",
-                padding: "15px",
-                borderRadius: 999,
-                border: "1px solid rgba(232,201,106,.4)",
-                background: "transparent",
-                color: "var(--gold)",
-                fontFamily: "var(--font-h)",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              ✉ Send to Email
-            </button>
-
-            <button
-              onClick={() => navigate("/")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--muted)",
-                cursor: "pointer",
-                fontSize: 13,
-                padding: 8,
-              }}
-            >
-              Browse more events →
-            </button>
-          </div>
-
-          <p
-            style={{
-              textAlign: "center",
-              fontSize: 11,
-              color: "rgba(122,120,112,.5)",
-              wordBreak: "break-all",
-            }}
-          >
-            Ref: {reference}
-          </p>
+            Send to my Email
+          </button>
         </div>
+
+        <p style={styles.refText}>Ref: {reference}</p>
       </div>
 
-      {/* Email modal */}
+      {/* EMAIL MODAL */}
       {showEmailModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(8,9,16,.9)",
-            backdropFilter: "blur(12px)",
-            display: "grid",
-            placeItems: "center",
-            padding: 24,
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              width: "min(100%, 380px)",
-              background: "#0d0f16",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--r)",
-              padding: "clamp(24px,5vw,36px)",
-              textAlign: "center",
-              animation: "fadeUp .3s ease",
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 16 }}>✉️</div>
-            <h3
-              style={{
-                fontFamily: "var(--font-h)",
-                fontWeight: 700,
-                fontSize: 18,
-                marginBottom: 6,
-              }}
-            >
-              Email my ticket
-            </h3>
-            <p
-              style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}
-            >
-              Where should we send it?
-            </p>
+        <div style={styles.modalOverlay}>
+          <div style={styles.emailCard}>
+            <h3>Email Ticket</h3>
+            <p style={styles.modalSub}>Where should we send your ticket?</p>
             <input
+              style={styles.inputField}
               type="email"
-              placeholder="you@example.com"
+              placeholder="e.g. hello@tictify.ng"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r-sm)",
-                color: "var(--text)",
-                fontSize: 14,
-                marginBottom: 20,
-              }}
             />
-            <div style={{ display: "flex", gap: 12 }}>
+            <div style={styles.modalActions}>
               <button
+                style={styles.textBtn}
                 onClick={() => setShowEmailModal(false)}
-                style={{
-                  flex: 1,
-                  padding: "13px",
-                  borderRadius: 999,
-                  border: "1px solid var(--border)",
-                  background: "transparent",
-                  color: "var(--muted)",
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
               >
                 Cancel
               </button>
               <button
+                style={styles.confirmBtn}
                 onClick={handleSendEmail}
                 disabled={sendingEmail}
-                style={{
-                  flex: 2,
-                  padding: "13px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: "linear-gradient(135deg,#E8C96A,#F5E196)",
-                  color: "#080910",
-                  fontFamily: "var(--font-h)",
-                  fontWeight: 700,
-                  cursor: sendingEmail ? "not-allowed" : "pointer",
-                  fontSize: 14,
-                  opacity: sendingEmail ? 0.7 : 1,
-                }}
               >
-                {sendingEmail ? "Sending…" : "Send Ticket"}
+                {sendingEmail ? "Sending..." : "Confirm & Send"}
               </button>
             </div>
           </div>
@@ -610,4 +260,176 @@ export default function TicketSuccess() {
       )}
     </div>
   );
+}
+
+function LoadingModal({ message }) {
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.loadingCard}>
+        <div className="custom-spinner" style={styles.spinner}></div>
+        <p style={{ marginTop: 15 }}>{message}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ================= RESPONSIVE STYLES ================= */
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "20px",
+    color: "#fff",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "480px",
+    background: "rgba(255, 255, 255, 0.05)",
+    backdropFilter: "blur(10px)",
+    padding: "clamp(24px, 5vw, 40px)",
+    borderRadius: "28px",
+    border: "1px solid rgba(255,255,255,0.1)",
+    textAlign: "center",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+  },
+  icon: { fontSize: "50px", marginBottom: "10px" },
+  title: {
+    fontSize: "clamp(22px, 4vw, 28px)",
+    fontWeight: "700",
+    margin: "0 0 8px 0",
+  },
+  subtitle: { fontSize: "15px", color: "#CFC9D6", marginBottom: "25px" },
+  infoBox: {
+    background: "rgba(255,255,255,0.03)",
+    padding: "20px",
+    borderRadius: "16px",
+    marginBottom: "25px",
+    border: "1px dashed rgba(255,255,255,0.2)",
+  },
+  eventTitle: { margin: "0 0 5px 0", fontSize: "18px" },
+  eventMeta: { margin: "0", fontSize: "14px", color: "#9F97B2" },
+  badge: {
+    display: "inline-block",
+    marginTop: "12px",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    background: "rgba(34, 242, 166, 0.15)",
+    color: "#22F2A6",
+    fontSize: "12px",
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  qrCode: {
+    width: "100%",
+    maxWidth: "200px",
+    background: "#fff",
+    padding: "12px",
+    borderRadius: "16px",
+    margin: "0 auto 30px auto",
+  },
+  actionGroup: { display: "flex", flexDirection: "column", gap: "12px" },
+  primaryBtn: {
+    padding: "16px",
+    borderRadius: "14px",
+    border: "none",
+    background: "linear-gradient(90deg, #22F2A6, #7CFF9B)",
+    color: "#0F0618",
+    fontWeight: "700",
+    fontSize: "15px",
+    cursor: "pointer",
+    transition: "transform 0.2s",
+  },
+  secondaryBtn: {
+    padding: "15px",
+    borderRadius: "14px",
+    border: "1.5px solid #22F2A6",
+    background: "transparent",
+    color: "#22F2A6",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  refText: {
+    marginTop: "20px",
+    fontSize: "11px",
+    color: "#5F5577",
+    wordBreak: "break-all",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.8)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "20px",
+    zIndex: 1000,
+  },
+  emailCard: {
+    background: "#1A0F2E",
+    width: "100%",
+    maxWidth: "380px",
+    padding: "30px",
+    borderRadius: "24px",
+    textAlign: "center",
+    border: "1px solid #3d2b5e",
+  },
+  modalSub: { fontSize: "14px", color: "#9F97B2", marginBottom: "20px" },
+  inputField: {
+    width: "100%",
+    padding: "14px",
+    borderRadius: "12px",
+    border: "1px solid #3d2b5e",
+    background: "#25163f",
+    color: "#fff",
+    marginBottom: "20px",
+    fontSize: "16px",
+    outline: "none",
+  },
+  modalActions: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  textBtn: {
+    background: "none",
+    border: "none",
+    color: "#9F97B2",
+    cursor: "pointer",
+  },
+  confirmBtn: {
+    background: "#22F2A6",
+    color: "#0F0618",
+    padding: "10px 20px",
+    borderRadius: "10px",
+    border: "none",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  loadingCard: { textAlign: "center" },
+  spinner: {
+    width: "40px",
+    height: "40px",
+    border: "4px solid rgba(255,255,255,0.1)",
+    borderTop: "4px solid #22F2A6",
+    borderRadius: "50%",
+    margin: "0 auto",
+  },
+};
+
+// Global Animation for Spinner
+if (typeof document !== "undefined") {
+  const styleTag = document.createElement("style");
+  styleTag.innerHTML = `
+    .custom-spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    button:active { transform: scale(0.98); }
+  `;
+  document.head.appendChild(styleTag);
 }
