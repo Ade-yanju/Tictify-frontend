@@ -62,7 +62,7 @@ export default function WithdrawRevenue() {
     e.preventDefault();
     const amountNum = Number(form.amount);
 
-    if (!amountNum || amountNum < 500) {
+    if (!amountNum || amountNum < 100) {
       return setModal({
         open: true,
         type: "error",
