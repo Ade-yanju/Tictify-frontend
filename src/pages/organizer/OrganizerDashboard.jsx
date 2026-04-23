@@ -3,14 +3,13 @@ import { fetchOrganizerDashboard } from "../../services/dashboardService";
 import { getToken, logout } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
-/* ── Helpers ────────────────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────────────── */
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
 }
-
 function initials(name = "") {
   return name
     .split(" ")
@@ -19,14 +18,14 @@ function initials(name = "") {
     .toUpperCase()
     .slice(0, 2);
 }
-
 function fmtMoney(n) {
+  if (typeof n !== "number" || isNaN(n)) return "₦0";
   if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
   return `₦${n.toLocaleString()}`;
 }
 
-/* ── Eye icons ──────────────────────────────────────────────────── */
+/* ── Eye Icons ───────────────────────────────────────────────── */
 const EyeIcon = () => (
   <svg
     width="15"
@@ -40,7 +39,6 @@ const EyeIcon = () => (
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
-
 const EyeOffIcon = () => (
   <svg
     width="15"
@@ -54,7 +52,7 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-/* ── Empty state ────────────────────────────────────────────────── */
+/* ── Safe defaults ───────────────────────────────────────────── */
 const EMPTY = {
   organizer: { name: "", email: "", avatar: null },
   stats: {
@@ -69,9 +67,24 @@ const EMPTY = {
   events: [],
 };
 
-/* ══════════════════════════════════════════════════════════════════
+/* ── Normalize API response defensively ─────────────────────── */
+// Guarantees every number field is actually a number, never undefined/null
+function normalizeStats(raw) {
+  const s = raw ?? {};
+  return {
+    walletBalance: Number(s.walletBalance) || 0,
+    totalEarnings: Number(s.totalEarnings) || 0,
+    events: Number(s.events) || 0,
+    ticketsSold: Number(s.ticketsSold) || 0,
+    revenue: Number(s.revenue) || 0,
+    upcoming: Number(s.upcoming) || 0,
+    live: Number(s.live) || 0,
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════
    MAIN DASHBOARD
-══════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 export default function OrganizerDashboard() {
   const navigate = useNavigate();
   const pollingRef = useRef(null);
@@ -79,36 +92,50 @@ export default function OrganizerDashboard() {
 
   const [data, setData] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, message: "" });
+  const [modal, setModal] = useState({
+    open: false,
+    message: "",
+    isAuth: false,
+  });
 
   const loadDashboard = useCallback(async () => {
     try {
-      // 1. Get the unique token for the logged-in user
-      const token = getToken();
+      // ✅ Service handles token internally — no need to pass it
+      const res = await fetchOrganizerDashboard();
 
-      // 2. If no token, force a logout/redirect immediately
-      if (!token) {
-        throw new Error("No authentication token found. Please login.");
+      // ✅ Log response in dev so you can verify what backend returns
+      if (import.meta.env.DEV) {
+        console.log("📊 Dashboard response:", res);
       }
-
-      // 3. Pass the token to the service so the backend knows WHO is asking
-      const res = await fetchOrganizerDashboard(token);
 
       setData((prev) => {
         prevBalanceRef.current = prev.stats.walletBalance;
         return {
-          organizer: res?.organizer ?? EMPTY.organizer,
-          stats: res?.stats ?? EMPTY.stats,
+          organizer: {
+            name: res?.organizer?.name ?? "",
+            email: res?.organizer?.email ?? "",
+            avatar: res?.organizer?.avatar ?? null,
+          },
+          // ✅ normalizeStats ensures walletBalance is ALWAYS a number
+          stats: normalizeStats(res?.stats),
           events: Array.isArray(res?.events) ? res.events : [],
         };
       });
     } catch (err) {
-      clearInterval(pollingRef.current);
-      setModal({
-        open: true,
-        message:
-          err?.message || "Your session has expired. Please login again.",
-      });
+      // ✅ Only stop polling + show modal for AUTH errors
+      // For network blips, silently retry on next poll interval
+      if (err?.type === "AUTH") {
+        clearInterval(pollingRef.current);
+        setModal({
+          open: true,
+          isAuth: true,
+          message:
+            err.message || "Your session has expired. Please login again.",
+        });
+      } else {
+        // Non-auth error (network/server) — log it but keep polling
+        console.error("Dashboard fetch error:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -121,6 +148,7 @@ export default function OrganizerDashboard() {
   }, [loadDashboard]);
 
   function handleLogout() {
+    clearInterval(pollingRef.current);
     logout();
     navigate("/login", { replace: true });
   }
@@ -130,12 +158,21 @@ export default function OrganizerDashboard() {
   return (
     <main style={s.page}>
       {loading && <LoadingModal />}
-      {modal.open && <Modal message={modal.message} onConfirm={handleLogout} />}
+      {modal.open && (
+        <Modal
+          message={modal.message}
+          onConfirm={
+            modal.isAuth
+              ? handleLogout
+              : () => setModal({ open: false, message: "", isAuth: false })
+          }
+          isAuth={modal.isAuth}
+        />
+      )}
 
       {/* ── HEADER ── */}
       <header style={s.header}>
         <div style={s.headerLeft}>
-          {/* Avatar */}
           <div style={s.avatar}>
             {organizer.avatar ? (
               <img
@@ -267,10 +304,9 @@ export default function OrganizerDashboard() {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    SUB-COMPONENTS
-══════════════════════════════════════════════════════════════════ */
-
+══════════════════════════════════════════════════════════════ */
 function WalletCard({ balance, prevBalance }) {
   const [visible, setVisible] = useState(true);
   const [flash, setFlash] = useState(null);
@@ -307,7 +343,7 @@ function WalletCard({ balance, prevBalance }) {
             transition: "color 0.4s",
           }}
         >
-          {visible ? `₦${balance.toLocaleString()}` : "••••••"}
+          {visible ? fmtMoney(balance) : "••••••"}
         </strong>
         <button
           style={s.toggleBtn}
@@ -386,23 +422,25 @@ function LoadingModal() {
   );
 }
 
-function Modal({ message, onConfirm }) {
+function Modal({ message, onConfirm, isAuth }) {
   return (
     <div style={s.overlay}>
       <div style={s.modalBox}>
-        <h3 style={{ marginBottom: 8 }}>Session Expired</h3>
+        <h3 style={{ marginBottom: 8 }}>
+          {isAuth ? "Session Expired" : "Something went wrong"}
+        </h3>
         <p style={s.muted}>{message}</p>
         <button style={s.primaryBtn} onClick={onConfirm}>
-          Login again
+          {isAuth ? "Login again" : "Dismiss"}
         </button>
       </div>
     </div>
   );
 }
 
-/* ══════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    STYLES
-══════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 const s = {
   page: {
     minHeight: "100svh",
@@ -412,8 +450,6 @@ const s = {
     fontFamily: "Inter, system-ui",
     overflowX: "hidden",
   },
-
-  /* header */
   header: {
     display: "flex",
     flexWrap: "wrap",
@@ -429,8 +465,6 @@ const s = {
     flexWrap: "wrap",
     alignItems: "center",
   },
-
-  /* avatar */
   avatar: {
     width: 52,
     height: 52,
@@ -444,12 +478,9 @@ const s = {
   },
   avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
   avatarInitials: { fontSize: 18, fontWeight: 700, color: "#0F0618" },
-
   greeting: { fontSize: 18, fontWeight: 400, color: "#e0d9e8" },
   greetingName: { fontWeight: 700 },
   email: { fontSize: 13, color: "#9b93a8", marginTop: 2 },
-
-  /* wallet */
   walletCard: {
     background: "rgba(255,255,255,0.07)",
     border: "0.5px solid rgba(255,255,255,0.12)",
@@ -487,8 +518,6 @@ const s = {
     color: "#9b93a8",
     display: "flex",
   },
-
-  /* quick actions */
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
@@ -505,8 +534,6 @@ const s = {
     color: "#fff",
   },
   actionTitle: { fontSize: 14, fontWeight: 500, marginBottom: 4 },
-
-  /* stats */
   statsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
@@ -521,8 +548,6 @@ const s = {
   },
   statLabel: { fontSize: 12, color: "#9b93a8", marginBottom: 8 },
   statValue: { fontSize: 22, fontWeight: 600, letterSpacing: "-0.3px" },
-
-  /* events */
   section: { marginTop: 8 },
   sectionHeader: {
     display: "flex",
@@ -568,7 +593,6 @@ const s = {
     background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
   },
   pctLabel: { fontSize: 11, color: "#9b93a8", marginTop: 4, display: "block" },
-
   status: (status) => ({
     padding: "3px 10px",
     borderRadius: 999,
@@ -587,8 +611,6 @@ const s = {
           ? "#ff4d4f"
           : "#fadb14",
   }),
-
-  /* buttons */
   primaryBtn: {
     background: "linear-gradient(135deg,#22F2A6,#7CFF9B)",
     border: "none",
@@ -617,8 +639,6 @@ const s = {
     fontSize: 13,
     cursor: "pointer",
   },
-
-  /* empty state */
   emptyState: {
     textAlign: "center",
     padding: "48px 24px",
@@ -627,8 +647,6 @@ const s = {
     borderRadius: 18,
   },
   emptyIcon: { fontSize: 40 },
-
-  /* modals */
   overlay: {
     position: "fixed",
     inset: 0,
