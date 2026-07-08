@@ -1,189 +1,578 @@
-import React, { useState, useEffect } from 'react';
+/* ═══════════════════════════════════════════════════════════
+   AdminEvents.jsx — Tictify 2026 Admin
+   Syne + DM Sans · ink #080910 · gold #E8C96A
+   All responsive behavior lives in real CSS (@media) below.
+═══════════════════════════════════════════════════════════ */
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getToken, logout } from "../../services/authService";
 
-const AdminEvents = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+function injectStyles(id, content) {
+  if (typeof document !== "undefined" && !document.getElementById(id)) {
+    const el = document.createElement("style");
+    el.id = id;
+    el.innerHTML = content;
+    document.head.appendChild(el);
+  }
+}
 
-  useEffect(() => {
-    fetchEvents();
-  }, [filter]);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch(`/api/v1/admin/events?filter=${filter}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      const data = await response.json();
-      setEvents(data.events || []);
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApprove = async (eventId) => {
-    try {
-      const response = await fetch(`/api/v1/admin/events/${eventId}/approve`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchEvents();
-        alert('Event approved');
-      }
-    } catch (error) {
-      console.error('Failed to approve event:', error);
-    }
-  };
-
-  const handleReject = async (eventId) => {
-    try {
-      const response = await fetch(`/api/v1/admin/events/${eventId}/reject`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchEvents();
-        alert('Event rejected');
-      }
-    } catch (error) {
-      console.error('Failed to reject event:', error);
-    }
-  };
-
-  const handleFlagContent = async (eventId, reason) => {
-    try {
-      const response = await fetch('/api/v1/admin/moderation/flag-content', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          resourceId: eventId,
-          resourceType: 'EVENT',
-          reason,
-          severity: 'HIGH',
-        }),
-      });
-      if (response.ok) {
-        alert('Event flagged for review');
-      }
-    } catch (error) {
-      console.error('Failed to flag event:', error);
-    }
-  };
-
-  if (loading) return <div className="admin-section">Loading...</div>;
-
-  return (
-    <div className="admin-section">
-      <div className="section-header">
-        <h2>Event Moderation</h2>
-        <div className="filters">
-          {['all', 'pending', 'approved', 'rejected', 'flagged'].map(f => (
-            <button
-              key={f}
-              className={`filter-btn ${filter === f ? 'active' : ''}`}
-              onClick={() => setFilter(f)}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {events.length === 0 ? (
-        <p className="no-data">No events found</p>
-      ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Event Title</th>
-              <th>Organizer</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Capacity</th>
-              <th>Sold</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map(event => (
-              <tr key={event._id}>
-                <td>
-                  <strong>{event.title}</strong>
-                  <button
-                    className="view-btn"
-                    onClick={() => {
-                      setSelectedEvent(event);
-                      setShowDetails(true);
-                    }}
-                  >
-                    View
-                  </button>
-                </td>
-                <td>{event.organizer?.name || 'Unknown'}</td>
-                <td>{new Date(event.startDate).toLocaleDateString()}</td>
-                <td>
-                  <span className={`status-badge ${event.status || 'pending'}`}>
-                    {event.status || 'Pending'}
-                  </span>
-                </td>
-                <td>{event.capacity}</td>
-                <td>{event.ticketsSold || 0}</td>
-                <td className="action-buttons">
-                  {event.status === 'pending' && (
-                    <>
-                      <button
-                        className="btn-small btn-success"
-                        onClick={() => handleApprove(event._id)}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn-small btn-danger"
-                        onClick={() => handleReject(event._id)}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-                  <button
-                    className="btn-small btn-warning"
-                    onClick={() => handleFlagContent(event._id, 'Inappropriate content')}
-                  >
-                    Flag
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {showDetails && selectedEvent && (
-        <div className="modal-overlay" onClick={() => setShowDetails(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setShowDetails(false)}>×</button>
-            <h3>{selectedEvent.title}</h3>
-            <div className="event-details">
-              <p><strong>Organizer:</strong> {selectedEvent.organizer?.name}</p>
-              <p><strong>Date:</strong> {new Date(selectedEvent.startDate).toLocaleDateString()}</p>
-              <p><strong>Venue:</strong> {selectedEvent.venue?.name}</p>
-              <p><strong>Description:</strong> {selectedEvent.description}</p>
-              <p><strong>Capacity:</strong> {selectedEvent.capacity}</p>
-              <p><strong>Ticket Price:</strong> ₦{selectedEvent.ticketPrice?.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+/* ── Icons (inline, dependency-free) ─────────────────────── */
+const Ic = {
+  dash: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="3" width="8" height="8" rx="2" />
+      <rect x="13" y="3" width="8" height="5" rx="2" />
+      <rect x="13" y="12" width="8" height="9" rx="2" />
+      <rect x="3" y="15" width="8" height="6" rx="2" />
+    </svg>
+  ),
+  cal: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
+    </svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M17 14.5c2.4.5 4 2.7 4 5.5" strokeLinecap="round" />
+    </svg>
+  ),
+  wallet: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="6" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
+    </svg>
+  ),
+  chart: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
+    </svg>
+  ),
+  ticket: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
+      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
+    </svg>
+  ),
+  coins: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <ellipse cx="12" cy="6" rx="8" ry="3" />
+      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
+      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+    </svg>
+  ),
+  live: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+      <path d="M7.5 7.5a6.4 6.4 0 000 9M16.5 7.5a6.4 6.4 0 010 9M4.6 4.6a10.5 10.5 0 000 14.8M19.4 4.6a10.5 10.5 0 010 14.8" strokeLinecap="round" />
+    </svg>
+  ),
+  search: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4-4" strokeLinecap="round" />
+    </svg>
+  ),
+  out: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M10 17l-5-5 5-5M5 12h11" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
-export default AdminEvents;
+const NAV = [
+  { label: "Dashboard", path: "/admin/dashboard", icon: Ic.dash },
+  { label: "Events", path: "/admin/events", icon: Ic.cal },
+  { label: "Organizers", path: "/admin/organizers", icon: Ic.users },
+  { label: "Withdrawals", path: "/admin/withdrawals", icon: Ic.wallet },
+  { label: "Analytics", path: "/admin/sales", icon: Ic.chart },
+];
+
+/* ══════════════════════════════════════════════════════════
+   PAGE
+══════════════════════════════════════════════════════════ */
+export default function AdminEvents() {
+  injectStyles("tictify-admin-events-css", CSS);
+  const navigate = useNavigate();
+  const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/events`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) throw new Error("Unauthorized or session expired");
+
+        const data = await res.json();
+        setEvents(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || "Unable to load events");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, [navigate]);
+
+  // Filter and sort logic
+  useEffect(() => {
+    let filtered = events.filter((e) => {
+      const matchSearch =
+        e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.organizerName?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchStatus = statusFilter === "ALL" || e.status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === "newest") return new Date(b.date) - new Date(a.date);
+      if (sortBy === "oldest") return new Date(a.date) - new Date(b.date);
+      if (sortBy === "mostTickets") return (b.ticketsSold || 0) - (a.ticketsSold || 0);
+      return 0;
+    });
+
+    setFilteredEvents(filtered);
+    setCurrentPage(1);
+  }, [events, searchTerm, statusFilter, sortBy]);
+
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const paginatedEvents = filteredEvents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  if (loading) return <LoadingScreen />;
+  if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
+
+  return (
+    <Shell
+      active="/admin/events"
+      title="All Events"
+      subtitle="Monitor and manage platform events"
+      navigate={navigate}
+      onLogout={() => { logout(); navigate("/login"); }}
+    >
+      {/* Filters Section */}
+      <section className="aev-filters">
+        <div className="aev-search">
+          <span className="aev-search-icon">{Ic.search}</span>
+          <input
+            type="text"
+            placeholder="Search events or organizers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="aev-input"
+          />
+        </div>
+
+        <div className="aev-filter-controls">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="aev-select">
+            <option value="ALL">All Status</option>
+            <option value="LIVE">Live</option>
+            <option value="ENDED">Ended</option>
+            <option value="UPCOMING">Upcoming</option>
+          </select>
+
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="aev-select">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="mostTickets">Most Tickets</option>
+          </select>
+        </div>
+      </section>
+
+      {/* Events Table */}
+      <section className="aev-table-card">
+        {paginatedEvents.length === 0 ? (
+          <div className="aev-empty">
+            <div className="aev-empty-icon">{Ic.cal}</div>
+            <p className="aev-empty-text">No events found matching your criteria</p>
+          </div>
+        ) : (
+          <>
+            <div className="aev-table-scroll">
+              <table className="aev-table">
+                <thead>
+                  <tr>
+                    <th className="aev-th">Event Name</th>
+                    <th className="aev-th">Organizer</th>
+                    <th className="aev-th">Date</th>
+                    <th className="aev-th">Tickets</th>
+                    <th className="aev-th">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedEvents.map((event) => (
+                    <tr key={event._id} className="aev-tr">
+                      <td className="aev-td">
+                        <div className="aev-event-cell">
+                          <div className="aev-event-title">{event.title}</div>
+                          <div className="aev-event-id">{event._id?.slice(0, 8)}...</div>
+                        </div>
+                      </td>
+                      <td className="aev-td">{event.organizerName || "—"}</td>
+                      <td className="aev-td aev-nowrap">{new Date(event.date).toLocaleDateString()}</td>
+                      <td className="aev-td">
+                        <div className="aev-tickets-cell">
+                          <span className="aev-tickets-num">{event.ticketsSold || 0}/{event.capacity || "—"}</span>
+                          <div className="aev-ticket-bar">
+                            <div
+                              className="aev-ticket-fill"
+                              style={{ width: `${Math.min((event.ticketsSold || 0) / (event.capacity || 1) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="aev-td">
+                        <StatusBadge status={event.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="aev-pagination">
+                <button
+                  className="aev-page-btn"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  ← Previous
+                </button>
+
+                <div className="aev-page-info">
+                  Page {currentPage} of {totalPages}
+                </div>
+
+                <button
+                  className="aev-page-btn"
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Stats */}
+      <section className="aev-stats">
+        <StatCard label="Total Events" value={filteredEvents.length} icon={Ic.cal} />
+        <StatCard label="Live Events" value={filteredEvents.filter(e => e.status === "LIVE").length} icon={Ic.live} />
+        <StatCard label="Total Tickets Sold" value={filteredEvents.reduce((sum, e) => sum + (e.ticketsSold || 0), 0)} icon={Ic.ticket} />
+        <StatCard label="Total Revenue" value={`₦${filteredEvents.reduce((sum, e) => sum + (e.revenue || 0), 0).toLocaleString()}`} icon={Ic.coins} />
+      </section>
+    </Shell>
+  );
+}
+
+/* ================= APP SHELL ================= */
+
+function Shell({ active, title, subtitle, navigate, onLogout, children }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const go = (path) => {
+    setMenuOpen(false);
+    navigate(path);
+  };
+
+  const navButtons = NAV.map((n) => (
+    <button
+      key={n.path}
+      className={`aev-nav-item ${active === n.path ? "is-active" : ""}`}
+      onClick={() => go(n.path)}
+    >
+      {n.icon}
+      <span>{n.label}</span>
+    </button>
+  ));
+
+  return (
+    <div className="aev-page">
+      <aside className="aev-sidebar">
+        <div className="aev-mark">Tic<em>tify</em></div>
+        <nav className="aev-nav">{navButtons}</nav>
+        <button className="aev-logout" onClick={onLogout}>
+          {Ic.out}
+          <span>Logout</span>
+        </button>
+      </aside>
+
+      <div className="aev-body">
+        <header className="aev-topbar">
+          <div className="aev-mark">Tic<em>tify</em></div>
+          <button
+            className={`aev-burger ${menuOpen ? "is-open" : ""}`}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </header>
+
+        <div className={`aev-drawer ${menuOpen ? "is-open" : ""}`}>
+          {navButtons}
+          <button className="aev-logout" onClick={onLogout}>
+            {Ic.out}
+            <span>Logout</span>
+          </button>
+        </div>
+
+        <div className="aev-content">
+          <header className="aev-phead">
+            <h1 className="aev-title">{title}</h1>
+            <p className="aev-subtitle">{subtitle}</p>
+          </header>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= COMPONENTS ================= */
+
+function StatusBadge({ status }) {
+  const badgeClass = {
+    LIVE: "is-live",
+    ENDED: "is-ended",
+    UPCOMING: "is-upcoming",
+  };
+  return (
+    <span className={`aev-badge ${badgeClass[status] || "is-upcoming"}`}>
+      {status || "UNKNOWN"}
+    </span>
+  );
+}
+
+function StatCard({ label, value, icon }) {
+  return (
+    <div className="aev-kpi">
+      <div className="aev-kpi-icon">{icon}</div>
+      <div className="aev-kpi-content">
+        <p className="aev-kpi-label">{label}</p>
+        <h4 className="aev-kpi-value">{value}</h4>
+      </div>
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  injectStyles("tictify-admin-events-css", CSS);
+  return (
+    <div className="aev-loading">
+      <div className="aev-loading-top">
+        <div className="aev-spinner" />
+        <p>Loading events…</p>
+      </div>
+      <div className="aev-skel" style={{ height: 52 }} />
+      <div className="aev-skel" style={{ height: 380 }} />
+      <div className="aev-skel-row">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="aev-skel" style={{ height: 96 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorScreen({ error, onLogout }) {
+  injectStyles("tictify-admin-events-css", CSS);
+  return (
+    <div className="aev-error">
+      <div className="aev-error-card">
+        <div className="aev-error-icon">!</div>
+        <h2>Something went wrong</h2>
+        <p>{error}</p>
+        <button className="aev-btn-gold" onClick={onLogout}>Login Again</button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   CSS — all responsive behavior lives here
+══════════════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.18);
+  --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12); --gold-glo:rgba(232,201,106,0.22);
+  --text:#F0EDE8; --muted:#8B887E; --danger:#E05C5C; --live:#6BF0A0;
+  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif;
+  --r:20px; --r-sm:12px;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
+button, input, select { font-family:var(--font-b); }
+
+@keyframes aev-spin { to { transform:rotate(360deg); } }
+@keyframes aev-shimmer { from { background-position:200% 0; } to { background-position:-200% 0; } }
+@keyframes aev-fade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+/* ── Shell ── */
+.aev-page { display:flex; min-height:100svh; background:var(--bg); color:var(--text); font-family:var(--font-b); }
+.aev-sidebar { position:sticky; top:0; height:100svh; width:250px; flex:0 0 250px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:26px 14px 18px; overflow-y:auto; }
+.aev-mark { font-family:var(--font-h); font-weight:800; font-size:22px; letter-spacing:-.02em; color:var(--text); padding:0 12px 26px; }
+.aev-mark em { font-style:normal; color:var(--gold); }
+.aev-nav { display:flex; flex-direction:column; gap:4px; flex:1; }
+.aev-nav-item { position:relative; display:flex; align-items:center; gap:12px; width:100%; background:none; border:none; color:var(--muted); font-size:14px; font-weight:500; padding:11px 14px; border-radius:var(--r-sm); cursor:pointer; text-align:left; transition:color .2s, background .2s; }
+.aev-nav-item svg { width:18px; height:18px; flex:0 0 auto; }
+.aev-nav-item:hover { color:var(--text); background:var(--card); }
+.aev-nav-item.is-active { background:var(--gold-dim); color:var(--gold); font-weight:600; }
+.aev-nav-item.is-active::before { content:''; position:absolute; left:-14px; top:9px; bottom:9px; width:3px; border-radius:0 2px 2px 0; background:var(--gold); }
+.aev-logout { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:18px; background:transparent; border:1px solid rgba(224,92,92,.4); color:var(--danger); font-size:14px; font-weight:600; padding:11px 14px; border-radius:999px; cursor:pointer; transition:background .2s, border-color .2s; }
+.aev-logout:hover { background:rgba(224,92,92,.1); border-color:var(--danger); }
+.aev-logout svg { width:16px; height:16px; }
+.aev-body { flex:1; min-width:0; display:flex; flex-direction:column; }
+.aev-topbar { display:none; }
+.aev-drawer { display:none; }
+.aev-content { width:100%; max-width:1280px; margin:0 auto; padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:clamp(20px,3vw,28px); }
+.aev-title { font-family:var(--font-h); font-weight:800; font-size:clamp(24px,3.2vw,34px); letter-spacing:-.02em; line-height:1.1; }
+.aev-subtitle { color:var(--muted); font-size:14px; margin-top:6px; }
+
+/* ── Filters ── */
+.aev-filters { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.aev-search { position:relative; flex:1 1 260px; min-width:0; }
+.aev-search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); display:grid; place-items:center; pointer-events:none; }
+.aev-search-icon svg { width:16px; height:16px; }
+.aev-input { width:100%; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:13px 16px 13px 42px; color:var(--text); font-size:14px; outline:none; transition:border-color .2s, box-shadow .2s; }
+.aev-input::placeholder { color:var(--muted); }
+.aev-input:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
+.aev-select { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-sm); padding:12px 14px; color:var(--text); font-size:13px; cursor:pointer; outline:none; transition:border-color .2s; }
+.aev-select:hover, .aev-select:focus { border-color:var(--border-h); }
+.aev-filter-controls { display:flex; gap:10px; flex-wrap:wrap; }
+
+/* ── Table ── */
+.aev-table-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.aev-table-scroll { overflow-x:auto; }
+.aev-table { width:100%; min-width:640px; border-collapse:collapse; }
+.aev-th { padding:14px 18px; text-align:left; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); white-space:nowrap; }
+.aev-tr { border-bottom:1px solid var(--border); transition:background .2s; }
+.aev-tr:last-child { border-bottom:none; }
+.aev-tr:hover { background:rgba(255,255,255,0.03); }
+.aev-td { padding:16px 18px; font-size:14px; vertical-align:middle; }
+.aev-nowrap { white-space:nowrap; }
+.aev-event-cell { display:flex; flex-direction:column; gap:4px; min-width:160px; }
+.aev-event-title { font-weight:600; }
+.aev-event-id { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.aev-tickets-cell { display:flex; flex-direction:column; gap:6px; }
+.aev-tickets-num { font-variant-numeric:tabular-nums; font-size:13px; }
+.aev-ticket-bar { height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; min-width:100px; }
+.aev-ticket-fill { height:100%; background:var(--gold); border-radius:3px; transition:width .4s ease; }
+.aev-badge { padding:5px 12px; border-radius:999px; font-weight:700; font-size:11px; letter-spacing:.06em; white-space:nowrap; display:inline-block; }
+.aev-badge.is-live { background:var(--live); color:#080910; }
+.aev-badge.is-ended { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
+.aev-badge.is-upcoming { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
+
+/* ── Empty state ── */
+.aev-empty { padding:64px 20px; text-align:center; }
+.aev-empty-icon { width:52px; height:52px; border-radius:16px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; margin:0 auto 16px; }
+.aev-empty-icon svg { width:24px; height:24px; }
+.aev-empty-text { color:var(--muted); font-size:14px; }
+
+/* ── Pagination ── */
+.aev-pagination { display:flex; justify-content:center; align-items:center; gap:16px; padding:18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+.aev-page-btn { background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--gold); padding:9px 18px; border-radius:999px; cursor:pointer; font-size:13px; font-weight:600; transition:background .2s, opacity .2s; }
+.aev-page-btn:hover:not(:disabled) { background:rgba(232,201,106,.2); }
+.aev-page-btn:disabled { opacity:.35; cursor:not-allowed; }
+.aev-page-info { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+/* ── KPI ── */
+.aev-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:clamp(12px,2vw,20px); }
+.aev-kpi { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(16px,2.4vw,22px); display:flex; gap:14px; align-items:flex-start; transition:transform .25s, border-color .25s; animation:aev-fade .4s ease both; }
+.aev-kpi:hover { transform:translateY(-3px); border-color:var(--border-h); }
+.aev-kpi-icon { width:40px; height:40px; border-radius:12px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; flex:0 0 auto; }
+.aev-kpi-icon svg { width:18px; height:18px; }
+.aev-kpi-content { min-width:0; }
+.aev-kpi-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.aev-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(18px,2.2vw,22px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
+
+/* ── Loading / skeleton ── */
+.aev-loading { min-height:100svh; background:var(--bg); color:var(--text); padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:18px; max-width:1280px; margin:0 auto; font-family:var(--font-b); }
+.aev-loading-top { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:14px; }
+.aev-spinner { width:22px; height:22px; border:2.5px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:aev-spin .9s linear infinite; }
+.aev-skel { border:1px solid var(--border); border-radius:var(--r); background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.1) 45%,rgba(255,255,255,.04) 65%); background-size:200% 100%; animation:aev-shimmer 1.3s linear infinite; }
+.aev-skel-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:16px; }
+
+/* ── Error ── */
+.aev-error { min-height:100svh; background:var(--bg); display:grid; place-items:center; padding:20px; font-family:var(--font-b); }
+.aev-error-card { width:min(100%,420px); background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(26px,5vw,40px); text-align:center; animation:aev-fade .35s ease; }
+.aev-error-icon { width:46px; height:46px; border-radius:50%; background:rgba(224,92,92,.12); color:var(--danger); display:grid; place-items:center; margin:0 auto 16px; font-family:var(--font-h); font-weight:800; font-size:20px; }
+.aev-error-card h2 { font-family:var(--font-h); font-size:20px; color:var(--text); margin-bottom:8px; }
+.aev-error-card p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:22px; }
+.aev-btn-gold { background:var(--gold); color:#080910; border:none; border-radius:999px; font-weight:700; font-size:14px; padding:13px 26px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+.aev-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
+
+/* ══════════ RESPONSIVE ══════════ */
+@media (max-width:1023px) {
+  .aev-page { flex-direction:column; }
+  .aev-sidebar { display:none; }
+  .aev-topbar { position:sticky; top:0; z-index:950; display:flex; align-items:center; justify-content:space-between; height:60px; padding:0 clamp(14px,3vw,20px); background:rgba(8,9,16,.8); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--border); }
+  .aev-topbar .aev-mark { padding:0; font-size:19px; }
+  .aev-burger { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; width:42px; height:42px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); cursor:pointer; }
+  .aev-burger span { display:block; width:17px; height:2px; background:var(--text); border-radius:2px; transition:transform .25s, opacity .25s; }
+  .aev-burger.is-open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+  .aev-burger.is-open span:nth-child(2) { opacity:0; }
+  .aev-burger.is-open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+  .aev-drawer { display:flex; flex-direction:column; gap:4px; position:fixed; inset:60px 0 0 0; z-index:940; background:rgba(8,9,16,.97); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:18px clamp(14px,4vw,24px); opacity:0; transform:translateY(-8px); pointer-events:none; transition:opacity .25s, transform .25s; overflow-y:auto; }
+  .aev-drawer.is-open { opacity:1; transform:none; pointer-events:auto; }
+  .aev-drawer .aev-nav-item { font-size:16px; padding:16px 14px; border-radius:var(--r-sm); }
+  .aev-drawer .aev-nav-item.is-active::before { left:0; }
+  .aev-drawer .aev-logout { margin-top:22px; }
+}
+@media (max-width:768px) {
+  .aev-td { padding:13px 14px; font-size:13px; }
+  .aev-th { padding:12px 14px; }
+  .aev-filter-controls { width:100%; }
+  .aev-select { flex:1; }
+}
+@media (max-width:480px) {
+  .aev-pagination { gap:10px; }
+  .aev-page-btn { padding:8px 14px; font-size:12px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; }
+}
+`;

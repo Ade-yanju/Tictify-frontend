@@ -24,11 +24,23 @@ const BASE_CSS = `
     --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif; --r:20px; --r-sm:12px;
   }
   html { font-size:16px; }
-  body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
   input,select,button { font-family:var(--font-b); outline:none; }
   @keyframes spin { to { transform:rotate(360deg); } }
   @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
   @keyframes glowPulse { 0%,100% { opacity:.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.04); } }
+
+  /* ── Responsive layout fixes (320px–768px) ── */
+  @media (max-width:768px) {
+    /* keep the card clear of the fixed Back pill on short/narrow viewports */
+    .lg-page { padding-top:84px !important; align-content:start; }
+  }
+  @media (max-width:480px) {
+    .lg-back { top:14px !important; left:14px !important; padding:8px 14px !important; }
+    .lg-card { padding:24px 18px 28px !important; }
+    .lg-input { font-size:16px !important; } /* prevents iOS focus zoom */
+  }
+
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 `;
 
@@ -145,6 +157,7 @@ function PasswordInput({ value, onChange, placeholder = "Password" }) {
     <div style={{ position: "relative" }}>
       <input
         type={show ? "text" : "password"}
+        className="lg-input"
         placeholder={placeholder}
         value={value}
         onChange={onChange}
@@ -240,6 +253,7 @@ export default function Login() {
 
   return (
     <div
+      className="lg-page"
       style={{
         minHeight: "100svh",
         background: "var(--bg)",
@@ -308,6 +322,7 @@ export default function Login() {
 
       {/* Back */}
       <button
+        className="lg-back"
         onClick={() => navigate("/")}
         style={{
           position: "fixed",
@@ -329,6 +344,7 @@ export default function Login() {
 
       {/* Card */}
       <div
+        className="lg-card"
         style={{
           position: "relative",
           zIndex: 1,
@@ -403,6 +419,7 @@ export default function Login() {
             </label>
             <input
               type="email"
+              className="lg-input"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

@@ -1,54 +1,26 @@
+/* ═══════════════════════════════════════════════════════════
+   PaymentPending.jsx — Tictify 2026
+   Payment status card · Syne + DM Sans · ink #080910 · gold #E8C96A
+   All responsive behavior lives in real CSS (@media) below.
+═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
-/* ─── Inject global styles once ─────────────────────────── */
-if (typeof document !== "undefined" && !document.getElementById("pp-styles")) {
-  const s = document.createElement("style");
-  s.id = "pp-styles";
-  s.innerHTML = `
-    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap');
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg-0: #04050a;
-      --surface: rgba(255,255,255,0.045);
-      --border: rgba(255,255,255,0.09);
-      --border-strong: rgba(255,255,255,0.16);
-      --accent: #4DF0B0;
-      --accent-dim: rgba(77,240,176,0.1);
-      --danger: #F05C5C;
-      --warn: #F0A84D;
-      --text: #EEE9E0;
-      --muted: #6E6A62;
-      --muted-2: #9C9790;
-      --font-d: 'Bricolage Grotesque', sans-serif;
-      --font-b: 'Instrument Sans', sans-serif;
-      --r: 20px;
-      --r-pill: 999px;
-    }
-
-    html { font-size: 16px; }
-    body { background: var(--bg-0); color: var(--text); font-family: var(--font-b); -webkit-font-smoothing: antialiased; }
-
-    @keyframes pp-spin  { to { transform: rotate(360deg); } }
-    @keyframes pp-ping  { 0% { transform: scale(1); opacity:.7; } 80%,100% { transform: scale(2.5); opacity:0; } }
-    @keyframes pp-rise  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes pp-blink { 0%,100% { opacity:1; } 50% { opacity:.25; } }
-
-    .pp-btn-primary:hover  { opacity: .88; transform: translateY(-1px); }
-    .pp-btn-outline:hover  { background: rgba(77,240,176,0.08); }
-    .pp-btn-ghost:hover    { color: var(--muted-2); }
-
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-  `;
-  document.head.appendChild(s);
+function injectStyles(id, content) {
+  if (typeof document !== "undefined" && !document.getElementById(id)) {
+    const el = document.createElement("style");
+    el.id = id;
+    el.innerHTML = content;
+    document.head.appendChild(el);
+  }
 }
 
 const MAX_ATTEMPTS = 20;
 const POLL_INTERVAL = 3000;
 
 export default function PaymentPending() {
+  injectStyles("tictify-payment-pending-css", CSS);
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const reference = searchParams.get("ref");
@@ -135,30 +107,37 @@ export default function PaymentPending() {
   const progressPct = Math.min((attempts / MAX_ATTEMPTS) * 100, 100);
 
   return (
-    <main style={css.page} aria-live="polite" aria-busy={status === "PENDING"}>
-      <div style={css.glowBlob} aria-hidden="true" />
+    <main className="pp-page" aria-live="polite" aria-busy={status === "PENDING"}>
+      <div className="pp-glow pp-glow-a" aria-hidden="true" />
+      <div className="pp-glow pp-glow-b" aria-hidden="true" />
 
-      <section style={css.card}>
+      <section className="pp-card">
         {/* ── PENDING ── */}
         {status === "PENDING" && (
-          <div style={css.inner}>
-            <div style={css.ringWrap}>
-              <div style={css.pingRing} />
-              <div style={css.spinRing} />
-              <span style={css.ringEmoji}>🔐</span>
+          <div className="pp-inner">
+            <div className="pp-ring" aria-hidden="true">
+              <span className="pp-ring-pulse" />
+              <span className="pp-ring-spin" />
+              <span className="pp-ring-core">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <rect x="5" y="10" width="14" height="10" rx="2.5" />
+                  <path d="M8 10V7.5a4 4 0 018 0V10" strokeLinecap="round" />
+                  <path d="M12 14.2v2" strokeLinecap="round" />
+                </svg>
+              </span>
             </div>
 
-            <p style={css.overline}>Processing Payment</p>
-            <h2 style={css.heading}>Confirming your order</h2>
-            <p style={css.body}>{message}</p>
+            <p className="pp-overline">Secure checkout</p>
+            <h2 className="pp-h2">Payment processing</h2>
+            <p className="pp-body">{message}</p>
 
-            <div style={css.progressTrack}>
-              <div style={{ ...css.progressFill, width: `${progressPct}%` }} />
+            <div className="pp-track">
+              <div className="pp-fill" style={{ width: `${progressPct}%` }} />
             </div>
 
-            <div style={css.metaRow}>
-              <span style={css.liveDot} aria-hidden="true" />
-              <span style={css.metaText}>
+            <div className="pp-meta">
+              <span className="pp-live-dot" aria-hidden="true" />
+              <span className="pp-meta-text">
                 Check {attempts} of {MAX_ATTEMPTS} · Do not close this page
               </span>
             </div>
@@ -167,15 +146,16 @@ export default function PaymentPending() {
 
         {/* ── FAILED ── */}
         {status === "FAILED" && (
-          <div style={css.inner}>
-            <div style={{ ...css.bigIcon, color: "var(--danger)" }}>✕</div>
-            <h2 style={{ ...css.heading, color: "var(--danger)" }}>
-              Payment Failed
-            </h2>
-            <p style={css.body}>{message}</p>
+          <div className="pp-inner">
+            <div className="pp-status-icon pp-status-danger" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h2 className="pp-h2 pp-h2-danger">Payment Failed</h2>
+            <p className="pp-body">{message}</p>
             <button
-              className="pp-btn-primary"
-              style={css.btnPrimary}
+              className="pp-btn pp-btn-gold pp-w100"
               onClick={() => navigate(-1)}
             >
               ← Try Again
@@ -185,23 +165,24 @@ export default function PaymentPending() {
 
         {/* ── ERROR / TIMEOUT ── */}
         {status === "ERROR" && (
-          <div style={css.inner}>
-            <div style={{ ...css.bigIcon, color: "var(--warn)" }}>⏱</div>
-            <h2 style={{ ...css.heading, color: "var(--warn)" }}>
-              Verification Delayed
-            </h2>
-            <p style={css.body}>{message}</p>
-            <div style={css.btnStack}>
+          <div className="pp-inner">
+            <div className="pp-status-icon pp-status-warn" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <circle cx="12" cy="13" r="8" />
+                <path d="M12 9.5V13l2.5 2M9.5 2.5h5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h2 className="pp-h2 pp-h2-warn">Verification Delayed</h2>
+            <p className="pp-body">{message}</p>
+            <div className="pp-stack">
               <button
-                className="pp-btn-outline"
-                style={css.btnOutline}
+                className="pp-btn pp-btn-outline pp-w100"
                 onClick={() => window.location.reload()}
               >
                 Refresh Page
               </button>
               <button
                 className="pp-btn-ghost"
-                style={css.btnGhost}
                 onClick={() => navigate("/")}
               >
                 Return to Home
@@ -214,204 +195,133 @@ export default function PaymentPending() {
   );
 }
 
-/* ─── Styles ── */
-const css = {
-  page: {
-    minHeight: "100svh",
-    background:
-      "radial-gradient(ellipse 90% 55% at 50% -5%, #0a1520 0%, #04050a 65%)",
-    display: "grid",
-    placeItems: "center",
-    padding: "clamp(16px,5vw,48px) clamp(12px,4vw,24px)",
-    fontFamily: "var(--font-b)",
-    position: "relative",
-    isolation: "isolate",
-    overflowX: "hidden",
-  },
+/* ══════════════════════════════════════════════════════════
+   CSS — all responsive behavior lives here
+══════════════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
-  glowBlob: {
-    position: "absolute",
-    top: "-5%",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "clamp(300px, 70vw, 700px)",
-    height: "clamp(180px, 35vw, 380px)",
-    background:
-      "radial-gradient(ellipse, rgba(77,240,176,0.06) 0%, transparent 65%)",
-    pointerEvents: "none",
-    zIndex: 0,
-  },
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.18);
+  --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12); --gold-glo:rgba(232,201,106,0.22);
+  --text:#F0EDE8; --muted:#8B887E; --danger:#E05C5C; --live:#6BF0A0;
+  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif;
+  --r:20px; --r-sm:12px;
+}
+html { font-size:16px; }
+body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
+button { font-family:var(--font-b); cursor:pointer; }
 
-  card: {
-    position: "relative",
-    zIndex: 1,
-    width: "min(100%, 460px)",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--r)",
-    boxShadow:
-      "inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 80px rgba(0,0,0,.6)",
-    animation: "pp-rise .45s cubic-bezier(.22,1,.36,1) both",
-    overflow: "hidden",
-  },
+/* ── Page ── */
+.pp-page {
+  min-height:100svh; background:var(--bg);
+  display:grid; place-items:center;
+  padding:clamp(20px,5vw,56px) clamp(14px,4vw,28px);
+  position:relative; isolation:isolate; overflow-x:clip;
+}
 
-  inner: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-    padding: "clamp(36px,8vw,56px) clamp(20px,6vw,44px) clamp(32px,7vw,48px)",
-  },
+/* ── Ambient glows ── */
+.pp-glow { position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; z-index:0; }
+.pp-glow-a { top:-140px; left:50%; transform:translateX(-50%); width:min(620px,85vw); height:360px; background:radial-gradient(ellipse at center, var(--gold-dim), transparent 65%); animation:pp-breathe 6s ease-in-out infinite; }
+.pp-glow-b { bottom:-120px; right:-120px; width:340px; height:340px; background:radial-gradient(circle at center, rgba(232,201,106,0.07), transparent 65%); animation:pp-breathe 8s ease-in-out infinite 1.5s; }
+@keyframes pp-breathe { 0%,100%{opacity:.5} 50%{opacity:1} }
 
-  ringWrap: {
-    position: "relative",
-    width: "clamp(68px,15vw,84px)",
-    height: "clamp(68px,15vw,84px)",
-    marginBottom: "clamp(20px,4vw,28px)",
-    flexShrink: 0,
-  },
-  pingRing: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: "50%",
-    background: "var(--accent-dim, rgba(77,240,176,0.1))",
-    animation: "pp-ping 2.2s ease-out infinite",
-  },
-  spinRing: {
-    position: "absolute",
-    inset: 7,
-    borderRadius: "50%",
-    border: "2.5px solid var(--border-strong)",
-    borderTopColor: "var(--accent)",
-    animation: "pp-spin 1s linear infinite",
-  },
-  ringEmoji: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "clamp(22px,5vw,27px)",
-  },
+/* ── Status card ── */
+.pp-card {
+  position:relative; z-index:1; width:min(100%,460px);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 90px rgba(0,0,0,.65);
+  animation:pp-rise .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes pp-rise { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
 
-  bigIcon: {
-    fontSize: "clamp(38px,10vw,52px)",
-    fontWeight: 800,
-    fontFamily: "var(--font-d)",
-    lineHeight: 1,
-    marginBottom: "clamp(14px,3vw,20px)",
-  },
+.pp-inner {
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:clamp(36px,9vw,56px) clamp(22px,6vw,44px) clamp(32px,8vw,48px);
+}
 
-  overline: {
-    fontSize: "clamp(9px,2vw,10.5px)",
-    fontWeight: 700,
-    letterSpacing: ".13em",
-    textTransform: "uppercase",
-    color: "var(--accent)",
-    fontFamily: "var(--font-d)",
-    marginBottom: "clamp(8px,2vw,10px)",
-  },
+/* ── Pulsing gold spinner ring ── */
+.pp-ring { position:relative; width:clamp(72px,17vw,92px); height:clamp(72px,17vw,92px); margin-bottom:clamp(22px,5vw,30px); flex-shrink:0; }
+.pp-ring-pulse {
+  position:absolute; inset:0; border-radius:50%;
+  background:var(--gold-dim); box-shadow:0 0 0 1px rgba(232,201,106,.25);
+  animation:pp-ping 2.2s cubic-bezier(0,0,.2,1) infinite;
+}
+@keyframes pp-ping { 0% { transform:scale(1); opacity:.8; } 75%,100% { transform:scale(2.1); opacity:0; } }
+.pp-ring-spin {
+  position:absolute; inset:6px; border-radius:50%;
+  border:2.5px solid var(--border-h); border-top-color:var(--gold);
+  animation:pp-spin 1s linear infinite;
+  filter:drop-shadow(0 0 8px var(--gold-glo));
+}
+@keyframes pp-spin { to { transform:rotate(360deg); } }
+.pp-ring-core { position:absolute; inset:0; display:grid; place-items:center; color:var(--gold); }
+.pp-ring-core svg { width:clamp(24px,6vw,30px); height:clamp(24px,6vw,30px); }
 
-  heading: {
-    fontFamily: "var(--font-d)",
-    fontSize: "clamp(19px,5vw,26px)",
-    fontWeight: 800,
-    letterSpacing: "-.025em",
-    lineHeight: 1.2,
-    marginBottom: "clamp(10px,2.5vw,14px)",
-    color: "var(--text)",
-  },
+/* ── Copy ── */
+.pp-overline { color:var(--gold); font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; margin-bottom:9px; }
+.pp-h2 { font-family:var(--font-h); font-weight:800; font-size:clamp(21px,5.4vw,28px); letter-spacing:-.02em; line-height:1.15; margin-bottom:clamp(10px,2.5vw,14px); }
+.pp-h2-danger { color:var(--danger); }
+.pp-h2-warn { color:var(--gold); }
+.pp-body { color:var(--muted); font-size:clamp(13px,3vw,14.5px); line-height:1.7; max-width:34ch; margin-bottom:clamp(24px,6vw,32px); }
 
-  body: {
-    fontSize: "clamp(12.5px,3vw,14px)",
-    color: "var(--muted-2)",
-    lineHeight: 1.75,
-    maxWidth: "32ch",
-    marginBottom: "clamp(24px,5vw,32px)",
-  },
+/* ── Progress ── */
+.pp-track { width:100%; height:3px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:clamp(12px,3vw,16px); }
+.pp-fill { height:100%; min-width:2%; border-radius:4px; background:linear-gradient(90deg, var(--gold), #f5e3a8); transition:width .65s ease; }
 
-  progressTrack: {
-    width: "100%",
-    height: 3,
-    background: "var(--border)",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: "clamp(10px,2.5vw,14px)",
-  },
-  progressFill: {
-    height: "100%",
-    background: "linear-gradient(90deg, var(--accent) 0%, #a0f5d8 100%)",
-    borderRadius: 4,
-    transition: "width .65s ease",
-    minWidth: "2%",
-  },
+.pp-meta { display:flex; align-items:center; gap:8px; }
+.pp-live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--live); flex-shrink:0; animation:pp-blink 1.6s ease infinite; }
+@keyframes pp-blink { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.8); } }
+.pp-meta-text { color:var(--muted); font-size:clamp(10.5px,2.4vw,12px); letter-spacing:.01em; font-variant-numeric:tabular-nums; }
 
-  metaRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-  },
-  liveDot: {
-    display: "inline-block",
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "var(--accent)",
-    flexShrink: 0,
-    animation: "pp-blink 1.5s ease infinite",
-  },
-  metaText: {
-    fontSize: "clamp(10px,2.2vw,11.5px)",
-    color: "var(--muted)",
-    letterSpacing: ".01em",
-  },
+/* ── Status icons ── */
+.pp-status-icon {
+  width:clamp(56px,13vw,64px); height:clamp(56px,13vw,64px); border-radius:18px;
+  display:grid; place-items:center; margin-bottom:clamp(16px,4vw,22px);
+  animation:pp-pop .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes pp-pop { from { transform:scale(.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+.pp-status-icon svg { width:45%; height:45%; }
+.pp-status-danger { background:rgba(224,92,92,0.1); border:1px solid rgba(224,92,92,0.3); color:var(--danger); }
+.pp-status-warn { background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--gold); }
 
-  btnPrimary: {
-    marginTop: "clamp(6px,2vw,10px)",
-    width: "100%",
-    padding: "clamp(13px,3vw,16px) 24px",
-    borderRadius: "var(--r-pill)",
-    border: "none",
-    background: "linear-gradient(135deg, #4DF0B0 0%, #a0f5d8 100%)",
-    color: "#030810",
-    fontFamily: "var(--font-d)",
-    fontWeight: 700,
-    fontSize: "clamp(13px,3vw,15px)",
-    cursor: "pointer",
-    letterSpacing: "-.01em",
-    transition: "opacity .15s, transform .15s",
-  },
+/* ── Buttons ── */
+.pp-w100 { width:100%; }
+.pp-btn {
+  border-radius:999px; border:1px solid transparent;
+  font-family:var(--font-h); font-weight:700; font-size:clamp(13.5px,3.2vw,15px); letter-spacing:-.01em;
+  padding:clamp(13px,3.2vw,15px) 26px;
+  transition:transform .25s, box-shadow .25s, background .25s, border-color .25s, opacity .25s;
+}
+.pp-btn-gold { background:var(--gold); color:#080910; }
+.pp-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 34px var(--gold-glo); }
+.pp-btn-outline { background:transparent; color:var(--text); border-color:var(--border); }
+.pp-btn-outline:hover { border-color:var(--border-h); background:var(--card); transform:translateY(-2px); }
+.pp-btn-ghost {
+  background:none; border:none; color:var(--muted);
+  font-family:var(--font-b); font-size:clamp(12.5px,2.8vw,13.5px); font-weight:500;
+  padding:8px 6px; transition:color .25s;
+}
+.pp-btn-ghost:hover { color:var(--gold); }
+.pp-stack { width:100%; display:flex; flex-direction:column; align-items:center; gap:clamp(9px,2.2vw,12px); }
 
-  btnOutline: {
-    width: "100%",
-    padding: "clamp(12px,3vw,15px) 24px",
-    borderRadius: "var(--r-pill)",
-    border: "1px solid rgba(77,240,176,0.35)",
-    background: "transparent",
-    color: "var(--accent)",
-    fontFamily: "var(--font-d)",
-    fontWeight: 700,
-    fontSize: "clamp(12.5px,3vw,14px)",
-    cursor: "pointer",
-    transition: "background .15s",
-  },
+/* ══════════ RESPONSIVE ══════════ */
+@media (max-width: 1024px) {
+  .pp-glow-b { width:280px; height:280px; }
+}
+@media (max-width: 768px) {
+  .pp-glow-b { bottom:-140px; right:-160px; }
+}
+@media (max-width: 480px) {
+  .pp-glow-b { display:none; }
+  .pp-inner { padding-left:18px; padding-right:18px; }
+}
 
-  btnGhost: {
-    background: "none",
-    border: "none",
-    color: "var(--muted)",
-    cursor: "pointer",
-    fontSize: "clamp(11.5px,2.5vw,13px)",
-    padding: "8px 4px",
-    fontFamily: "var(--font-b)",
-    transition: "color .15s",
-  },
-
-  btnStack: {
-    marginTop: "clamp(6px,2vw,10px)",
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-};
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; }
+  .pp-ring-pulse { opacity:0; }
+}
+`;

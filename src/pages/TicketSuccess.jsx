@@ -1,51 +1,24 @@
+/* ═══════════════════════════════════════════════════════════
+   TicketSuccess.jsx — Tictify 2026
+   Boarding-pass ticket · Syne + DM Sans · ink #080910 · gold #E8C96A
+   All responsive behavior lives in real CSS (@media) below.
+═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import jsPDF from "jspdf";
 
-/* ─── Inject global styles once ─────────────────────────── */
-if (typeof document !== "undefined" && !document.getElementById("ts-styles")) {
-  const s = document.createElement("style");
-  s.id = "ts-styles";
-  s.innerHTML = `
-    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap');
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg-0: #04050a;
-      --surface: rgba(255,255,255,0.045);
-      --surface-2: rgba(255,255,255,0.03);
-      --border: rgba(255,255,255,0.09);
-      --border-strong: rgba(255,255,255,0.15);
-      --accent: #4DF0B0;
-      --accent-dim: rgba(77,240,176,0.1);
-      --text: #EEE9E0;
-      --muted: #6E6A62;
-      --muted-2: #9C9790;
-      --font-d: 'Bricolage Grotesque', sans-serif;
-      --font-b: 'Instrument Sans', sans-serif;
-      --r: 20px;
-      --r-sm: 12px;
-      --r-pill: 999px;
-    }
-
-    html { font-size: 16px; }
-    body { background: var(--bg-0); color: var(--text); font-family: var(--font-b); -webkit-font-smoothing: antialiased; }
-
-    @keyframes ts-spin  { to { transform: rotate(360deg); } }
-    @keyframes ts-rise  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes ts-pop   { 0% { transform:scale(0) rotate(-8deg); opacity:0; } 60% { transform:scale(1.12) rotate(2deg); opacity:1; } 100% { transform:scale(1) rotate(0deg); opacity:1; } }
-
-    .ts-btn-primary:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
-    .ts-btn-outline:hover { background: rgba(77,240,176,0.07); }
-    .ts-btn-ghost:hover   { color: var(--muted-2); }
-
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-  `;
-  document.head.appendChild(s);
+function injectStyles(id, content) {
+  if (typeof document !== "undefined" && !document.getElementById(id)) {
+    const el = document.createElement("style");
+    el.id = id;
+    el.innerHTML = content;
+    document.head.appendChild(el);
+  }
 }
 
 export default function TicketSuccess() {
+  injectStyles("tictify-ticket-success-css", CSS);
+
   const { reference } = useParams();
   const navigate = useNavigate();
   const touchStartX = useRef(0);
@@ -282,144 +255,134 @@ export default function TicketSuccess() {
   /* ── ERROR ── */
   if (status === "ERROR") {
     return (
-      <div style={css.page}>
-        <div style={css.glowBlob} aria-hidden="true" />
-        <div
-          style={{
-            ...css.card,
-            maxWidth: 400,
-            textAlign: "center",
-            padding: "clamp(28px,6vw,44px)",
-          }}
-        >
-          <div style={{ fontSize: "clamp(36px,9vw,46px)", marginBottom: 14 }}>
-            ⚠️
+      <main className="ts-page">
+        <Glows />
+        <div className="ts-error-card">
+          <div className="ts-error-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M12 9v4M12 16.5v.5" strokeLinecap="round" />
+              <path d="M10.3 3.9L2.6 17a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" strokeLinejoin="round" />
+            </svg>
           </div>
-          <h2 style={{ ...css.heading, color: "#F05C5C" }}>Error</h2>
-          <p style={css.body}>{message}</p>
-          <button
-            className="ts-btn-primary"
-            style={{ ...css.btnPrimary, width: "100%", marginTop: 4 }}
-            onClick={() => navigate("/")}
-          >
+          <h2 className="ts-h1 ts-h1-danger">Something went wrong</h2>
+          <p className="ts-body">{message}</p>
+          <button className="ts-btn ts-btn-gold ts-w100" onClick={() => navigate("/")}>
             Return Home
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   const { event, ticket } = data;
 
   return (
-    <div style={css.page}>
-      <div style={css.glowBlob} aria-hidden="true" />
+    <main className="ts-page">
+      <Glows />
 
-      <div style={css.card}>
+      <article className="ts-pass">
         {/* ── success header ── */}
-        <div style={css.cardHeader}>
-          <span style={css.ticketEmoji}>🎟️</span>
-          <h1 style={css.heading}>Purchase Successful</h1>
-          <p style={css.subtitle}>Your official entry ticket is ready.</p>
-        </div>
-
-        {/* ── body ── */}
-        <div style={css.cardBody}>
-          {/* event info */}
-          <div style={css.infoBox}>
-            <h3 style={css.eventTitle}>{event.title}</h3>
-            <p style={css.eventMeta}>
-              📅 {new Date(event.date).toDateString()}
-            </p>
-            <p style={css.eventMeta}>📍 {event.location}</p>
-            <span style={css.badge}>{ticket.ticketType}</span>
+        <header className="ts-pass-head">
+          <div className="ts-check" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <circle className="ts-check-ring" cx="32" cy="32" r="29" />
+              <path className="ts-check-mark" d="M20 33.5l8.5 8.5L44 25" />
+            </svg>
           </div>
+          <p className="ts-overline">Payment confirmed</p>
+          <h1 className="ts-h1">You&rsquo;re in.</h1>
+          <p className="ts-sub">Your official entry ticket is ready.</p>
+        </header>
 
-          {/* QR */}
-          <div style={css.qrWrap}>
-            <div style={css.qrBox}>
-              <img src={ticket.qrImage} alt="Entry QR Code" style={css.qrImg} />
+        {/* ── event details ── */}
+        <section className="ts-details">
+          <div className="ts-details-row">
+            <h2 className="ts-event-title">{event.title}</h2>
+            <span className="ts-badge">{ticket.ticketType}</span>
+          </div>
+          <div className="ts-meta-grid">
+            <div className="ts-meta">
+              <span className="ts-meta-label">Date</span>
+              <span className="ts-meta-value">
+                {new Date(event.date).toDateString()}
+              </span>
             </div>
-            <p style={css.qrHint}>Scan at entrance</p>
+            <div className="ts-meta">
+              <span className="ts-meta-label">Location</span>
+              <span className="ts-meta-value">{event.location}</span>
+            </div>
           </div>
+        </section>
 
-          {/* actions */}
-          <div style={css.actionGroup}>
-            <button
-              className="ts-btn-primary"
-              style={{
-                ...css.btnPrimary,
-                width: "100%",
-                opacity: downloading ? 0.65 : 1,
-              }}
-              disabled={downloading}
-              onClick={downloadPDF}
-            >
-              {downloading ? "Generating PDF…" : "⬇ Download PDF Ticket"}
-            </button>
-
-            <button
-              className="ts-btn-outline"
-              style={{ ...css.btnOutline, width: "100%" }}
-              onClick={() => setShowEmailModal(true)}
-            >
-              ✉ Send to my Email
-            </button>
-
-            <button
-              className="ts-btn-ghost"
-              style={css.btnGhost}
-              onClick={() => navigate("/")}
-            >
-              Browse more events →
-            </button>
-          </div>
-
-          <p style={css.refText}>Ref: {reference}</p>
+        {/* ── perforation ── */}
+        <div className="ts-perf" aria-hidden="true">
+          <span className="ts-perf-line" />
         </div>
-      </div>
+
+        {/* ── QR panel ── */}
+        <section className="ts-qr-panel">
+          <div className="ts-qr-frame">
+            <img src={ticket.qrImage} alt="Entry QR Code" className="ts-qr-img" />
+          </div>
+          <p className="ts-qr-hint">Scan at the entrance</p>
+          <p className="ts-ref">Ref: {reference}</p>
+        </section>
+
+        {/* ── actions ── */}
+        <footer className="ts-actions">
+          <button
+            className="ts-btn ts-btn-gold ts-w100"
+            disabled={downloading}
+            onClick={downloadPDF}
+          >
+            {downloading ? "Generating PDF…" : "Download PDF Ticket"}
+          </button>
+          <button
+            className="ts-btn ts-btn-outline ts-w100"
+            onClick={() => setShowEmailModal(true)}
+          >
+            Send to my Email
+          </button>
+          <button className="ts-btn-ghost" onClick={() => navigate("/")}>
+            Browse more events →
+          </button>
+        </footer>
+      </article>
 
       {/* ── email modal ── */}
       {showEmailModal && (
         <div
-          style={css.modalOverlay}
+          className="ts-modal-overlay"
           onClick={(e) =>
             e.target === e.currentTarget && setShowEmailModal(false)
           }
         >
-          <div style={css.emailCard}>
-            <div style={{ fontSize: "clamp(26px,6vw,32px)", marginBottom: 10 }}>
-              ✉️
+          <div className="ts-modal" role="dialog" aria-modal="true" aria-label="Email Ticket">
+            <div className="ts-modal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                <path d="M3.5 7l8.5 6 8.5-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
-            <h3
-              style={{
-                ...css.heading,
-                fontSize: "clamp(16px,4vw,18px)",
-                marginBottom: 6,
-              }}
-            >
-              Email Ticket
-            </h3>
-            <p style={css.modalSub}>Where should we send your ticket?</p>
+            <h3 className="ts-modal-title">Email Ticket</h3>
+            <p className="ts-modal-sub">Where should we send your ticket?</p>
             <input
-              style={css.inputField}
+              className="ts-input"
               type="email"
               placeholder="e.g. hello@tictify.ng"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendEmail()}
             />
-            <div style={css.modalActions}>
+            <div className="ts-modal-actions">
               <button
                 className="ts-btn-ghost"
-                style={css.btnGhost}
                 onClick={() => setShowEmailModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="ts-btn-primary"
-                style={{ ...css.confirmBtn, opacity: sendingEmail ? 0.7 : 1 }}
+                className="ts-btn ts-btn-gold"
                 onClick={handleSendEmail}
                 disabled={sendingEmail}
               >
@@ -429,313 +392,247 @@ export default function TicketSuccess() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
-/* ─── Loading screen ── */
-function LoadingScreen({ message }) {
+/* ── Celebratory background glows ── */
+function Glows() {
   return (
-    <div
-      style={{
-        minHeight: "100svh",
-        background: "#04050a",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <div
-          style={{
-            width: "clamp(40px,10vw,50px)",
-            height: "clamp(40px,10vw,50px)",
-            border: "2.5px solid rgba(255,255,255,0.1)",
-            borderTopColor: "#4DF0B0",
-            borderRadius: "50%",
-            animation: "ts-spin 1s linear infinite",
-            margin: "0 auto clamp(16px,3vw,20px)",
-          }}
-        />
-        <p
-          style={{
-            fontFamily: "'Bricolage Grotesque',sans-serif",
-            fontWeight: 600,
-            fontSize: "clamp(14px,3vw,15px)",
-            marginBottom: 6,
-          }}
-        >
-          Generating your ticket…
-        </p>
-        <p style={{ fontSize: "clamp(12px,2.5vw,13px)", color: "#9C9790" }}>
-          {message}
-        </p>
-      </div>
-    </div>
+    <>
+      <div className="ts-glow ts-glow-a" aria-hidden="true" />
+      <div className="ts-glow ts-glow-b" aria-hidden="true" />
+      <div className="ts-glow ts-glow-c" aria-hidden="true" />
+    </>
   );
 }
 
-/* ─── Styles ── */
-const css = {
-  page: {
-    minHeight: "100svh",
-    background:
-      "radial-gradient(ellipse 90% 55% at 50% -5%, #0a1520 0%, #04050a 65%)",
-    display: "grid",
-    placeItems: "center",
-    padding: "clamp(16px,5vw,48px) clamp(12px,4vw,24px)",
-    fontFamily: "var(--font-b)",
-    position: "relative",
-    isolation: "isolate",
-    overflowX: "hidden",
-  },
+/* ── Loading screen ── */
+function LoadingScreen({ message }) {
+  injectStyles("tictify-ticket-success-css", CSS);
+  return (
+    <main className="ts-page">
+      <Glows />
+      <div className="ts-loading">
+        <div className="ts-spinner" aria-hidden="true" />
+        <p className="ts-loading-title">Generating your ticket…</p>
+        <p className="ts-loading-sub">{message}</p>
+      </div>
+    </main>
+  );
+}
 
-  glowBlob: {
-    position: "absolute",
-    top: "-5%",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "clamp(300px, 70vw, 700px)",
-    height: "clamp(180px, 35vw, 380px)",
-    background:
-      "radial-gradient(ellipse, rgba(77,240,176,0.06) 0%, transparent 65%)",
-    pointerEvents: "none",
-    zIndex: 0,
-  },
+/* ══════════════════════════════════════════════════════════
+   CSS — all responsive behavior lives here
+══════════════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
-  card: {
-    position: "relative",
-    zIndex: 1,
-    width: "min(100%, 480px)",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--r)",
-    boxShadow:
-      "inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 80px rgba(0,0,0,.6)",
-    animation: "ts-rise .45s cubic-bezier(.22,1,.36,1) both",
-    overflow: "hidden",
-  },
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.18);
+  --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12); --gold-glo:rgba(232,201,106,0.22);
+  --text:#F0EDE8; --muted:#8B887E; --danger:#E05C5C; --live:#6BF0A0;
+  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif;
+  --r:20px; --r-sm:12px;
+}
+html { font-size:16px; }
+body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
+button { font-family:var(--font-b); cursor:pointer; }
 
-  cardHeader: {
-    padding: "clamp(28px,6vw,44px) clamp(20px,5vw,40px) clamp(20px,4vw,28px)",
-    background:
-      "linear-gradient(160deg, rgba(77,240,176,0.07) 0%, rgba(77,240,176,0.02) 100%)",
-    borderBottom: "1px solid var(--border)",
-    textAlign: "center",
-  },
+/* ── Page ── */
+.ts-page {
+  min-height:100svh; background:var(--bg);
+  display:grid; place-items:center;
+  padding:clamp(20px,5vw,56px) clamp(14px,4vw,28px);
+  position:relative; isolation:isolate; overflow-x:clip;
+}
 
-  ticketEmoji: {
-    display: "inline-block",
-    fontSize: "clamp(42px,10vw,54px)",
-    lineHeight: 1,
-    marginBottom: "clamp(12px,3vw,16px)",
-    animation: "ts-pop .55s cubic-bezier(.34,1.56,.64,1) both",
-  },
+/* ── Celebratory glows ── */
+.ts-glow { position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; z-index:0; }
+.ts-glow-a { top:-140px; left:50%; transform:translateX(-50%); width:min(640px,85vw); height:380px; background:radial-gradient(ellipse at center, var(--gold-dim), transparent 65%); animation:ts-breathe 7s ease-in-out infinite; }
+.ts-glow-b { bottom:-100px; left:-120px; width:360px; height:360px; background:radial-gradient(circle at center, rgba(232,201,106,0.08), transparent 65%); animation:ts-breathe 9s ease-in-out infinite 1.2s; }
+.ts-glow-c { top:35%; right:-140px; width:340px; height:340px; background:radial-gradient(circle at center, rgba(232,201,106,0.06), transparent 65%); animation:ts-breathe 8s ease-in-out infinite 2.4s; }
+@keyframes ts-breathe { 0%,100%{opacity:.55} 50%{opacity:1} }
 
-  cardBody: {
-    padding: "clamp(20px,5vw,32px) clamp(20px,5vw,40px) clamp(24px,5vw,36px)",
-  },
+/* ── Boarding-pass card ── */
+.ts-pass {
+  position:relative; z-index:1; width:min(100%,520px);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r); overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 90px rgba(0,0,0,.65);
+  animation:ts-rise .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes ts-rise { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
 
-  heading: {
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontSize: "clamp(19px,5vw,26px)",
-    fontWeight: 800,
-    letterSpacing: "-.025em",
-    lineHeight: 1.2,
-    marginBottom: "clamp(6px,1.5vw,8px)",
-    color: "var(--text)",
-  },
+/* ── Success header ── */
+.ts-pass-head {
+  text-align:center;
+  padding:clamp(30px,7vw,44px) clamp(20px,5vw,40px) clamp(20px,5vw,28px);
+  background:linear-gradient(180deg, var(--gold-dim), transparent 90%);
+}
+.ts-check { display:inline-block; width:clamp(58px,14vw,72px); height:clamp(58px,14vw,72px); margin-bottom:clamp(14px,3vw,18px); }
+.ts-check svg { width:100%; height:100%; display:block; }
+.ts-check-ring {
+  fill:none; stroke:var(--gold); stroke-width:2.5; stroke-linecap:round;
+  stroke-dasharray:183; stroke-dashoffset:183;
+  transform:rotate(-90deg); transform-origin:center;
+  animation:ts-draw .7s cubic-bezier(.4,0,.2,1) forwards .2s;
+  filter:drop-shadow(0 0 10px var(--gold-glo));
+}
+.ts-check-mark {
+  fill:none; stroke:var(--gold); stroke-width:4; stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:40; stroke-dashoffset:40;
+  animation:ts-draw .45s cubic-bezier(.4,0,.2,1) forwards .8s;
+}
+@keyframes ts-draw { to { stroke-dashoffset:0; } }
 
-  subtitle: {
-    fontSize: "clamp(12.5px,3vw,14px)",
-    color: "var(--muted-2)",
-  },
+.ts-overline { color:var(--gold); font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; margin-bottom:8px; }
+.ts-h1 { font-family:var(--font-h); font-weight:800; font-size:clamp(24px,6vw,32px); letter-spacing:-.02em; line-height:1.1; margin-bottom:8px; }
+.ts-h1-danger { color:var(--danger); }
+.ts-sub { color:var(--muted); font-size:clamp(13px,3vw,14.5px); }
 
-  body: {
-    fontSize: "clamp(12.5px,3vw,14px)",
-    color: "var(--muted-2)",
-    lineHeight: 1.75,
-    maxWidth: "34ch",
-    margin: "0 auto clamp(20px,4vw,28px)",
-  },
+/* ── Event details ── */
+.ts-details { padding:clamp(18px,4.5vw,26px) clamp(20px,5vw,36px) clamp(22px,5vw,30px); }
+.ts-details-row { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:clamp(14px,3.5vw,18px); }
+.ts-event-title { font-family:var(--font-h); font-weight:700; font-size:clamp(17px,4.2vw,20px); letter-spacing:-.01em; line-height:1.25; }
+.ts-badge {
+  flex-shrink:0; padding:5px 13px; border-radius:999px;
+  background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--gold);
+  font-family:var(--font-h); font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
+}
+.ts-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:clamp(12px,3vw,18px); }
+.ts-meta { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.ts-meta-label { color:var(--muted); font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; }
+.ts-meta-value { color:var(--text); font-size:clamp(13px,3vw,14.5px); font-weight:500; line-height:1.45; overflow-wrap:anywhere; }
 
-  infoBox: {
-    background: "var(--surface-2)",
-    border: "1px dashed rgba(77,240,176,0.2)",
-    borderRadius: "var(--r-sm)",
-    padding: "clamp(16px,4vw,20px)",
-    marginBottom: "clamp(20px,4vw,24px)",
-  },
+/* ── Perforated divider ── */
+.ts-perf { position:relative; height:24px; }
+.ts-perf-line { position:absolute; left:24px; right:24px; top:50%; border-top:2px dashed var(--border-h); }
+.ts-perf::before, .ts-perf::after {
+  content:''; position:absolute; top:0; width:24px; height:24px;
+  background:radial-gradient(circle at center, var(--bg) 0 11px, transparent 12px);
+}
+.ts-perf::before { left:-12px; }
+.ts-perf::after { right:-12px; }
 
-  eventTitle: {
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontWeight: 700,
-    fontSize: "clamp(15px,3.5vw,17px)",
-    marginBottom: "clamp(6px,1.5vw,8px)",
-    lineHeight: 1.3,
-  },
+/* ── QR panel ── */
+.ts-qr-panel {
+  text-align:center; margin:0 clamp(14px,3.5vw,20px);
+  padding:clamp(20px,5vw,28px) clamp(16px,4vw,24px);
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm);
+}
+.ts-qr-frame {
+  display:inline-block; background:#fff; padding:clamp(10px,2.5vw,14px);
+  border-radius:var(--r-sm); box-shadow:0 10px 40px var(--gold-glo);
+}
+.ts-qr-img { display:block; width:clamp(140px,42vw,190px); height:auto; image-rendering:crisp-edges; }
+.ts-qr-hint { margin-top:clamp(10px,2.5vw,12px); color:var(--muted); font-size:clamp(11.5px,2.6vw,12.5px); }
+.ts-ref { margin-top:6px; color:var(--muted); opacity:.6; font-size:clamp(10px,2.2vw,11px); word-break:break-all; font-variant-numeric:tabular-nums; }
 
-  eventMeta: {
-    fontSize: "clamp(12px,2.8vw,13.5px)",
-    color: "var(--muted-2)",
-    marginBottom: 4,
-    lineHeight: 1.5,
-  },
+/* ── Actions ── */
+.ts-actions {
+  display:flex; flex-direction:column; align-items:center; gap:clamp(9px,2.2vw,12px);
+  padding:clamp(18px,4.5vw,24px) clamp(20px,5vw,36px) clamp(22px,5vw,30px);
+}
+.ts-w100 { width:100%; }
+.ts-btn {
+  border-radius:999px; border:1px solid transparent;
+  font-family:var(--font-h); font-weight:700; font-size:clamp(13.5px,3.2vw,15px); letter-spacing:-.01em;
+  padding:clamp(13px,3.2vw,15px) 26px;
+  transition:transform .25s, box-shadow .25s, background .25s, border-color .25s, opacity .25s;
+}
+.ts-btn:disabled { opacity:.6; cursor:not-allowed; }
+.ts-btn-gold { background:var(--gold); color:#080910; }
+.ts-btn-gold:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 34px var(--gold-glo); }
+.ts-btn-outline { background:transparent; color:var(--text); border-color:var(--border); }
+.ts-btn-outline:hover { border-color:var(--border-h); background:var(--card); transform:translateY(-2px); }
+.ts-btn-ghost {
+  background:none; border:none; color:var(--muted);
+  font-family:var(--font-b); font-size:clamp(12.5px,2.8vw,13.5px); font-weight:500;
+  padding:8px 6px; transition:color .25s;
+}
+.ts-btn-ghost:hover { color:var(--gold); }
 
-  badge: {
-    display: "inline-block",
-    marginTop: "clamp(8px,2vw,12px)",
-    padding: "4px 14px",
-    borderRadius: "var(--r-pill)",
-    background: "rgba(77,240,176,0.12)",
-    color: "var(--accent)",
-    fontSize: "clamp(9.5px,2vw,11px)",
-    fontWeight: 700,
-    letterSpacing: ".1em",
-    textTransform: "uppercase",
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-  },
+/* ── Error card ── */
+.ts-error-card {
+  position:relative; z-index:1; width:min(100%,420px); text-align:center;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+  padding:clamp(30px,7vw,44px) clamp(22px,5vw,36px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 40px 90px rgba(0,0,0,.65);
+  animation:ts-rise .5s cubic-bezier(.22,1,.36,1) both;
+}
+.ts-error-icon {
+  width:56px; height:56px; margin:0 auto clamp(14px,3vw,18px); border-radius:16px;
+  background:rgba(224,92,92,0.1); border:1px solid rgba(224,92,92,0.3); color:var(--danger);
+  display:grid; place-items:center;
+}
+.ts-error-icon svg { width:26px; height:26px; }
+.ts-body { color:var(--muted); font-size:clamp(13px,3vw,14.5px); line-height:1.7; max-width:36ch; margin:0 auto clamp(20px,5vw,26px); }
 
-  qrWrap: {
-    textAlign: "center",
-    marginBottom: "clamp(20px,5vw,28px)",
-  },
+/* ── Loading ── */
+.ts-loading { position:relative; z-index:1; text-align:center; }
+.ts-spinner {
+  width:clamp(44px,10vw,52px); height:clamp(44px,10vw,52px);
+  border:2.5px solid var(--border-h); border-top-color:var(--gold); border-radius:50%;
+  margin:0 auto clamp(16px,4vw,20px);
+  animation:ts-spin 1s linear infinite;
+}
+@keyframes ts-spin { to { transform:rotate(360deg); } }
+.ts-loading-title { font-family:var(--font-h); font-weight:700; font-size:clamp(14.5px,3.2vw,16px); margin-bottom:6px; }
+.ts-loading-sub { color:var(--muted); font-size:clamp(12px,2.8vw,13px); }
 
-  qrBox: {
-    display: "inline-block",
-    background: "#fff",
-    padding: "clamp(10px,2.5vw,14px)",
-    borderRadius: "var(--r-sm)",
-    boxShadow: "0 8px 32px rgba(77,240,176,0.12)",
-  },
+/* ── Email modal ── */
+.ts-modal-overlay {
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(8,9,16,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  display:grid; place-items:center; padding:clamp(16px,4vw,24px);
+}
+.ts-modal {
+  width:min(100%,400px); text-align:center;
+  background:var(--surface); border:1px solid var(--border-h); border-radius:var(--r);
+  padding:clamp(24px,6vw,36px) clamp(20px,5vw,32px);
+  box-shadow:0 32px 70px rgba(0,0,0,.65);
+  animation:ts-rise .3s ease both;
+}
+.ts-modal-icon {
+  width:52px; height:52px; margin:0 auto 14px; border-radius:16px;
+  background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--gold);
+  display:grid; place-items:center;
+}
+.ts-modal-icon svg { width:24px; height:24px; }
+.ts-modal-title { font-family:var(--font-h); font-weight:700; font-size:clamp(17px,4vw,19px); letter-spacing:-.01em; margin-bottom:6px; }
+.ts-modal-sub { color:var(--muted); font-size:clamp(12.5px,3vw,14px); margin-bottom:clamp(16px,4vw,20px); }
+.ts-input {
+  width:100%; padding:clamp(12px,3vw,14px) 16px;
+  border-radius:var(--r-sm); border:1px solid var(--border-h);
+  background:var(--card); color:var(--text);
+  font-family:var(--font-b); font-size:clamp(14px,3.2vw,15px);
+  margin-bottom:clamp(16px,4vw,20px); outline:none; transition:border-color .25s, box-shadow .25s;
+}
+.ts-input::placeholder { color:var(--muted); }
+.ts-input:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
+.ts-modal-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.ts-modal-actions .ts-btn { flex-shrink:0; padding:clamp(11px,2.6vw,13px) clamp(20px,4.5vw,24px); font-size:clamp(13px,3vw,14px); }
 
-  qrImg: {
-    display: "block",
-    width: "clamp(140px,38vw,190px)",
-    height: "auto",
-    imageRendering: "crisp-edges",
-  },
+/* ══════════ RESPONSIVE ══════════ */
+@media (max-width: 1024px) {
+  .ts-glow-b, .ts-glow-c { width:280px; height:280px; }
+}
+@media (max-width: 768px) {
+  .ts-glow-c { display:none; }
+}
+@media (max-width: 480px) {
+  .ts-details-row { flex-direction:column; align-items:flex-start; gap:10px; }
+  .ts-meta-grid { grid-template-columns:1fr; }
+  .ts-glow-b { display:none; }
+  .ts-modal-actions { flex-direction:column-reverse; }
+  .ts-modal-actions .ts-btn { width:100%; }
+}
 
-  qrHint: {
-    marginTop: "clamp(8px,2vw,10px)",
-    fontSize: "clamp(11px,2.5vw,12px)",
-    color: "var(--muted)",
-  },
-
-  actionGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "clamp(8px,2vw,12px)",
-    marginBottom: "clamp(16px,4vw,20px)",
-  },
-
-  btnPrimary: {
-    padding: "clamp(13px,3vw,16px) 24px",
-    borderRadius: "var(--r-pill)",
-    border: "none",
-    background: "linear-gradient(135deg, #4DF0B0 0%, #a0f5d8 100%)",
-    color: "#030810",
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontWeight: 700,
-    fontSize: "clamp(13px,3vw,15px)",
-    cursor: "pointer",
-    letterSpacing: "-.01em",
-    transition: "opacity .15s, transform .15s",
-  },
-
-  btnOutline: {
-    padding: "clamp(12px,3vw,15px) 24px",
-    borderRadius: "var(--r-pill)",
-    border: "1px solid rgba(77,240,176,0.35)",
-    background: "transparent",
-    color: "var(--accent)",
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontWeight: 700,
-    fontSize: "clamp(12.5px,3vw,14px)",
-    cursor: "pointer",
-    transition: "background .15s",
-  },
-
-  btnGhost: {
-    background: "none",
-    border: "none",
-    color: "var(--muted)",
-    cursor: "pointer",
-    fontSize: "clamp(11.5px,2.5vw,13px)",
-    padding: "8px 4px",
-    fontFamily: "'Instrument Sans', sans-serif",
-    transition: "color .15s",
-  },
-
-  refText: {
-    textAlign: "center",
-    fontSize: "clamp(10px,2vw,11px)",
-    color: "rgba(110,106,98,0.5)",
-    wordBreak: "break-all",
-  },
-
-  /* modal */
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(4,5,10,0.88)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    display: "grid",
-    placeItems: "center",
-    padding: "clamp(16px,4vw,24px)",
-    zIndex: 1000,
-  },
-
-  emailCard: {
-    width: "min(100%, 380px)",
-    background: "#0d0f18",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "var(--r)",
-    padding: "clamp(24px,5vw,36px)",
-    textAlign: "center",
-    animation: "ts-rise .3s ease both",
-    boxShadow: "0 32px 64px rgba(0,0,0,.6)",
-  },
-
-  modalSub: {
-    fontSize: "clamp(12.5px,3vw,14px)",
-    color: "var(--muted-2)",
-    marginBottom: "clamp(16px,4vw,20px)",
-  },
-
-  inputField: {
-    width: "100%",
-    padding: "clamp(12px,3vw,14px) 16px",
-    borderRadius: "var(--r-sm)",
-    border: "1px solid var(--border-strong)",
-    background: "rgba(255,255,255,0.05)",
-    color: "var(--text)",
-    fontSize: "clamp(14px,3vw,15px)",
-    marginBottom: "clamp(16px,4vw,20px)",
-    outline: "none",
-    fontFamily: "'Instrument Sans', sans-serif",
-    transition: "border-color .2s",
-  },
-
-  modalActions: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-
-  confirmBtn: {
-    padding: "clamp(10px,2.5vw,12px) clamp(20px,4vw,24px)",
-    borderRadius: "var(--r-pill)",
-    border: "none",
-    background: "linear-gradient(135deg, #4DF0B0, #a0f5d8)",
-    color: "#030810",
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontWeight: 700,
-    fontSize: "clamp(13px,3vw,14px)",
-    cursor: "pointer",
-    transition: "opacity .15s",
-    flexShrink: 0,
-  },
-};
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; }
+  .ts-check-ring, .ts-check-mark { stroke-dashoffset:0; }
+}
+`;

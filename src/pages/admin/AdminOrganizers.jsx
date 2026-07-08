@@ -1,180 +1,422 @@
-import React, { useState, useEffect } from 'react';
+/* ═══════════════════════════════════════════════════════════
+   AdminOrganizers.jsx — Tictify 2026 Admin
+   Syne + DM Sans · ink #080910 · gold #E8C96A
+   All responsive behavior lives in real CSS (@media) below.
+═══════════════════════════════════════════════════════════ */
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getToken, logout } from "../../services/authService";
 
-const AdminOrganizers = () => {
-  const [organizers, setOrganizers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+function injectStyles(id, content) {
+  if (typeof document !== "undefined" && !document.getElementById(id)) {
+    const el = document.createElement("style");
+    el.id = id;
+    el.innerHTML = content;
+    document.head.appendChild(el);
+  }
+}
 
-  useEffect(() => {
-    fetchOrganizers();
-  }, [filter]);
-
-  const fetchOrganizers = async () => {
-    try {
-      const response = await fetch(`/api/v1/admin/organizers?filter=${filter}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      const data = await response.json();
-      setOrganizers(data.organizers || []);
-    } catch (error) {
-      console.error('Failed to fetch organizers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSuspend = async (organizerId) => {
-    if (!window.confirm('Suspend this organizer?')) return;
-    try {
-      const response = await fetch(`/api/v1/admin/users/${organizerId}/suspend`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchOrganizers();
-        alert('Organizer suspended');
-      }
-    } catch (error) {
-      console.error('Failed to suspend organizer:', error);
-    }
-  };
-
-  const handleUnSuspend = async (organizerId) => {
-    try {
-      const response = await fetch(`/api/v1/admin/users/${organizerId}/unsuspend`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchOrganizers();
-        alert('Organizer unsuspended');
-      }
-    } catch (error) {
-      console.error('Failed to unsuspend organizer:', error);
-    }
-  };
-
-  const handleApproveKYC = async (organizerId) => {
-    try {
-      const response = await fetch(`/api/v1/admin/kyc/${organizerId}/approve`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchOrganizers();
-        alert('KYC approved');
-      }
-    } catch (error) {
-      console.error('Failed to approve KYC:', error);
-    }
-  };
-
-  const handleRejectKYC = async (organizerId) => {
-    try {
-      const response = await fetch(`/api/v1/admin/kyc/${organizerId}/reject`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        fetchOrganizers();
-        alert('KYC rejected');
-      }
-    } catch (error) {
-      console.error('Failed to reject KYC:', error);
-    }
-  };
-
-  if (loading) return <div className="admin-section">Loading...</div>;
-
-  return (
-    <div className="admin-section">
-      <div className="section-header">
-        <h2>Organizer Management</h2>
-        <div className="filters">
-          {['all', 'verified', 'pending-kyc', 'suspended', 'banned'].map(f => (
-            <button
-              key={f}
-              className={`filter-btn ${filter === f ? 'active' : ''}`}
-              onClick={() => setFilter(f)}
-            >
-              {f.replace('-', ' ').toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {organizers.length === 0 ? (
-        <p className="no-data">No organizers found</p>
-      ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Company Name</th>
-              <th>Contact Email</th>
-              <th>Events Created</th>
-              <th>Total Revenue</th>
-              <th>KYC Status</th>
-              <th>Account Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {organizers.map(org => (
-              <tr key={org._id}>
-                <td><strong>{org.companyName || org.name}</strong></td>
-                <td>{org.email}</td>
-                <td>{org.eventsCreated || 0}</td>
-                <td>₦{(org.totalRevenue || 0).toLocaleString()}</td>
-                <td>
-                  <span className={`status-badge ${(org.kycStatus || 'pending').toLowerCase()}`}>
-                    {org.kycStatus || 'Pending'}
-                  </span>
-                </td>
-                <td>
-                  <span className={`status-badge ${(org.accountStatus || 'active').toLowerCase()}`}>
-                    {org.accountStatus || 'Active'}
-                  </span>
-                </td>
-                <td className="action-buttons">
-                  {org.kycStatus === 'PENDING' && (
-                    <>
-                      <button
-                        className="btn-small btn-success"
-                        onClick={() => handleApproveKYC(org._id)}
-                      >
-                        Approve KYC
-                      </button>
-                      <button
-                        className="btn-small btn-danger"
-                        onClick={() => handleRejectKYC(org._id)}
-                      >
-                        Reject KYC
-                      </button>
-                    </>
-                  )}
-                  {org.accountStatus === 'ACTIVE' ? (
-                    <button
-                      className="btn-small btn-warning"
-                      onClick={() => handleSuspend(org._id)}
-                    >
-                      Suspend
-                    </button>
-                  ) : (
-                    <button
-                      className="btn-small btn-info"
-                      onClick={() => handleUnSuspend(org._id)}
-                    >
-                      Unsuspend
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
+/* ── Icons (inline, dependency-free) ─────────────────────── */
+const Ic = {
+  dash: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="3" width="8" height="8" rx="2" />
+      <rect x="13" y="3" width="8" height="5" rx="2" />
+      <rect x="13" y="12" width="8" height="9" rx="2" />
+      <rect x="3" y="15" width="8" height="6" rx="2" />
+    </svg>
+  ),
+  cal: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
+    </svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M17 14.5c2.4.5 4 2.7 4 5.5" strokeLinecap="round" />
+    </svg>
+  ),
+  wallet: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <rect x="3" y="6" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
+    </svg>
+  ),
+  chart: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
+    </svg>
+  ),
+  trophy: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 01-10 0V4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 6H4a1 1 0 00-1 1c0 2.2 1.8 4 4 4M17 6h3a1 1 0 011 1c0 2.2-1.8 4-4 4" strokeLinecap="round" />
+    </svg>
+  ),
+  out: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M10 17l-5-5 5-5M5 12h11" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
-export default AdminOrganizers;
+const NAV = [
+  { label: "Dashboard", path: "/admin/dashboard", icon: Ic.dash },
+  { label: "Events", path: "/admin/events", icon: Ic.cal },
+  { label: "Organizers", path: "/admin/organizers", icon: Ic.users },
+  { label: "Withdrawals", path: "/admin/withdrawals", icon: Ic.wallet },
+  { label: "Analytics", path: "/admin/sales", icon: Ic.chart },
+];
+
+/* ══════════════════════════════════════════════════════════
+   PAGE
+══════════════════════════════════════════════════════════ */
+export default function AdminOrganizers() {
+  injectStyles("tictify-admin-organizers-css", CSS);
+  const navigate = useNavigate();
+
+  const [organizers, setOrganizers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  /* ================= LOAD ORGANIZERS ================= */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/organizers`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        if (!res.ok) throw new Error("Unauthorized or session expired");
+
+        const data = await res.json();
+        setOrganizers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || "Unable to load organizers");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, [navigate]);
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
+  /* ================= STATES ================= */
+  if (loading) return <LoadingModal />;
+
+  if (error) {
+    return (
+      <div className="aor-error">
+        <div className="aor-error-card">
+          <div className="aor-error-icon">!</div>
+          <h2>Something went wrong</h2>
+          <p>{error}</p>
+          <button className="aor-btn-gold" onClick={handleLogout}>
+            Login Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const topOrganizers = organizers.slice(0, 5);
+
+  return (
+    <Shell
+      active="/admin/organizers"
+      title="Organizers"
+      subtitle="Top performers & platform contributors"
+      navigate={navigate}
+      onLogout={handleLogout}
+    >
+      {/* ================= LEADERBOARD ================= */}
+      <section className="aor-card">
+        <div className="aor-card-head">
+          <span className="aor-card-head-icon">{Ic.trophy}</span>
+          <h3 className="aor-card-title">Top Performing Organizers</h3>
+        </div>
+
+        {topOrganizers.length === 0 ? (
+          <p className="aor-muted">No organizers yet.</p>
+        ) : (
+          topOrganizers.map((o, i) => (
+            <div
+              key={o._id}
+              className="aor-leader-row"
+              onClick={() => navigate(`/admin/organizers/${o._id}`)}
+            >
+              <span className={`aor-rank ${i === 0 ? "is-first" : ""}`}>#{i + 1}</span>
+
+              <div className="aor-leader-info">
+                <strong className="aor-name">{o.name}</strong>
+                <span className="aor-muted">{o.email}</span>
+              </div>
+
+              <strong className="aor-leader-revenue">
+                ₦{(o.revenue || 0).toLocaleString()}
+              </strong>
+            </div>
+          ))
+        )}
+      </section>
+
+      {/* ================= FULL LIST ================= */}
+      <section className="aor-list">
+        {organizers.map((o) => (
+          <div
+            key={o._id}
+            className="aor-org-card"
+            onClick={() => navigate(`/admin/organizers/${o._id}`)}
+          >
+            <div className="aor-org-info">
+              <strong className="aor-name">{o.name}</strong>
+              <p className="aor-muted">{o.email}</p>
+            </div>
+
+            <Stat label="Events" value={o.events ?? 0} />
+            <Stat label="Tickets Sold" value={o.ticketsSold ?? 0} />
+            <Stat
+              label="Revenue"
+              value={`₦${(o.revenue || 0).toLocaleString()}`}
+            />
+          </div>
+        ))}
+      </section>
+    </Shell>
+  );
+}
+
+/* ================= APP SHELL ================= */
+
+function Shell({ active, title, subtitle, navigate, onLogout, children }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const go = (path) => {
+    setMenuOpen(false);
+    navigate(path);
+  };
+
+  const navButtons = NAV.map((n) => (
+    <button
+      key={n.path}
+      className={`aor-nav-item ${active === n.path ? "is-active" : ""}`}
+      onClick={() => go(n.path)}
+    >
+      {n.icon}
+      <span>{n.label}</span>
+    </button>
+  ));
+
+  return (
+    <div className="aor-page">
+      <aside className="aor-sidebar">
+        <div className="aor-mark">Tic<em>tify</em></div>
+        <nav className="aor-nav">{navButtons}</nav>
+        <button className="aor-logout" onClick={onLogout}>
+          {Ic.out}
+          <span>Logout</span>
+        </button>
+      </aside>
+
+      <div className="aor-body">
+        <header className="aor-topbar">
+          <div className="aor-mark">Tic<em>tify</em></div>
+          <button
+            className={`aor-burger ${menuOpen ? "is-open" : ""}`}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </header>
+
+        <div className={`aor-drawer ${menuOpen ? "is-open" : ""}`}>
+          {navButtons}
+          <button className="aor-logout" onClick={onLogout}>
+            {Ic.out}
+            <span>Logout</span>
+          </button>
+        </div>
+
+        <div className="aor-content">
+          <header className="aor-phead">
+            <h1 className="aor-title">{title}</h1>
+            <p className="aor-subtitle">{subtitle}</p>
+          </header>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= SUB COMPONENTS ================= */
+
+function Stat({ label, value }) {
+  return (
+    <div className="aor-stat">
+      <span className="aor-stat-label">{label}</span>
+      <strong className="aor-stat-value">{value}</strong>
+    </div>
+  );
+}
+
+function LoadingModal() {
+  injectStyles("tictify-admin-organizers-css", CSS);
+  return (
+    <div className="aor-loading">
+      <div className="aor-loading-top">
+        <div className="aor-spinner" />
+        <p>Loading organizers…</p>
+      </div>
+      <div className="aor-skel" style={{ height: 280 }} />
+      <div className="aor-skel-row">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="aor-skel" style={{ height: 88 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   CSS — all responsive behavior lives here
+══════════════════════════════════════════════════════════ */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.18);
+  --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12); --gold-glo:rgba(232,201,106,0.22);
+  --text:#F0EDE8; --muted:#8B887E; --danger:#E05C5C; --live:#6BF0A0;
+  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif;
+  --r:20px; --r-sm:12px;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
+button, input, select { font-family:var(--font-b); }
+
+@keyframes aor-spin { to { transform:rotate(360deg); } }
+@keyframes aor-shimmer { from { background-position:200% 0; } to { background-position:-200% 0; } }
+@keyframes aor-fade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+/* ── Shell ── */
+.aor-page { display:flex; min-height:100svh; background:var(--bg); color:var(--text); font-family:var(--font-b); }
+.aor-sidebar { position:sticky; top:0; height:100svh; width:250px; flex:0 0 250px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:26px 14px 18px; overflow-y:auto; }
+.aor-mark { font-family:var(--font-h); font-weight:800; font-size:22px; letter-spacing:-.02em; color:var(--text); padding:0 12px 26px; }
+.aor-mark em { font-style:normal; color:var(--gold); }
+.aor-nav { display:flex; flex-direction:column; gap:4px; flex:1; }
+.aor-nav-item { position:relative; display:flex; align-items:center; gap:12px; width:100%; background:none; border:none; color:var(--muted); font-size:14px; font-weight:500; padding:11px 14px; border-radius:var(--r-sm); cursor:pointer; text-align:left; transition:color .2s, background .2s; }
+.aor-nav-item svg { width:18px; height:18px; flex:0 0 auto; }
+.aor-nav-item:hover { color:var(--text); background:var(--card); }
+.aor-nav-item.is-active { background:var(--gold-dim); color:var(--gold); font-weight:600; }
+.aor-nav-item.is-active::before { content:''; position:absolute; left:-14px; top:9px; bottom:9px; width:3px; border-radius:0 2px 2px 0; background:var(--gold); }
+.aor-logout { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:18px; background:transparent; border:1px solid rgba(224,92,92,.4); color:var(--danger); font-size:14px; font-weight:600; padding:11px 14px; border-radius:999px; cursor:pointer; transition:background .2s, border-color .2s; }
+.aor-logout:hover { background:rgba(224,92,92,.1); border-color:var(--danger); }
+.aor-logout svg { width:16px; height:16px; }
+.aor-body { flex:1; min-width:0; display:flex; flex-direction:column; }
+.aor-topbar { display:none; }
+.aor-drawer { display:none; }
+.aor-content { width:100%; max-width:1280px; margin:0 auto; padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:clamp(20px,3vw,28px); }
+.aor-title { font-family:var(--font-h); font-weight:800; font-size:clamp(24px,3.2vw,34px); letter-spacing:-.02em; line-height:1.1; }
+.aor-subtitle { color:var(--muted); font-size:14px; margin-top:6px; }
+.aor-muted { color:var(--muted); font-size:13.5px; overflow-wrap:anywhere; }
+.aor-name { font-weight:600; font-size:14.5px; overflow-wrap:anywhere; }
+
+/* ── Leaderboard ── */
+.aor-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(18px,2.6vw,26px); animation:aor-fade .4s ease both; }
+.aor-card-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.aor-card-head-icon { width:38px; height:38px; border-radius:12px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; flex:0 0 auto; }
+.aor-card-head-icon svg { width:18px; height:18px; }
+.aor-card-title { font-family:var(--font-h); font-weight:700; font-size:16px; }
+.aor-leader-row { display:grid; grid-template-columns:44px 1fr auto; gap:14px; align-items:center; padding:14px 4px; border-bottom:1px solid var(--border); cursor:pointer; border-radius:var(--r-sm); transition:background .2s; }
+.aor-leader-row:last-child { border-bottom:none; }
+.aor-leader-row:hover { background:rgba(255,255,255,0.03); }
+.aor-rank { font-family:var(--font-h); font-weight:800; font-size:14px; color:var(--muted); display:grid; place-items:center; width:36px; height:36px; border-radius:50%; border:1px dashed var(--border-h); font-variant-numeric:tabular-nums; }
+.aor-rank.is-first { color:var(--gold); border-color:rgba(232,201,106,.5); background:var(--gold-dim); }
+.aor-leader-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.aor-leader-revenue { font-family:var(--font-h); font-weight:700; font-size:15px; color:var(--gold); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* ── Full list ── */
+.aor-list { display:grid; gap:clamp(10px,1.6vw,14px); }
+.aor-org-card { display:grid; grid-template-columns:1fr; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(16px,2.4vw,22px); cursor:pointer; transition:transform .25s, border-color .25s; animation:aor-fade .4s ease both; }
+.aor-org-card:hover { transform:translateY(-2px); border-color:rgba(232,201,106,.4); }
+.aor-org-info { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.aor-stat { display:flex; flex-direction:column; gap:2px; }
+.aor-stat-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.aor-stat-value { font-family:var(--font-h); font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+
+/* ── Loading / skeleton ── */
+.aor-loading { min-height:100svh; background:var(--bg); color:var(--text); padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:18px; max-width:1280px; margin:0 auto; font-family:var(--font-b); }
+.aor-loading-top { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:14px; }
+.aor-spinner { width:22px; height:22px; border:2.5px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:aor-spin .9s linear infinite; }
+.aor-skel { border:1px solid var(--border); border-radius:var(--r); background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.1) 45%,rgba(255,255,255,.04) 65%); background-size:200% 100%; animation:aor-shimmer 1.3s linear infinite; }
+.aor-skel-row { display:grid; gap:14px; }
+
+/* ── Error ── */
+.aor-error { min-height:100svh; background:var(--bg); display:grid; place-items:center; padding:20px; font-family:var(--font-b); }
+.aor-error-card { width:min(100%,420px); background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(26px,5vw,40px); text-align:center; animation:aor-fade .35s ease; }
+.aor-error-icon { width:46px; height:46px; border-radius:50%; background:rgba(224,92,92,.12); color:var(--danger); display:grid; place-items:center; margin:0 auto 16px; font-family:var(--font-h); font-weight:800; font-size:20px; }
+.aor-error-card h2 { font-family:var(--font-h); font-size:20px; color:var(--text); margin-bottom:8px; }
+.aor-error-card p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:22px; }
+.aor-btn-gold { background:var(--gold); color:#080910; border:none; border-radius:999px; font-weight:700; font-size:14px; padding:13px 26px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+.aor-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
+
+/* ══════════ RESPONSIVE ══════════ */
+@media (min-width:768px) {
+  .aor-org-card { grid-template-columns:minmax(0,1.6fr) repeat(3, minmax(100px, 1fr)); align-items:center; }
+}
+@media (max-width:1023px) {
+  .aor-page { flex-direction:column; }
+  .aor-sidebar { display:none; }
+  .aor-topbar { position:sticky; top:0; z-index:950; display:flex; align-items:center; justify-content:space-between; height:60px; padding:0 clamp(14px,3vw,20px); background:rgba(8,9,16,.8); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--border); }
+  .aor-topbar .aor-mark { padding:0; font-size:19px; }
+  .aor-burger { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; width:42px; height:42px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); cursor:pointer; }
+  .aor-burger span { display:block; width:17px; height:2px; background:var(--text); border-radius:2px; transition:transform .25s, opacity .25s; }
+  .aor-burger.is-open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+  .aor-burger.is-open span:nth-child(2) { opacity:0; }
+  .aor-burger.is-open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+  .aor-drawer { display:flex; flex-direction:column; gap:4px; position:fixed; inset:60px 0 0 0; z-index:940; background:rgba(8,9,16,.97); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:18px clamp(14px,4vw,24px); opacity:0; transform:translateY(-8px); pointer-events:none; transition:opacity .25s, transform .25s; overflow-y:auto; }
+  .aor-drawer.is-open { opacity:1; transform:none; pointer-events:auto; }
+  .aor-drawer .aor-nav-item { font-size:16px; padding:16px 14px; border-radius:var(--r-sm); }
+  .aor-drawer .aor-nav-item.is-active::before { left:0; }
+  .aor-drawer .aor-logout { margin-top:22px; }
+}
+@media (max-width:480px) {
+  .aor-leader-row { grid-template-columns:36px 1fr; }
+  .aor-leader-revenue { grid-column:2; justify-self:start; }
+  .aor-rank { grid-row:span 2; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; }
+}
+`;
