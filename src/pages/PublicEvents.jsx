@@ -61,6 +61,9 @@ function Header() {
           <button className="pe-link pe-hide-sm" onClick={() => navigate("/events")}>
             Events
           </button>
+          <button className="pe-link pe-hide-sm" onClick={() => navigate("/my-tickets")}>
+            Find my tickets
+          </button>
           <button className="pe-btn pe-btn-ghost" onClick={() => navigate("/login")}>
             Login
           </button>

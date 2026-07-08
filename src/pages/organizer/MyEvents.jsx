@@ -155,6 +155,9 @@ export default function MyEvents() {
   const [processingId, setProcessingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [promoEvent, setPromoEvent] = useState(null);
+  const [exportingId, setExportingId] = useState(null);
+  const [errorNotice, setErrorNotice] = useState(null);
 
   /* ================= FETCH ================= */
   async function fetchEvents() {
@@ -231,6 +234,46 @@ export default function MyEvents() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  /* ================= GUEST LIST CSV EXPORT ================= */
+  async function exportGuestList(event) {
+    if (exportingId) return;
+    setExportingId(event._id);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/tickets/export/${event._id}`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error(
+          res.status === 403
+            ? "You don't have permission to export this guest list."
+            : "Could not export the guest list. Please try again.",
+        );
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(event.title || "event")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")}-guest-list.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorNotice(err.message || "Export failed. Please try again.");
+    } finally {
+      setExportingId(null);
+    }
+  }
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -241,6 +284,20 @@ export default function MyEvents() {
         <ConfirmModal
           onCancel={() => setConfirmDelete(null)}
           onConfirm={() => deleteEvent(confirmDelete)}
+        />
+      )}
+
+      {promoEvent && (
+        <PromoterModal
+          event={promoEvent}
+          onClose={() => setPromoEvent(null)}
+        />
+      )}
+
+      {errorNotice && (
+        <ErrorModal
+          message={errorNotice}
+          onClose={() => setErrorNotice(null)}
         />
       )}
 
@@ -349,6 +406,21 @@ export default function MyEvents() {
                     {copiedId === event._id ? "Copied ✓" : "Share"}
                   </button>
 
+                  <button
+                    className="mev-abtn mev-abtn-tool"
+                    onClick={() => setPromoEvent(event)}
+                  >
+                    Promoter link
+                  </button>
+
+                  <button
+                    className="mev-abtn mev-abtn-tool"
+                    disabled={exportingId === event._id}
+                    onClick={() => exportGuestList(event)}
+                  >
+                    {exportingId === event._id ? "Exporting…" : "Guest list (CSV)"}
+                  </button>
+
                   {event.status === "DRAFT" && (
                     <button
                       className="mev-abtn mev-abtn-publish"
@@ -413,6 +485,100 @@ function ConfirmModal({ onCancel, onConfirm }) {
           </button>
           <button className="mev-abtn mev-abtn-delete" onClick={onConfirm}>
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PromoterModal({ event, onClose }) {
+  const [code, setCode] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  const valid = code.length >= 2 && code.length <= 30;
+  const link = `${window.location.origin}/events/${event._id}?ref=${
+    code || "CODE"
+  }`;
+
+  function handleChange(e) {
+    setCode(
+      e.target.value
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, "")
+        .slice(0, 30),
+    );
+  }
+
+  function copyLink() {
+    if (!valid) return;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+  }
+
+  return (
+    <div className="mev-overlay" onClick={onClose}>
+      <div
+        className="mev-modal mev-promo-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>Promoter link</h3>
+        <p className="mev-promo-explainer">
+          Each promoter gets their own link — you&apos;ll see exactly how many
+          tickets each one sells.
+        </p>
+
+        <label className="mev-promo-label" htmlFor="mev-promo-code">
+          Promoter code
+        </label>
+        <input
+          id="mev-promo-code"
+          className="mev-promo-input"
+          placeholder="e.g. TOBI"
+          value={code}
+          onChange={handleChange}
+          autoFocus
+        />
+
+        <p className="mev-promo-preview" aria-live="polite">
+          {link}
+        </p>
+
+        <div className="mev-modal-actions">
+          <button className="mev-btn mev-btn-ghost" onClick={onClose}>
+            Close
+          </button>
+          <button
+            className="mev-btn mev-btn-gold"
+            disabled={!valid}
+            onClick={copyLink}
+          >
+            {copied ? "Copied ✓" : "Copy link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorModal({ message, onClose }) {
+  return (
+    <div className="mev-overlay" onClick={onClose}>
+      <div
+        className="mev-modal mev-error-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>Something went wrong</h3>
+        <p>{message}</p>
+        <div className="mev-modal-actions">
+          <button className="mev-btn mev-btn-ghost" onClick={onClose}>
+            OK
           </button>
         </div>
       </div>
@@ -523,6 +689,8 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-abtn-scan:hover { background:rgba(107,240,160,.1); }
 .mev-abtn-delete { background:var(--danger); border-color:var(--danger); color:#fff; }
 .mev-abtn-delete:hover { opacity:.85; }
+.mev-abtn-tool { background:transparent; border-color:var(--border); color:var(--muted); }
+.mev-abtn-tool:hover { border-color:rgba(232,201,106,.4); color:var(--gold); }
 
 /* ── Empty state ── */
 .mev-empty { text-align:center; padding:clamp(40px,7vw,72px) 24px; background:var(--card); border:1px dashed var(--border-h); border-radius:var(--r); margin-top:12px; }
@@ -544,6 +712,22 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-modal p { color:var(--muted); font-size:14px; line-height:1.6; }
 .mev-modal-actions { display:flex; justify-content:center; gap:12px; margin-top:22px; flex-wrap:wrap; }
 .mev-modal-actions .mev-abtn { padding:11px 22px; font-size:13.5px; }
+.mev-modal .mev-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ── Promoter link modal ── */
+.mev-promo-modal { text-align:left; width:min(100%,420px); }
+.mev-promo-modal h3 { text-align:left; }
+.mev-promo-explainer { color:var(--muted); font-size:13.5px; line-height:1.6; margin-bottom:18px; }
+.mev-promo-label { display:block; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.mev-promo-input { width:100%; padding:13px 15px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; font-family:var(--font-h); font-weight:600; letter-spacing:.04em; outline:none; transition:border-color .2s, box-shadow .2s; }
+.mev-promo-input::placeholder { color:var(--muted); font-family:var(--font-b); font-weight:400; letter-spacing:0; }
+.mev-promo-input:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
+.mev-promo-preview { margin-top:12px; padding:11px 13px; background:rgba(255,255,255,.03); border:1px dashed var(--border-h); border-radius:var(--r-sm); color:var(--gold); font-size:12.5px; line-height:1.5; overflow-wrap:anywhere; }
+.mev-promo-modal .mev-modal-actions { justify-content:flex-end; }
+
+/* ── Error modal ── */
+.mev-error-modal { border-color:rgba(224,92,92,.35); background:linear-gradient(180deg, rgba(224,92,92,.08), var(--surface) 55%); }
+.mev-error-modal h3 { color:var(--danger); }
 
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width:480px) {

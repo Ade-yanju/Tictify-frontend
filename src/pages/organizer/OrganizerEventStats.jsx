@@ -147,6 +147,7 @@ export default function OrganizerEventStats() {
   const [events, setEvents] = useState(EMPTY_EVENTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [promoStats, setPromoStats] = useState({});
 
   /* ================= LOAD STATS ================= */
   useEffect(() => {
@@ -174,6 +175,37 @@ export default function OrganizerEventStats() {
 
     loadStats();
   }, []);
+
+  /* ================= LOAD PROMOTER LEADERBOARDS ================= */
+  useEffect(() => {
+    if (!events.length) return;
+    let cancelled = false;
+
+    async function loadPromoters() {
+      const entries = await Promise.all(
+        events.map(async (event) => {
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_API_URL}/api/tickets/promoters/${event.eventId}`,
+              {
+                headers: { Authorization: `Bearer ${getToken()}` },
+              },
+            );
+            if (!res.ok) return [event.eventId, null];
+            return [event.eventId, await res.json()];
+          } catch {
+            return [event.eventId, null];
+          }
+        }),
+      );
+      if (!cancelled) setPromoStats(Object.fromEntries(entries));
+    }
+
+    loadPromoters();
+    return () => {
+      cancelled = true;
+    };
+  }, [events]);
 
   return (
     <Shell
@@ -268,6 +300,8 @@ export default function OrganizerEventStats() {
                         accent
                       />
                     </div>
+
+                    <PromoterBoard data={promoStats[event.eventId]} />
                   </div>
                 </article>
               ))}
@@ -284,6 +318,57 @@ function statusClass(status) {
   if (status === "LIVE") return "is-live";
   if (status === "ENDED") return "is-ended";
   return "is-pending";
+}
+
+/* ================= PROMOTER LEADERBOARD ================= */
+function PromoterBoard({ data }) {
+  if (!data) return null; // still loading or fetch failed — stay quiet
+
+  const promoters = Array.isArray(data.promoters)
+    ? [...data.promoters].sort(
+        (a, b) => (b.ticketsSold ?? 0) - (a.ticketsSold ?? 0),
+      )
+    : [];
+
+  return (
+    <div className="oes-promo">
+      <h4 className="oes-promo-title">Promoter leaderboard</h4>
+
+      {promoters.length === 0 ? (
+        <p className="oes-promo-empty">
+          No promoter sales yet — share promoter links from My Events to start
+          tracking.
+        </p>
+      ) : (
+        <>
+          <ul className="oes-promo-list">
+            {promoters.map((p, i) => (
+              <li className="oes-promo-row" key={p.code}>
+                <span
+                  className={`oes-promo-rank ${i < 3 ? "is-medal" : ""}`}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <span className="oes-promo-code">{p.code}</span>
+                <span className="oes-promo-sold">
+                  {(p.ticketsSold ?? 0).toLocaleString()}{" "}
+                  {(p.ticketsSold ?? 0) === 1 ? "ticket" : "tickets"}
+                </span>
+                <span className="oes-promo-rev">
+                  ₦{(p.revenue ?? 0).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="oes-promo-direct">
+            Direct (no promoter): {(data.directSales ?? 0).toLocaleString()}{" "}
+            tickets
+          </p>
+        </>
+      )}
+    </div>
+  );
 }
 
 /* ================= STAT ================= */
@@ -364,6 +449,19 @@ button { font-family:var(--font-b); cursor:pointer; }
 .oes-stat-label { font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
 .oes-stat-value { font-family:var(--font-h); font-weight:700; font-size:16.5px; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .oes-stat.is-accent .oes-stat-value { color:var(--gold); }
+
+/* ── Promoter leaderboard ── */
+.oes-promo { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+.oes-promo-title { font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.oes-promo-empty { color:var(--muted); font-size:12.5px; line-height:1.6; }
+.oes-promo-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
+.oes-promo-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:var(--r-sm); min-width:0; }
+.oes-promo-rank { flex-shrink:0; width:22px; height:22px; display:grid; place-items:center; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--muted); font-family:var(--font-h); font-weight:700; font-size:11px; font-variant-numeric:tabular-nums; }
+.oes-promo-rank.is-medal { background:var(--gold-dim); border-color:rgba(232,201,106,.4); color:var(--gold); }
+.oes-promo-code { flex:1; min-width:0; font-family:var(--font-h); font-weight:700; font-size:13px; letter-spacing:.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.oes-promo-sold { flex-shrink:0; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.oes-promo-rev { flex-shrink:0; font-family:var(--font-h); font-weight:700; font-size:12.5px; color:var(--gold); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.oes-promo-direct { margin-top:9px; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
 
 /* ── Buttons / error / empty ── */
 .oes-btn { padding:13px 26px; border-radius:999px; border:1px solid transparent; font-weight:700; font-size:14px; transition:transform .25s, box-shadow .25s; }

@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { scanTicket } from "../../services/ticketService";
+import { getToken } from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 function injectStyles(id, content) {
@@ -153,6 +154,33 @@ export default function ScanTicket() {
   const [processing, setProcessing] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [modal, setModal] = useState(null);
+  const [gate, setGate] = useState(null);
+
+  /* ================= LIVE GATE STATS ================= */
+  async function fetchGate() {
+    if (!eventId) return;
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/tickets/gate/${eventId}`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      if (!res.ok) return; // keep last values
+      const data = await res.json();
+      setGate(data);
+    } catch {
+      /* silent — keep last values */
+    }
+  }
+
+  useEffect(() => {
+    if (!eventId) return;
+    fetchGate();
+    const interval = setInterval(fetchGate, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   /* ================= GUARD ================= */
   useEffect(() => {
@@ -240,6 +268,7 @@ export default function ScanTicket() {
       });
 
       await stopCamera();
+      fetchGate();
     } catch (err) {
       setModal({
         type: "error",
@@ -287,6 +316,43 @@ export default function ScanTicket() {
       )}
 
       <div className="sct-stage">
+        {gate && (
+          <section className="sct-gate" aria-live="polite">
+            <div className="sct-gate-top">
+              <span className="sct-gate-live">
+                <span className="sct-gate-dot" aria-hidden="true" />
+                Live gate
+              </span>
+              <span className="sct-gate-nums">
+                <strong>{Number(gate.guestsAdmitted ?? 0).toLocaleString()}</strong>
+                <em>/ {Number(gate.guestsExpected ?? 0).toLocaleString()}</em>
+              </span>
+            </div>
+            <div className="sct-gate-bar">
+              <div
+                className="sct-gate-fill"
+                style={{
+                  width: `${
+                    Number(gate.guestsExpected) > 0
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (Number(gate.guestsAdmitted ?? 0) /
+                              Number(gate.guestsExpected)) *
+                              100,
+                          ),
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+            <p className="sct-gate-caption">
+              {Number(gate.guestsRemaining ?? 0).toLocaleString()} still outside
+            </p>
+          </section>
+        )}
+
         <section className="sct-scanner-card">
           <div className={`sct-viewport ${scanning ? "is-scanning" : ""}`}>
             <div
@@ -441,6 +507,20 @@ input { font-family:var(--font-b); }
 .sct-head { margin-bottom:clamp(22px,4vw,34px); }
 .sct-title { font-family:var(--font-h); font-weight:800; font-size:clamp(24px,4vw,34px); letter-spacing:-.02em; }
 .sct-subtitle { color:var(--muted); font-size:14.5px; margin-top:7px; line-height:1.6; }
+
+@keyframes sctGatePulse { 0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(107,240,160,.45); } 50% { opacity:.55; box-shadow:0 0 0 5px rgba(107,240,160,0); } }
+
+/* ── Live gate strip ── */
+.sct-gate { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(14px,3vw,18px) clamp(16px,3vw,20px); margin-bottom:16px; }
+.sct-gate-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.sct-gate-live { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--live); }
+.sct-gate-dot { width:8px; height:8px; border-radius:50%; background:var(--live); animation:sctGatePulse 1.8s ease-in-out infinite; }
+.sct-gate-nums { font-family:var(--font-h); font-variant-numeric:tabular-nums; display:inline-flex; align-items:baseline; gap:5px; }
+.sct-gate-nums strong { font-weight:800; font-size:clamp(20px,4vw,26px); color:var(--text); letter-spacing:-.01em; }
+.sct-gate-nums em { font-style:normal; font-weight:600; font-size:14px; color:var(--muted); }
+.sct-gate-bar { height:6px; margin-top:12px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden; }
+.sct-gate-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#E8C96A,#F5E196); box-shadow:0 0 12px var(--gold-glo); transition:width .6s ease; }
+.sct-gate-caption { margin-top:9px; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
 
 /* ── Scanner stage ── */
 .sct-stage { max-width:460px; animation:sctFadeUp .4s ease; }

@@ -80,6 +80,7 @@ export default function Checkout() {
   const [focused, setFocused] = useState({});
   const [event, setEvent] = useState(null);
   const [ticket, setTicket] = useState(null);
+  const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -120,11 +121,34 @@ export default function Checkout() {
     })();
   }, [id, ticketParam]);
 
+  /* ── Transparent fee quote (single source of truth for total) ── */
+  useEffect(() => {
+    setQuote(null);
+    if (!ticket || !(ticket.price > 0)) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/quote?price=${ticket.price}`,
+        );
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (active && data && typeof data.total === "number") setQuote(data);
+      } catch {
+        /* graceful fallback — summary falls back to the ticket price */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [ticket]);
+
   async function handlePayment() {
     if (!canPay) return;
     setProcessing(true);
     setError("");
     try {
+      const promoterRef = sessionStorage.getItem("tictify_ref");
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
         {
@@ -135,6 +159,7 @@ export default function Checkout() {
             ticketType: ticket.name,
             name,
             email,
+            ...(promoterRef ? { promoter: promoterRef } : {}),
           }),
         },
       );
@@ -327,25 +352,67 @@ export default function Checkout() {
                       <span className="ck-sum-val">1</span>
                     </div>
                     <div className="ck-sum-row">
-                      <span>Price</span>
+                      <span>Ticket</span>
                       <span className="ck-sum-val ck-num">
                         {ticket.price > 0
                           ? `₦${ticket.price.toLocaleString()}`
-                          : "Free"}
+                          : "Free — ₦0"}
                       </span>
                     </div>
+                    {ticket.price > 0 && quote && (
+                      <>
+                        <div className="ck-sum-fee">
+                          <div className="ck-sum-row">
+                            <span>Service fee</span>
+                            <span className="ck-sum-val ck-num">
+                              ₦{Number(quote.platformFee || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="ck-sum-caption">
+                            Instant QR delivery, fraud protection &amp; support
+                          </p>
+                        </div>
+                        <div className="ck-sum-fee">
+                          <div className="ck-sum-row">
+                            <span>Secure payment processing</span>
+                            <span className="ck-sum-val ck-num">
+                              ₦{Number(quote.processingFee || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="ck-sum-caption">
+                            Charged by our payment partner Paystack
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
 
+              <div className="ck-sum-divider" aria-hidden="true" />
+
               <div className="ck-sum-total">
-                <span className="ck-sum-total-label">Total Due</span>
+                <span className="ck-sum-total-label">Total</span>
                 <span className="ck-sum-total-num">
                   {ticket?.price > 0
-                    ? `₦${ticket.price.toLocaleString()}`
+                    ? `₦${Number(quote?.total ?? ticket.price).toLocaleString()}`
                     : "Free"}
                 </span>
               </div>
+
+              <p className="ck-assure">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+                  <path d="M8 10.5V8a4 4 0 018 0v2.5" />
+                </svg>
+                You&rsquo;re covered — valid QR ticket or your money back
+              </p>
 
               {/* Error */}
               {error && <div className="ck-error-banner">{error}</div>}
@@ -486,6 +553,11 @@ img { display:block; }
 .ck-sum-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:13.5px; color:var(--muted); }
 .ck-sum-val { color:var(--text); font-weight:500; text-align:right; }
 .ck-num { font-variant-numeric:tabular-nums; }
+.ck-sum-fee { display:grid; gap:4px; }
+.ck-sum-caption { font-size:11.5px; color:var(--muted); opacity:.72; line-height:1.5; }
+.ck-sum-divider { height:1px; background:var(--border); margin-bottom:16px; }
+.ck-assure { display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; color:var(--muted); margin-bottom:16px; text-align:center; line-height:1.5; }
+.ck-assure svg { width:13px; height:13px; color:var(--gold); flex-shrink:0; }
 .ck-sum-total { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.22); border-radius:var(--r-sm); margin-bottom:16px; }
 .ck-sum-total-label { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
 .ck-sum-total-num { font-family:var(--font-h); font-weight:800; font-size:clamp(22px,3vw,26px); color:var(--gold); font-variant-numeric:tabular-nums; }

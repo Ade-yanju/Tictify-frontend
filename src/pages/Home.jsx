@@ -508,6 +508,9 @@ function Footer() {
           <div className="tf-footer-col">
             <h4>Guests</h4>
             <button onClick={() => navigate("/events")}>Find an event</button>
+            <button onClick={() => navigate("/my-tickets")}>
+              Find my tickets
+            </button>
             <button onClick={() => scrollTo("guests")}>Why Tictify</button>
           </div>
         </div>
