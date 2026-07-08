@@ -225,14 +225,18 @@ export default function ScanTicket() {
     setProcessing(true);
 
     try {
-      const res = await scanTicket({
-        code: code.trim(),
-        eventId,
-      });
+      const res = await scanTicket(code.trim(), eventId);
+
+      const groupInfo =
+        res.groupSize > 1
+          ? ` · ${res.remaining} of ${res.groupSize} entries left on this ticket`
+          : "";
 
       setModal({
         type: "success",
-        message: res.message || "Ticket verified successfully",
+        message: `${res.message || "Ticket verified successfully"}${
+          res.attendee ? ` — ${res.attendee}` : ""
+        }${groupInfo}`,
       });
 
       await stopCamera();

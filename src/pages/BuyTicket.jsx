@@ -153,7 +153,11 @@ export default function BuyTicket({ event }) {
                     >
                       {event.ticketTypes.map((t) => (
                         <option key={t.name} value={t.name}>
-                          {t.name} —{" "}
+                          {t.name}
+                          {(t.groupSize || 1) > 1
+                            ? ` (admits ${t.groupSize})`
+                            : ""}{" "}
+                          —{" "}
                           {t.price > 0
                             ? `₦${t.price.toLocaleString()}`
                             : "Free"}

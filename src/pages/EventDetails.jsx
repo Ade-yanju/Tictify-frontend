@@ -108,6 +108,11 @@ function TicketOption({ ticket, selected, onSelect }) {
         </span>
         <span className="ed-ticket-info">
           <span className="ed-ticket-name">{ticket.name}</span>
+          {(ticket.groupSize || 1) > 1 && (
+            <span className="ed-ticket-desc">
+              🎟️ One QR code admits {ticket.groupSize} guests
+            </span>
+          )}
           {ticket.description && (
             <span className="ed-ticket-desc">{ticket.description}</span>
           )}

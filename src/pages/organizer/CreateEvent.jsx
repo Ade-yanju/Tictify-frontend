@@ -166,7 +166,20 @@ export default function CreateEvent() {
   const addTicket = () =>
     setForm({
       ...form,
-      ticketTypes: [...form.ticketTypes, { name: "", price: "", quantity: "" }],
+      ticketTypes: [
+        ...form.ticketTypes,
+        { name: "", price: "", quantity: "", groupSize: "" },
+      ],
+    });
+
+  /* One tap adds a group bundle: one QR code that admits several friends */
+  const addGroupTicket = () =>
+    setForm({
+      ...form,
+      ticketTypes: [
+        ...form.ticketTypes,
+        { name: "Group of Friends (x4)", price: "", quantity: "", groupSize: "4" },
+      ],
     });
 
   const validate = () => {
@@ -220,6 +233,7 @@ export default function CreateEvent() {
           name: t.name,
           quantity: Number(t.quantity),
           price: eventType === "FREE" ? 0 : Number(t.price),
+          groupSize: Math.max(1, Number(t.groupSize) || 1),
         })),
       };
 
@@ -470,14 +484,35 @@ export default function CreateEvent() {
                         updateTicket(i, "quantity", e.target.value)
                       }
                     />
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Admits (default 1)"
+                      className="cev-input"
+                      value={t.groupSize ?? ""}
+                      onChange={(e) =>
+                        updateTicket(i, "groupSize", e.target.value)
+                      }
+                      title="How many guests one ticket admits — e.g. 4 for a Group of Friends bundle"
+                    />
                   </div>
+                  {Number(t.groupSize) > 1 && (
+                    <p className="cev-group-hint">
+                      One QR code admits {t.groupSize} guests at the gate
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
 
-            <button className="cev-add" onClick={addTicket}>
-              + Add Ticket
-            </button>
+            <div className="cev-add-row">
+              <button className="cev-add" onClick={addTicket}>
+                + Add Ticket
+              </button>
+              <button className="cev-add" onClick={addGroupTicket}>
+                + Group of Friends bundle
+              </button>
+            </div>
           </div>
         </section>
 
@@ -700,6 +735,9 @@ input, textarea, select { font-family:var(--font-b); }
 .cev-ticket-tag { display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); background:var(--gold-dim); padding:3px 10px; border-radius:999px; margin-bottom:10px; }
 .cev-ticket-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:10px; }
 .cev-add { margin-top:12px; width:100%; background:transparent; border:1.5px dashed rgba(232,201,106,.45); color:var(--gold); padding:12px; border-radius:var(--r-sm); font-weight:600; font-size:13.5px; transition:background .25s, border-color .25s; }
+.cev-add-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cev-group-hint { margin-top:8px; font-size:12px; color:var(--gold); background:var(--gold-dim); border-radius:8px; padding:7px 12px; display:inline-block; }
+@media (max-width:560px) { .cev-add-row { grid-template-columns:1fr; } }
 .cev-add:hover { background:var(--gold-dim); border-color:var(--gold); }
 
 /* ── Preview card ── */
