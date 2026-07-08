@@ -1,6 +1,6 @@
 import { getToken, logout } from "./authService";
 
-const API = "https://tictify-backend.onrender.com/api/dashboard";
+const API = `${import.meta.env.VITE_API_URL || "https://tictify-backend.onrender.com"}/api/dashboard`;
 
 export async function fetchOrganizerDashboard() {
   const token = getToken();

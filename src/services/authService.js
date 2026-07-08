@@ -1,4 +1,4 @@
-const API = "https://tictify-backend.onrender.com/api/auth";
+const API = `${import.meta.env.VITE_API_URL || "https://tictify-backend.onrender.com"}/api/auth`;
 
 /* ================= REGISTER (ORGANIZER ONLY) ================= */
 export async function register(data) {

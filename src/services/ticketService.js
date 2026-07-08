@@ -1,6 +1,6 @@
 import { getToken } from "./authService";
 
-const API = "https://tictify-backend.onrender.com/api/tickets";
+const API = `${import.meta.env.VITE_API_URL || "https://tictify-backend.onrender.com"}/api/tickets`;
 
 export async function scanTicket(code) {
   const token = getToken();

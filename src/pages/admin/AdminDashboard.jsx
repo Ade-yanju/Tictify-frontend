@@ -189,32 +189,40 @@ export default function AdminDashboard() {
         {/* Revenue Chart */}
         <div className="adb-card">
           <h3 className="adb-card-title">Revenue Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="_id" stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
-              <YAxis stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ color: "#8B887E", fontSize: 13 }} />
-              <Line type="monotone" dataKey="totalRevenue" stroke="#E8C96A" strokeWidth={2} name="Revenue" dot={{ fill: "#E8C96A", r: 3 }} />
-              <Line type="monotone" dataKey="platformFees" stroke="#6BF0A0" strokeWidth={2} name="Fees" dot={{ fill: "#6BF0A0", r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {monthlyData.length === 0 ? (
+            <ChartEmptyState message="Revenue data will appear here once tickets start selling" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis dataKey="_id" stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
+                <YAxis stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ color: "#8B887E", fontSize: 13 }} />
+                <Line type="monotone" dataKey="totalRevenue" stroke="#E8C96A" strokeWidth={2} name="Revenue" dot={{ fill: "#E8C96A", r: 3 }} />
+                <Line type="monotone" dataKey="platformFees" stroke="#6BF0A0" strokeWidth={2} name="Fees" dot={{ fill: "#6BF0A0", r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Event Status Pie */}
         <div className="adb-card">
           <h3 className="adb-card-title">Event Status Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={eventStatusData} cx="50%" cy="50%" labelLine={false} label={(entry) => entry.name} outerRadius={100}>
-                {eventStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="#0d0f16" />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-            </PieChart>
-          </ResponsiveContainer>
+          {eventStatusData.every((d) => d.value === 0) ? (
+            <ChartEmptyState message="Event status breakdown will appear once events are hosted" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie data={eventStatusData} cx="50%" cy="50%" labelLine={false} label={(entry) => entry.name} outerRadius={100}>
+                  {eventStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#0d0f16" />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </section>
 
@@ -307,6 +315,15 @@ function Shell({ active, title, subtitle, navigate, onLogout, children }) {
 }
 
 /* ================= COMPONENTS ================= */
+
+function ChartEmptyState({ message }) {
+  return (
+    <div className="adb-chart-empty">
+      <div className="adb-chart-empty-icon">{Ic.chart}</div>
+      <p>{message}</p>
+    </div>
+  );
+}
 
 function KPICard({ label, value, icon, trend }) {
   return (
@@ -429,6 +446,10 @@ button, input, select { font-family:var(--font-b); }
 .adb-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr)); gap:clamp(12px,2vw,20px); }
 .adb-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(18px,2.6vw,26px); min-width:0; }
 .adb-card-title { font-family:var(--font-h); font-weight:700; font-size:16px; margin-bottom:18px; }
+.adb-chart-empty { height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; border:1px dashed var(--border); border-radius:14px; }
+.adb-chart-empty-icon { width:46px; height:46px; border-radius:14px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; }
+.adb-chart-empty-icon svg { width:22px; height:22px; }
+.adb-chart-empty p { color:var(--muted); font-size:13.5px; max-width:260px; text-align:center; line-height:1.6; }
 
 /* ── Quick actions ── */
 .adb-actions-section { display:flex; flex-direction:column; gap:16px; }
