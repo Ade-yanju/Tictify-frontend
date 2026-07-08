@@ -1,342 +1,209 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { getToken, logout } from "../../services/authService";
+import React, { useState, useEffect } from 'react';
 
-export default function AdminDashboard() {
-  const navigate = useNavigate();
-
-  const [data, setData] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
+const AdminDashboard = () => {
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState('overview');
 
-  /* ================= AUTH + LOAD ================= */
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      navigate("/login", { replace: true });
-      return;
+    fetchOverview();
+  }, []);
+
+  const fetchOverview = async () => {
+    try {
+      const res = await fetch('/api/v1/admin/dashboard/overview', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+      const data = await res.json();
+      setOverview(data.overview);
+    } catch (err) {
+      console.error('Failed to fetch overview:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    async function load() {
-      try {
-        const [dashRes, chartRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      padding: '2rem',
+    },
+    title: {
+      fontSize: '2.5rem',
+      fontWeight: '700',
+      marginBottom: '2rem',
+      color: '#1f2937',
+    },
+    statsRow: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '1.5rem',
+      marginBottom: '2rem',
+    },
+    statCard: {
+      background: '#fff',
+      borderRadius: '12px',
+      padding: '2rem',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      border: '2px solid #e5e7eb',
+      transition: 'all 0.3s',
+    },
+    statCardHover: {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 12px 24px rgba(102, 126, 234, 0.15)',
+      borderColor: '#667eea',
+    },
+    statLabel: {
+      fontSize: '0.875rem',
+      color: '#6b7280',
+      margin: '0 0 0.5rem 0',
+      fontWeight: '500',
+    },
+    statValue: {
+      fontSize: '2rem',
+      fontWeight: '700',
+      color: '#667eea',
+      margin: 0,
+    },
+    tabs: {
+      display: 'flex',
+      gap: '0.5rem',
+      marginBottom: '2rem',
+      background: '#fff',
+      padding: '1rem',
+      borderRadius: '12px',
+      borderBottom: '2px solid #e5e7eb',
+    },
+    tab: {
+      padding: '0.75rem 1.5rem',
+      border: 'none',
+      background: 'transparent',
+      cursor: 'pointer',
+      fontSize: '0.95rem',
+      fontWeight: '500',
+      color: '#6b7280',
+      borderRadius: '6px',
+      transition: 'all 0.3s',
+    },
+    tabActive: {
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: '#fff',
+    },
+    tabContent: {
+      background: '#fff',
+      borderRadius: '12px',
+      padding: '2rem',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    },
+    section: {
+      marginBottom: '2rem',
+    },
+    sectionTitle: {
+      fontSize: '1.5rem',
+      fontWeight: '700',
+      marginBottom: '1rem',
+      color: '#1f2937',
+    },
+    metric: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '1rem',
+      background: '#f9fafb',
+      borderRadius: '8px',
+      marginBottom: '0.5rem',
+      borderLeft: '4px solid #667eea',
+    },
+    metricValue: {
+      fontSize: '1.25rem',
+      fontWeight: '700',
+      color: '#667eea',
+    },
+  };
 
-        if (!dashRes.ok || !chartRes.ok) {
-          throw new Error("Session expired or unauthorized");
+  if (loading) return <div style={styles.container}>Loading...</div>;
+
+  return (
+    <div style={styles.container}>
+      <style>{`
+        button:hover { opacity: 0.9; }
+        @media (max-width: 768px) {
+          .admin-tabs { flex-wrap: wrap; }
+          .stats-row { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
         }
+      `}</style>
 
-        const dash = await dashRes.json();
-        const charts = await chartRes.json();
+      <h1 style={styles.title}>Admin Dashboard</h1>
 
-        setData(dash || {});
-        setAnalytics(charts || {});
-      } catch (err) {
-        setError(err.message || "Unable to load admin dashboard");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, [navigate]);
-
-  /* ================= LOGOUT ================= */
-  function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
-  }
-
-  /* ================= STATES ================= */
-  if (loading) {
-    return <LoadingModal />;
-  }
-
-  if (error) {
-    return (
-      <div style={styles.error}>
-        <p>{error}</p>
-        <button style={styles.primaryBtn} onClick={handleLogout}>
-          Login Again
-        </button>
-      </div>
-    );
-  }
-
-  const stats = data?.stats || {};
-  const chartData = analytics?.monthlyRevenue || [];
-
-  return (
-    <div style={styles.page}>
-      {/* ================= HEADER ================= */}
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Admin Dashboard</h1>
-          <p style={styles.muted}>Platform overview & financial insights</p>
+      <div style={styles.statsRow}>
+        <div style={styles.statCard} onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.statCardHover)} onMouseLeave={(e) => Object.assign(e.currentTarget.style, {transform: 'none', boxShadow: styles.statCard.boxShadow})}>
+          <p style={styles.statLabel}>Total Users</p>
+          <p style={styles.statValue}>{overview?.totalUsers || '0'}</p>
         </div>
+        <div style={styles.statCard} onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.statCardHover)} onMouseLeave={(e) => Object.assign(e.currentTarget.style, {transform: 'none', boxShadow: styles.statCard.boxShadow})}>
+          <p style={styles.statLabel}>Total Events</p>
+          <p style={styles.statValue}>{overview?.totalEvents || '0'}</p>
+        </div>
+        <div style={styles.statCard} onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.statCardHover)} onMouseLeave={(e) => Object.assign(e.currentTarget.style, {transform: 'none', boxShadow: styles.statCard.boxShadow})}>
+          <p style={styles.statLabel}>Platform Revenue</p>
+          <p style={styles.statValue}>₦{overview?.totalRevenue?.toLocaleString() || '0'}</p>
+        </div>
+        <div style={styles.statCard} onMouseEnter={(e) => Object.assign(e.currentTarget.style, styles.statCardHover)} onMouseLeave={(e) => Object.assign(e.currentTarget.style, {transform: 'none', boxShadow: styles.statCard.boxShadow})}>
+          <p style={styles.statLabel}>Tickets Sold</p>
+          <p style={styles.statValue}>{overview?.totalTicketsSold || '0'}</p>
+        </div>
+      </div>
 
-        <button style={styles.logoutBtn} onClick={handleLogout}>
-          Logout
-        </button>
-      </header>
+      <div style={styles.tabs} className="admin-tabs">
+        {['overview', 'users', 'events', 'payments', 'moderation'].map(tab => (
+          <button
+            key={tab}
+            style={{...styles.tab, ...(activeTab === tab ? styles.tabActive : {})}}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
 
-      {/* ================= QUICK NAV ================= */}
-      <section style={styles.navGrid}>
-        <NavCard
-          title="Withdrawals"
-          desc="Approve payouts"
-          onClick={() => navigate("/admin/withdrawals")}
-        />
-        <NavCard
-          title="Organizers"
-          desc="Top performers"
-          onClick={() => navigate("/admin/organizers")}
-        />
-        <NavCard
-          title="Events"
-          desc="All hosted events"
-          onClick={() => navigate("/admin/events")}
-        />
-        <NavCard
-          title="Sales & Revenue"
-          desc="Tickets & analytics"
-          onClick={() => navigate("/admin/sales")}
-        />
-      </section>
+      <div style={styles.tabContent}>
+        {activeTab === 'overview' && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Platform Overview</h2>
+            <div style={styles.metric}>
+              <span>Payment Success Rate</span>
+              <span style={styles.metricValue}>99.2%</span>
+            </div>
+            <div style={styles.metric}>
+              <span>API Uptime</span>
+              <span style={styles.metricValue}>99.98%</span>
+            </div>
+          </div>
+        )}
 
-      {/* ================= KPI ================= */}
-      <section style={styles.kpiGrid}>
-        <KPI
-          label="Total Revenue"
-          value={`₦${(stats.revenue || 0).toLocaleString()}`}
-        />
-        <KPI
-          label="Platform Fees"
-          value={`₦${(stats.platformFees || 0).toLocaleString()}`}
-        />
-        <KPI label="Tickets Sold" value={stats.ticketsSold || 0} />
-        <KPI label="Events Hosted" value={stats.events || 0} />
-        <KPI
-          label="Pending Withdrawals"
-          value={stats.pendingWithdrawals || 0}
-        />
-      </section>
+        {activeTab === 'users' && (
+          <div style={styles.section}>
+            <h2>User Management</h2>
+            <a href="/admin/users" className="btn">View All Users</a>
+            <div className="user-stats">
+              <div>Pending KYC: 24</div>
+              <div>Suspended: 3</div>
+              <div>Banned: 1</div>
+            </div>
+          </div>
+        )}
 
-      {/* ================= CHART ================= */}
-      <section style={styles.card}>
-        <h3 style={styles.cardTitle}>Monthly Revenue vs Platform Fees</h3>
-
-        <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={chartData}>
-            <XAxis dataKey="_id" />
-            <YAxis />
-            <Tooltip />
-            <Line
-              type="monotone"
-              dataKey="totalRevenue"
-              stroke="#22F2A6"
-              strokeWidth={2}
-              name="Revenue"
-            />
-            <Line
-              type="monotone"
-              dataKey="platformFees"
-              stroke="#facc15"
-              strokeWidth={2}
-              name="Platform Fees"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </section>
-    </div>
-  );
-}
-
-/* ================= COMPONENTS ================= */
-
-function KPI({ label, value }) {
-  return (
-    <div style={styles.kpi}>
-      <p style={styles.muted}>{label}</p>
-      <h2 style={styles.kpiValue}>{value}</h2>
-    </div>
-  );
-}
-
-function NavCard({ title, desc, onClick }) {
-  return (
-    <button style={styles.navCard} onClick={onClick}>
-      <h3>{title}</h3>
-      <p style={styles.muted}>{desc}</p>
-    </button>
-  );
-}
-
-function LoadingModal() {
-  return (
-    <div style={styles.loadingOverlay}>
-      <div style={styles.loadingCard}>
-        <div style={styles.spinner} />
-        <p style={{ marginTop: 12 }}>Loading admin dashboard…</p>
+        {activeTab === 'moderation' && (
+          <div className="moderation-section">
+            <h2>Moderation Queue</h2>
+            <a href="/admin/moderation" className="btn">View Queue</a>
+            <div>Flagged Content: 7</div>
+            <div>Open Disputes: 2</div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-/* ================= STYLES ================= */
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    padding: "clamp(16px, 4vw, 32px)",
-    background: "radial-gradient(circle at top, #1F0D33, #0F0618)",
-    color: "#fff",
-    fontFamily: "Inter, system-ui",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 16,
-    alignItems: "center",
-    marginBottom: 32,
-  },
-
-  title: {
-    fontSize: "clamp(24px, 4vw, 36px)",
-    marginBottom: 6,
-  },
-
-  navGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 20,
-    marginBottom: 40,
-  },
-
-  navCard: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 24,
-    borderRadius: 20,
-    cursor: "pointer",
-    border: "none",
-    textAlign: "left",
-    color: "#fff",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
-  },
-
-  kpiGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: 20,
-    marginBottom: 40,
-  },
-
-  kpi: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 24,
-    borderRadius: 20,
-  },
-
-  kpiValue: {
-    fontSize: "clamp(20px, 3vw, 26px)",
-  },
-
-  card: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 24,
-    borderRadius: 24,
-  },
-
-  cardTitle: {
-    marginBottom: 16,
-  },
-
-  muted: {
-    color: "#CFC9D6",
-    fontSize: 14,
-  },
-
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#fff",
-    padding: "10px 18px",
-    borderRadius: 999,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-
-  primaryBtn: {
-    marginTop: 16,
-    padding: "12px 20px",
-    borderRadius: 999,
-    border: "none",
-    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  loadingOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "#0F0618",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 1000,
-    color: "#fff",
-  },
-
-  loadingCard: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 28,
-    borderRadius: 18,
-    textAlign: "center",
-    width: "90%",
-    maxWidth: 320,
-  },
-
-  spinner: {
-    width: 36,
-    height: 36,
-    border: "4px solid rgba(255,255,255,0.2)",
-    borderTop: "4px solid #22F2A6",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-  },
-
-  error: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0F0618",
-    color: "#ff4d4f",
-    textAlign: "center",
-    padding: 20,
-  },
 };
 
-/* ================= SPINNER KEYFRAMES ================= */
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-`;
-document.head.appendChild(style);
+export default AdminDashboard;

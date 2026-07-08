@@ -1,435 +1,152 @@
-import { useEffect, useState } from "react";
-import { getToken } from "../../services/authService";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function MyEvents() {
+const MyEvents = () => {
   const navigate = useNavigate();
-
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-
-  /* ================= FETCH ================= */
-  async function fetchEvents() {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/events/organizer`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
-      const data = await res.json();
-      setEvents(Array.isArray(data) ? data : []);
-    } catch {
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /* ================= ACTIONS ================= */
-  async function updateStatus(id, action) {
-    if (processingId) return;
-    setProcessingId(id);
-
-    try {
-      await fetch(
-        `${import.meta.env.VITE_API_URL}/api/events/${action}/${id}`,
-        {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${getToken()}` },
-        },
-      );
-      await fetchEvents();
-    } finally {
-      setProcessingId(null);
-    }
-  }
-
-  async function deleteEvent(id) {
-  if (processingId) return;
-  setProcessingId(id);
-
-  try {
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/events/${id}`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${getToken()}` },
-      },
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message || "Delete failed");
-    }
-
-    await fetchEvents();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    setProcessingId(null);
-    setConfirmDelete(null);
-  }
-}
-
-
-  function copyEventLink(id) {
-    const link = `${window.location.origin}/events/${id}`;
-    navigator.clipboard.writeText(link);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch('/api/v1/organizer/events', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+      const data = await response.json();
+      setEvents(data.events || []);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFilteredEvents = () => {
+    const now = new Date();
+    switch (filter) {
+      case 'upcoming':
+        return events.filter(e => new Date(e.startDate) > now);
+      case 'active':
+        return events.filter(e => new Date(e.startDate) <= now && new Date(e.endDate || e.startDate) >= now);
+      case 'past':
+        return events.filter(e => new Date(e.endDate || e.startDate) < now);
+      default:
+        return events;
+    }
+  };
+
+  const handleDelete = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
+
+    try {
+      const response = await fetch(`/api/v1/organizer/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+
+      if (response.ok) {
+        setEvents(events.filter(e => e._id !== eventId));
+      }
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+    }
+  };
+
+  const filteredEvents = getFilteredEvents();
+
+  if (loading) return <div className="dashboard-container">Loading...</div>;
+
   return (
-    <main style={styles.page}>
-      {loading && <LoadingModal />}
-
-      {confirmDelete && (
-        <ConfirmModal
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={() => deleteEvent(confirmDelete)}
-        />
-      )}
-
-      {/* HEADER */}
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>My Events</h1>
-          <p style={styles.muted}>Manage, publish, and monitor your events</p>
-        </div>
-
-        <button
-          style={styles.primaryBtn}
-          onClick={() => navigate("/organizer/create-event")}
-        >
-          + Create Event
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h1>My Events</h1>
+        <button className="btn-create" onClick={() => navigate('/organizer/create-event')}>
+          + Create New Event
         </button>
-      </header>
-
-      {/* EMPTY */}
-      {!loading && events.length === 0 && (
-        <section style={styles.empty}>
-          <h3>No events yet</h3>
-          <p style={styles.muted}>
-            Create your first event and start selling tickets.
-          </p>
-          <button
-            style={styles.primaryBtn}
-            onClick={() => navigate("/organizer/create-event")}
-          >
-            Create Event
-          </button>
-        </section>
-      )}
-
-      {/* GRID */}
-      <section style={styles.grid}>
-        {events.map((event) => (
-          <article key={event._id} style={styles.card}>
-            <div>
-              <h3 style={styles.cardTitle}>{event.title}</h3>
-              <p style={styles.muted}>
-                {new Date(event.date).toDateString()} • {event.location}
-              </p>
-
-              <span style={styles.status(event.status)}>
-                {event.status}
-              </span>
-            </div>
-
-            <div style={styles.actions}>
-              <button
-                style={styles.shareBtn}
-                onClick={() => copyEventLink(event._id)}
-              >
-                {copiedId === event._id ? "Copied ✓" : "Share"}
-              </button>
-
-              {event.status === "DRAFT" && (
-                <button
-                  style={styles.publishBtn}
-                  disabled={processingId === event._id}
-                  onClick={() => updateStatus(event._id, "publish")}
-                >
-                  Publish
-                </button>
-              )}
-
-              {event.status === "LIVE" && (
-                <>
-                  <button
-                    style={styles.endBtn}
-                    disabled={processingId === event._id}
-                    onClick={() => updateStatus(event._id, "end")}
-                  >
-                    End
-                  </button>
-
-                  <button
-                    style={styles.linkBtn}
-                    onClick={() =>
-                      navigate(`/organizer/scan?event=${event._id}`)
-                    }
-                  >
-                    Scan
-                  </button>
-                </>
-              )}
-
-              {event.status === "ENDED" && (
-                <button
-                  style={styles.deleteBtn}
-                  disabled={processingId === event._id}
-                  onClick={() => setConfirmDelete(event._id)}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </section>
-    </main>
-  );
-}
-
-/* ================= MODALS ================= */
-
-function LoadingModal() {
-  return (
-    <div style={styles.modalOverlay}>
-      <div style={styles.loadingModal}>
-        <div style={styles.spinner} />
-        <p style={{ marginTop: 12 }}>Loading events…</p>
       </div>
-    </div>
-  );
-}
 
-function ConfirmModal({ onCancel, onConfirm }) {
-  return (
-    <div style={styles.modalOverlay}>
-      <div style={styles.modal}>
-        <h3>Delete Event?</h3>
-        <p style={styles.muted}>
-          This action cannot be undone.
-        </p>
-        <div style={styles.confirmActions}>
-          <button style={styles.cancelBtn} onClick={onCancel}>
-            Cancel
+      <div className="filters-section">
+        {['all', 'upcoming', 'active', 'past'].map(f => (
+          <button
+            key={f}
+            className={`filter-btn ${filter === f ? 'active' : ''}`}
+            onClick={() => setFilter(f)}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
-          <button style={styles.deleteBtn} onClick={onConfirm}>
-            Delete
+        ))}
+      </div>
+
+      {filteredEvents.length === 0 ? (
+        <div className="no-events">
+          <p>No events found</p>
+          <button className="btn-link" onClick={() => navigate('/organizer/create-event')}>
+            Create your first event
           </button>
         </div>
-      </div>
+      ) : (
+        <div className="events-section">
+          <table className="events-table">
+            <thead>
+              <tr>
+                <th>Event Name</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Capacity</th>
+                <th>Sold</th>
+                <th>Revenue</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEvents.map(event => (
+                <tr key={event._id}>
+                  <td><strong>{event.title}</strong></td>
+                  <td>{new Date(event.startDate).toLocaleDateString()}</td>
+                  <td>
+                    <span className={`status ${
+                      new Date(event.startDate) > new Date() ? 'upcoming' :
+                      new Date(event.endDate || event.startDate) >= new Date() ? 'active' : 'past'
+                    }`}>
+                      {new Date(event.startDate) > new Date() ? 'Upcoming' :
+                       new Date(event.endDate || event.startDate) >= new Date() ? 'Active' : 'Past'}
+                    </span>
+                  </td>
+                  <td>{event.capacity}</td>
+                  <td>{event.ticketsSold || 0}</td>
+                  <td>₦{(event.revenue || 0).toLocaleString()}</td>
+                  <td className="actions">
+                    <button
+                      className="action-btn edit"
+                      onClick={() => navigate(`/organizer/events/${event._id}/edit`)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="action-btn analytics"
+                      onClick={() => navigate(`/organizer/ticket-sales/${event._id}`)}
+                    >
+                      Analytics
+                    </button>
+                    <button
+                      className="action-btn delete"
+                      onClick={() => handleDelete(event._id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
-}
-
-/* ================= STYLES ================= */
-
-const styles = {
-  page: {
-    minHeight: "100svh",
-    padding: "clamp(16px,4vw,40px)",
-    background: "#0F0618",
-    color: "#fff",
-    fontFamily: "Inter, system-ui",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 16,
-    flexWrap: "wrap",
-    marginBottom: 32,
-  },
-
-  title: {
-    fontSize: "clamp(22px,4vw,32px)",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 20,
-  },
-
-  card: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 24,
-    borderRadius: 22,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    gap: 18,
-  },
-
-  cardTitle: {
-    fontSize: 18,
-    marginBottom: 6,
-  },
-
-  status: (status) => ({
-    display: "inline-block",
-    marginTop: 10,
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 700,
-    background:
-      status === "LIVE"
-        ? "rgba(34,242,166,0.15)"
-        : status === "ENDED"
-        ? "rgba(255,77,79,0.15)"
-        : "rgba(250,219,20,0.15)",
-    color:
-      status === "LIVE"
-        ? "#22F2A6"
-        : status === "ENDED"
-        ? "#ff4d4f"
-        : "#fadb14",
-  }),
-
-  actions: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-
-  publishBtn: {
-    background: "#22F2A6",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: 999,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-
-  endBtn: {
-    background: "#ff4d4f",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: 999,
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#fff",
-  },
-
-  deleteBtn: {
-    background: "#b91c1c",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: 999,
-    fontWeight: 600,
-    cursor: "pointer",
-    color: "#fff",
-  },
-
-  cancelBtn: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#fff",
-    padding: "8px 14px",
-    borderRadius: 999,
-    cursor: "pointer",
-  },
-
-  linkBtn: {
-    background: "transparent",
-    border: "1px solid #22F2A6",
-    color: "#22F2A6",
-    padding: "8px 14px",
-    borderRadius: 999,
-    cursor: "pointer",
-  },
-
-  shareBtn: {
-    background: "rgba(255,255,255,0.12)",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: 999,
-    cursor: "pointer",
-    fontWeight: 600,
-    color: "#fff",
-  },
-
-  primaryBtn: {
-    background: "linear-gradient(90deg,#22F2A6,#7CFF9B)",
-    border: "none",
-    padding: "12px 20px",
-    borderRadius: 999,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  empty: {
-    background: "rgba(255,255,255,0.06)",
-    padding: "clamp(24px,5vw,48px)",
-    borderRadius: 24,
-    textAlign: "center",
-    marginTop: 40,
-  },
-
-  muted: {
-    color: "#CFC9D6",
-    fontSize: 14,
-  },
-
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.65)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 2000,
-  },
-
-  modal: {
-    background: "#1A0F2E",
-    padding: 28,
-    borderRadius: 20,
-    width: "90%",
-    maxWidth: 360,
-    textAlign: "center",
-  },
-
-  confirmActions: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 20,
-    flexWrap: "wrap",
-  },
-
-  loadingModal: {
-    background: "#1A0F2E",
-    padding: 28,
-    borderRadius: 18,
-    textAlign: "center",
-    width: "90%",
-    maxWidth: 320,
-  },
-
-  spinner: {
-    width: 34,
-    height: 34,
-    border: "4px solid rgba(255,255,255,0.2)",
-    borderTop: "4px solid #22F2A6",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-  },
 };
+
+export default MyEvents;

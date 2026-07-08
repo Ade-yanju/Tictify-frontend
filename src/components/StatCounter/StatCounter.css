@@ -1,0 +1,72 @@
+.stat-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.stat-counter__value {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #E8C96A 0%, #F0B444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Syne', sans-serif;
+  font-variant-numeric: tabular-nums;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.stat-counter__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(240, 237, 232, 0.6);
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+  .stat-counter__value {
+    background: linear-gradient(135deg, #E8C96A 0%, #F0B444 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-counter__label {
+    color: rgba(240, 237, 232, 0.6);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .stat-counter__value {
+    background: linear-gradient(135deg, #D4A500 0%, #B8860B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-counter__label {
+    color: rgba(26, 26, 26, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-counter.animated .stat-counter__value {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .stat-counter__value {
+    font-size: 24px;
+    min-height: 30px;
+  }
+
+  .stat-counter__label {
+    font-size: 11px;
+  }
+}

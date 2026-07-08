@@ -1,346 +1,249 @@
-import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
-import { scanTicket } from "../../services/ticketService";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useRef, useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default function ScanTicket() {
+const ScanTicket = () => {
+  const { eventId } = useParams();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const eventId = params.get("event");
+  const videoRef = useRef(null);
+  const [scanning, setScanning] = useState(true);
+  const [lastScanned, setLastScanned] = useState(null);
+  const [ticketData, setTicketData] = useState(null);
+  const [manualCode, setManualCode] = useState('');
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [scannedCount, setScannedCount] = useState(0);
 
-  const qrRegionId = "qr-reader";
-  const scannerRef = useRef(null);
-  const activeScanRef = useRef(false);
-
-  const [manualCode, setManualCode] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [modal, setModal] = useState(null);
-
-  /* ================= GUARD ================= */
   useEffect(() => {
-    if (!eventId) {
-      navigate("/organizer/scan/select", { replace: true });
+    fetchStats();
+    if (scanning) {
+      startCamera();
     }
-  }, [eventId, navigate]);
-
-  /* ================= START CAMERA ================= */
-  const startCamera = async () => {
-    if (scanning || processing) return;
-
-    try {
-      const scanner = new Html5Qrcode(qrRegionId);
-      scannerRef.current = scanner;
-
-      const cameras = await Html5Qrcode.getCameras();
-      if (!cameras.length) {
-        throw new Error("No camera available on this device");
-      }
-
-      // 🔑 Always prefer back camera
-      const camera =
-        cameras.find((c) =>
-          /back|rear|environment/i.test(c.label),
-        ) || cameras[cameras.length - 1];
-
-      setScanning(true);
-      activeScanRef.current = true;
-
-      await scanner.start(
-        camera.id,
-        {
-          fps: 10,
-          qrbox: { width: 240, height: 240 },
-          aspectRatio: 1,
-          disableFlip: true,
-        },
-        async (decodedText) => {
-          if (!activeScanRef.current || processing) return;
-          activeScanRef.current = false;
-          await handleScan(decodedText);
-        },
-      );
-    } catch (err) {
-      await stopCamera();
-      setModal({
-        type: "error",
-        message:
-          "Camera permission denied or unavailable. Please allow camera access or use manual entry.",
-      });
-    }
-  };
-
-  /* ================= STOP CAMERA ================= */
-  const stopCamera = async () => {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-      }
-    } catch {}
-    scannerRef.current = null;
-    setScanning(false);
-    activeScanRef.current = false;
-  };
-
-  /* ================= SCAN HANDLER ================= */
-  async function handleScan(code) {
-    setProcessing(true);
-
-    try {
-      const res = await scanTicket({
-        code: code.trim(),
-        eventId,
-      });
-
-      setModal({
-        type: "success",
-        message: res.message || "Ticket verified successfully",
-      });
-
-      await stopCamera();
-    } catch (err) {
-      setModal({
-        type: "error",
-        message:
-          err.message || "Invalid, used, or wrong event ticket",
-      });
-      activeScanRef.current = true;
-    } finally {
-      setTimeout(() => setProcessing(false), 1200);
-    }
-  }
-
-  /* ================= MANUAL ENTRY ================= */
-  async function handleManualSubmit(e) {
-    e.preventDefault();
-    if (!manualCode || processing) return;
-    await handleScan(manualCode);
-    setManualCode("");
-  }
-
-  /* ================= CLEANUP ================= */
-  useEffect(() => {
     return () => {
-      stopCamera();
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [scanning]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/v1/organizer/scanner/stats', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        const eventStats = data.stats.find(s => s.eventId === eventId);
+        if (eventStats) {
+          setStats(eventStats);
+          setScannedCount(eventStats.scannedTickets);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Camera access denied:', error);
+      alert('Unable to access camera. Using manual entry only.');
+      setScanning(false);
+    }
+  };
+
+  const handleScan = async (code) => {
+    if (lastScanned === code) return;
+    setLastScanned(code);
+
+    try {
+      const response = await fetch('/api/v1/organizer/tickets/verify', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ticketCode: code, eventId }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setTicketData({ ...data.ticket, status: 'valid' });
+        setScannedCount(prev => prev + 1);
+        // Play success sound
+        playSuccessSound();
+        setTimeout(() => {
+          setTicketData(null);
+          setLastScanned(null);
+        }, 3000);
+      } else {
+        setTicketData({ status: 'invalid', message: data.message });
+        playErrorSound();
+        setTimeout(() => {
+          setTicketData(null);
+          setLastScanned(null);
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Verification failed:', error);
+      setTicketData({ status: 'error', message: 'Verification failed' });
+      setTimeout(() => setTicketData(null), 3000);
+    }
+  };
+
+  const handleManualSubmit = (e) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      handleScan(manualCode);
+      setManualCode('');
+    }
+  };
+
+  const playSuccessSound = () => {
+    // Create a simple beep sound
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  };
+
+  const playErrorSound = () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 300;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+  };
 
   return (
-    <div style={styles.page}>
-      {modal && (
-        <Modal {...modal} onClose={() => setModal(null)} />
-      )}
-
-      {processing && (
-        <div style={styles.processing}>
-          <div style={styles.spinner} />
-          <p>Verifying ticket…</p>
-        </div>
-      )}
-
-      <div style={styles.container}>
-        <header style={styles.header}>
-          <h1>Scan Tickets</h1>
-          <button
-            style={styles.backBtn}
-            onClick={() =>
-              navigate("/organizer/dashboard")
-            }
-          >
-            ← Dashboard
-          </button>
-        </header>
-
-        <div style={styles.scannerBox}>
-          <div
-            id={qrRegionId}
-            style={styles.camera}
-          />
-
-          {!scanning ? (
-            <button
-              style={styles.primaryBtn}
-              onClick={startCamera}
-            >
-              🎥 Start Camera Scan
-            </button>
-          ) : (
-            <button
-              style={styles.stopBtn}
-              onClick={stopCamera}
-            >
-              Stop Camera
-            </button>
-          )}
-        </div>
-
-        <div style={styles.divider}>OR</div>
-
-        <form
-          onSubmit={handleManualSubmit}
-          style={styles.form}
+    <div className="scanner-container">
+      <div className="scanner-header">
+        <button className="btn-back" onClick={() => navigate(-1)}>← Back</button>
+        <h1>🎟️ Ticket Scanner</h1>
+        <button
+          className="btn-toggle"
+          onClick={() => setScanning(!scanning)}
         >
-          <input
-            style={styles.input}
-            placeholder="Enter ticket code manually"
-            value={manualCode}
-            onChange={(e) =>
-              setManualCode(e.target.value)
-            }
+          {scanning ? '⏹️ Stop Camera' : '🎥 Start Camera'}
+        </button>
+      </div>
+
+      {scanning && (
+        <div className="scanner-view">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="scanner-video"
           />
-          <button style={styles.secondaryBtn}>
-            Verify Code
-          </button>
+          <div className="scanner-overlay">
+            <div className="scanner-box"></div>
+            <p className="scanner-hint">Position QR code in the box</p>
+          </div>
+        </div>
+      )}
+
+      <div className="scanner-form">
+        <h2>Manual Entry</h2>
+        <p className="form-hint">Scan QR code or enter verification code</p>
+        <form onSubmit={handleManualSubmit}>
+          <input
+            type="text"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value)}
+            placeholder="Scan QR code or type verification code..."
+            autoFocus
+          />
+          <button type="submit">✓ Verify Ticket</button>
         </form>
       </div>
-    </div>
-  );
-}
 
-/* ================= MODAL ================= */
-function Modal({ type, message, onClose }) {
-  return (
-    <div style={styles.modalOverlay}>
-      <div style={styles.modal}>
-        <h3
-          style={{
-            color:
-              type === "error"
-                ? "#ff4d4f"
-                : "#22F2A6",
-          }}
-        >
-          {type === "error"
-            ? "Access Denied"
-            : "Access Granted"}
-        </h3>
-        <p>{message}</p>
+      {ticketData && (
+        <div className={`ticket-result ${ticketData.status}`}>
+          <div className={`result-icon ${ticketData.status}`}>
+            {ticketData.status === 'valid' ? '✅' : '❌'}
+          </div>
+          <h3>{ticketData.status === 'valid' ? 'Ticket Valid ✓' : 'Ticket Invalid ✗'}</h3>
+          {ticketData.status === 'valid' ? (
+            <div className="ticket-info">
+              <p className="buyer-name"><strong>{ticketData.buyerName}</strong></p>
+              <p className="ticket-number">Ticket #{ticketData.ticketNumber}</p>
+              <p className="ticket-qty">{ticketData.quantity} ticket{ticketData.quantity > 1 ? 's' : ''}</p>
+              <p className="scanned-time">Scanned: {new Date(ticketData.scannedAt).toLocaleTimeString()}</p>
+            </div>
+          ) : (
+            <p className="error-message">{ticketData.message}</p>
+          )}
+        </div>
+      )}
+
+      <div className="scanner-stats">
+        {loadingStats ? (
+          <p>Loading stats...</p>
+        ) : stats ? (
+          <div className="stats-grid">
+            <div className="stat-box">
+              <div className="stat-number">{stats.totalTickets}</div>
+              <div className="stat-label">Total Tickets</div>
+            </div>
+            <div className="stat-box highlight">
+              <div className="stat-number">{scannedCount}</div>
+              <div className="stat-label">Scanned ✓</div>
+            </div>
+            <div className="stat-box">
+              <div className="stat-number">{stats.remainingTickets}</div>
+              <div className="stat-label">Remaining</div>
+            </div>
+            <div className="stat-box">
+              <div className="stat-number">{stats.scanRate}%</div>
+              <div className="stat-label">Scan Rate</div>
+            </div>
+          </div>
+        ) : (
+          <p>No stats available</p>
+        )}
+      </div>
+
+      <div className="scanner-footer">
         <button
-          style={styles.modalBtn}
-          onClick={onClose}
+          className="btn-history"
+          onClick={() => navigate(`/organizer/events/${eventId}/scan-history`)}
         >
-          OK
+          📋 View Scan History
         </button>
       </div>
     </div>
   );
-}
-
-/* ================= STYLES ================= */
-const styles = {
-  page: {
-    minHeight: "100svh",
-    background: "#0F0618",
-    display: "grid",
-    placeItems: "center",
-    padding: 16,
-    color: "#fff",
-  },
-  container: {
-    width: "100%",
-    maxWidth: 420,
-    textAlign: "center",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  scannerBox: {
-    background: "rgba(255,255,255,0.08)",
-    padding: 16,
-    borderRadius: 20,
-  },
-  camera: {
-    width: "100%",
-    height: 320,
-    background: "#000",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  primaryBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 999,
-    border: "none",
-    background: "#22F2A6",
-    fontWeight: 700,
-  },
-  stopBtn: {
-    marginTop: 12,
-    width: "100%",
-    padding: 14,
-    borderRadius: 999,
-    background: "#ff4d4f",
-    color: "#fff",
-    border: "none",
-  },
-  divider: {
-    margin: "16px 0",
-    fontSize: 12,
-    color: "#aaa",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-  input: {
-    padding: 14,
-    borderRadius: 12,
-    border: "none",
-  },
-  secondaryBtn: {
-    padding: 14,
-    borderRadius: 999,
-    border: "1px solid #22F2A6",
-    background: "transparent",
-    color: "#22F2A6",
-  },
-  processing: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,.7)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 1000,
-  },
-  spinner: {
-    width: 36,
-    height: 36,
-    border: "4px solid rgba(255,255,255,.2)",
-    borderTop: "4px solid #22F2A6",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,.7)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 1000,
-  },
-  modal: {
-    background: "#1A0F2E",
-    padding: 24,
-    borderRadius: 16,
-    width: 300,
-  },
-  modalBtn: {
-    marginTop: 16,
-    width: "100%",
-    padding: 12,
-    borderRadius: 999,
-    background: "#22F2A6",
-    border: "none",
-  },
 };
 
-/* ================= SPINNER ================= */
-const style = document.createElement("style");
-style.innerHTML =
-  "@keyframes spin { to { transform: rotate(360deg); } }";
-document.head.appendChild(style);
+export default ScanTicket;
