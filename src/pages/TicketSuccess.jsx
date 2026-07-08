@@ -82,6 +82,8 @@ export default function TicketSuccess() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  // null | "sent" | "unavailable" | "error"
+  const [emailStatus, setEmailStatus] = useState(null);
 
   /* ── load ticket ── */
   useEffect(() => {
@@ -93,6 +95,28 @@ export default function TicketSuccess() {
 
     let attempts = 0;
     const MAX_ATTEMPTS = 15;
+    let emailRecheck;
+
+    // The auto-email fires right after the ticket is minted. If it still
+    // hasn't landed a few seconds after the ticket is READY, every email
+    // provider is likely down/over quota — nudge the guest to download.
+    const verifyAutoEmail = () => {
+      emailRecheck = setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/tickets/by-reference/${reference}`,
+          );
+          const result = await res.json();
+          if (result?.status === "READY") {
+            setEmailStatus((prev) =>
+              prev !== null ? prev : result.ticket?.emailed ? "sent" : "unavailable",
+            );
+          }
+        } catch {
+          /* network blip — say nothing rather than false-alarm */
+        }
+      }, 6000);
+    };
 
     const interval = setInterval(async () => {
       attempts++;
@@ -106,6 +130,11 @@ export default function TicketSuccess() {
           clearInterval(interval);
           setData(result);
           setStatus("READY");
+          if (result.ticket?.emailed) {
+            setEmailStatus((prev) => (prev !== null ? prev : "sent"));
+          } else {
+            verifyAutoEmail();
+          }
         }
         if (attempts >= MAX_ATTEMPTS) {
           clearInterval(interval);
@@ -119,14 +148,18 @@ export default function TicketSuccess() {
       }
     }, 1200);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(emailRecheck);
+    };
   }, [reference]);
 
-  /* ── email ── */
+  /* ── email (with graceful download fallback) ── */
   async function handleSendEmail() {
     if (!emailInput || !emailInput.includes("@"))
       return alert("Please enter a valid email address.");
     setSendingEmail(true);
+    setEmailStatus(null);
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/tickets/send-email`,
@@ -137,12 +170,17 @@ export default function TicketSuccess() {
         },
       );
       if (res.ok) {
-        alert("Success! Check your inbox (and spam folder) for your ticket.");
+        setEmailStatus("sent");
         setShowEmailModal(false);
-      } else
-        alert("Email delivery failed. Please try again or download the PDF.");
+      } else {
+        // Provider chain exhausted (quota/outage) → push the download path
+        const body = await res.json().catch(() => ({}));
+        setEmailStatus(body.emailUnavailable || res.status === 502 ? "unavailable" : "error");
+        setShowEmailModal(false);
+      }
     } catch {
-      alert("Network error. Please check your connection.");
+      setEmailStatus("error");
+      setShowEmailModal(false);
     } finally {
       setSendingEmail(false);
     }
@@ -414,10 +452,44 @@ export default function TicketSuccess() {
           </section>
         )}
 
+        {/* ── email delivery status ── */}
+        {emailStatus === "sent" && (
+          <div className="ts-mailnote is-ok" role="status">
+            <span className="ts-mailnote-ic">✅</span>
+            <p>
+              <strong>Ticket sent!</strong> Check your inbox — and your spam
+              folder, just in case.
+            </p>
+          </div>
+        )}
+        {emailStatus === "unavailable" && (
+          <div className="ts-mailnote is-warn" role="alert">
+            <span className="ts-mailnote-ic">📩</span>
+            <p>
+              <strong>Email delivery is a little unstable right now.</strong>{" "}
+              Don&rsquo;t worry — download your PDF ticket below instead. It
+              works exactly the same at the gate.
+            </p>
+          </div>
+        )}
+        {emailStatus === "error" && (
+          <div className="ts-mailnote is-warn" role="alert">
+            <span className="ts-mailnote-ic">📶</span>
+            <p>
+              <strong>Couldn&rsquo;t reach the email service.</strong> Please
+              download your PDF ticket below — it&rsquo;s the safest copy.
+            </p>
+          </div>
+        )}
+
         {/* ── actions ── */}
         <footer className="ts-actions">
           <button
-            className="ts-btn ts-btn-gold ts-w100"
+            className={`ts-btn ts-btn-gold ts-w100 ${
+              emailStatus === "unavailable" || emailStatus === "error"
+                ? "ts-btn-pulse"
+                : ""
+            }`}
             disabled={downloading}
             onClick={downloadPDF}
           >
@@ -427,7 +499,7 @@ export default function TicketSuccess() {
             className="ts-btn ts-btn-outline ts-w100"
             onClick={() => setShowEmailModal(true)}
           >
-            Send to my Email
+            {emailStatus === "unavailable" ? "Try email again" : "Send to my Email"}
           </button>
           <button className="ts-btn-ghost" onClick={() => navigate("/")}>
             Browse more events →
@@ -635,6 +707,15 @@ button { font-family:var(--font-b); cursor:pointer; }
 .ts-ref { margin-top:6px; color:var(--muted); opacity:.6; font-size:clamp(10px,2.2vw,11px); word-break:break-all; font-variant-numeric:tabular-nums; }
 
 /* ── Actions ── */
+.ts-mailnote { display:flex; align-items:flex-start; gap:12px; border-radius:14px; padding:14px 16px; margin:0 clamp(18px,4vw,28px) 16px; font-size:13.5px; line-height:1.6; text-align:left; }
+.ts-mailnote p { margin:0; color:var(--muted); }
+.ts-mailnote strong { color:var(--text); }
+.ts-mailnote-ic { font-size:18px; line-height:1.4; }
+.ts-mailnote.is-ok { background:rgba(107,240,160,.08); border:1px solid rgba(107,240,160,.3); }
+.ts-mailnote.is-warn { background:rgba(232,201,106,.08); border:1px solid rgba(232,201,106,.35); }
+@keyframes tsPulse { 0%,100% { box-shadow:0 0 0 0 rgba(232,201,106,.45); } 50% { box-shadow:0 0 0 10px rgba(232,201,106,0); } }
+.ts-btn-pulse { animation:tsPulse 1.6s ease-in-out infinite; }
+
 .ts-actions {
   display:flex; flex-direction:column; align-items:center; gap:clamp(9px,2.2vw,12px);
   padding:clamp(18px,4.5vw,24px) clamp(20px,5vw,36px) clamp(22px,5vw,30px);
