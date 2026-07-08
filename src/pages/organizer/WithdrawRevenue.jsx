@@ -328,6 +328,33 @@ export default function WithdrawRevenue() {
             />
           </div>
 
+          {/* Live payout breakdown — bank transfer fee is borne by the organizer
+              (₦10 ≤5k · ₦25 ≤50k · ₦50 above — mirrors the server) */}
+          {Number(form.amount) >= 500 && (
+            <div className="wdr-feebox">
+              {(() => {
+                const amt = Number(form.amount);
+                const fee = amt <= 5000 ? 10 : amt <= 50000 ? 25 : 50;
+                return (
+                  <>
+                    <div className="wdr-feerow">
+                      <span>Withdrawal</span>
+                      <span>₦{amt.toLocaleString()}</span>
+                    </div>
+                    <div className="wdr-feerow">
+                      <span>Bank transfer fee</span>
+                      <span>− ₦{fee}</span>
+                    </div>
+                    <div className="wdr-feerow is-total">
+                      <span>You receive</span>
+                      <span>₦{(amt - fee).toLocaleString()}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           <label className="wdr-label" htmlFor="wdr-bank">Bank</label>
           <select
             id="wdr-bank"
@@ -445,6 +472,11 @@ button { cursor:pointer; }
 
 /* Form card */
 .wdr-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(20px,4vw,28px); }
+.wdr-feebox { margin:4px 0 18px; padding:14px 16px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); border-radius:var(--r-sm); display:grid; gap:8px; }
+.wdr-feerow { display:flex; justify-content:space-between; font-size:13.5px; color:var(--muted); }
+.wdr-feerow span:last-child { font-variant-numeric:tabular-nums; }
+.wdr-feerow.is-total { border-top:1px dashed rgba(232,201,106,.35); padding-top:8px; color:var(--text); font-weight:700; }
+.wdr-feerow.is-total span:last-child { color:var(--gold); font-family:var(--font-h); font-size:15px; }
 .wdr-label { display:block; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
 .wdr-input { width:100%; padding:14px 16px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; margin-bottom:18px; outline:none; transition:border-color .2s, box-shadow .2s; }
 .wdr-input::placeholder { color:var(--muted); }
