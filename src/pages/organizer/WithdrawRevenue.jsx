@@ -199,11 +199,11 @@ export default function WithdrawRevenue() {
     e.preventDefault();
     const amountNum = Number(form.amount);
 
-    if (!amountNum || amountNum < 100) {
+    if (!amountNum || !Number.isInteger(amountNum) || amountNum < 500) {
       return setModal({
         open: true,
         type: "error",
-        message: "Minimum withdrawal is ₦500.",
+        message: "Minimum withdrawal is ₦500 (whole naira only).",
       });
     }
 
