@@ -418,6 +418,22 @@ export default function OrganizerDashboard() {
                   onClick={() => navigate(path)}
                 />
               ))}
+              <ActionCard
+                title="🔔 Sale Alerts"
+                desc="Push alert per ticket sold"
+                onClick={async () => {
+                  const [{ subscribeToPush }, { getToken }] = await Promise.all([
+                    import("../../services/pushService.js"),
+                    import("../../services/authService.js"),
+                  ]);
+                  const result = await subscribeToPush("sales", getToken());
+                  setModal({
+                    open: true,
+                    isAuth: false,
+                    message: result.message,
+                  });
+                }}
+              />
             </div>
           </section>
 

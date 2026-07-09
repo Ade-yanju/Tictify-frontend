@@ -457,6 +457,15 @@ function Pricing() {
 /* ── CTA band ────────────────────────────────────────────── */
 function CTA() {
   const navigate = useNavigate();
+  const [alertState, setAlertState] = useState(null); // null | "busy" | {ok,message}
+
+  async function enableAlerts() {
+    if (alertState === "busy") return;
+    setAlertState("busy");
+    const { subscribeToPush } = await import("../services/pushService.js");
+    const result = await subscribeToPush("events");
+    setAlertState(result);
+  }
 
   return (
     <section className="tf-section">
@@ -464,9 +473,23 @@ function CTA() {
         <div className="tf-cta">
           <h2 className="tf-h2">Start selling tickets today</h2>
           <p>Create your first event in minutes — no card required.</p>
-          <button className="tf-btn tf-btn-gold tf-btn-lg" onClick={() => navigate("/register")}>
-            Get Started Free
-          </button>
+          <div className="tf-cta-row">
+            <button className="tf-btn tf-btn-gold tf-btn-lg" onClick={() => navigate("/register")}>
+              Get Started Free
+            </button>
+            <button
+              className="tf-btn tf-btn-ghost tf-btn-lg"
+              onClick={enableAlerts}
+              disabled={alertState === "busy"}
+            >
+              {alertState === "busy" ? "Enabling…" : "🔔 Get event alerts"}
+            </button>
+          </div>
+          {alertState && alertState !== "busy" && (
+            <p className={`tf-cta-note ${alertState.ok ? "is-ok" : "is-err"}`}>
+              {alertState.message}
+            </p>
+          )}
         </div>
       </div>
     </section>
@@ -661,6 +684,10 @@ section { scroll-margin-top:88px; }
 .tf-cta { text-align:center; background:linear-gradient(180deg, var(--gold-dim), transparent 80%); border:1px solid rgba(232,201,106,.28); border-radius:calc(var(--r) + 8px); padding:clamp(44px,7vw,80px) clamp(20px,5vw,60px); }
 .tf-cta .tf-h2 { margin:0 auto 14px; }
 .tf-cta p { color:var(--muted); margin-bottom:30px; }
+.tf-cta-row { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
+.tf-cta-note { margin-top:18px !important; font-size:14px; }
+.tf-cta-note.is-ok { color:var(--live) !important; }
+.tf-cta-note.is-err { color:var(--muted) !important; }
 
 /* ── Footer ── */
 .tf-footer { border-top:1px solid var(--border); background:var(--surface); padding:clamp(44px,6vw,64px) 0 0; }
