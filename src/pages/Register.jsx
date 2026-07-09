@@ -4,7 +4,7 @@
    All responsive behavior lives in real CSS (@media) below.
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { register } from "../services/authService";
 
 const logo = "/logo.png";
@@ -104,6 +104,7 @@ function AuthModal({ type, message, onClose }) {
 export default function Register() {
   injectStyles("tictify-register-css", CSS);
   const navigate = useNavigate();
+  const location = useLocation();
   const touchStartX = useRef(0);
 
   const [form, setForm] = useState({
@@ -115,6 +116,15 @@ export default function Register() {
   const [focused, setFocused] = useState({});
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
+  const [inviteCode, setInviteCode] = useState("");
+
+  useEffect(() => {
+    const invite = new URLSearchParams(location.search).get("invite");
+    if (invite && /^[A-Za-z0-9_-]{2,30}$/.test(invite)) {
+      setInviteCode(invite);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
   const passwordsMatch =
@@ -140,6 +150,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         role: "organizer",
+        ...(inviteCode ? { referredBy: inviteCode } : {}),
       });
       setModal({
         type: "success",
@@ -211,6 +222,12 @@ export default function Register() {
         <p className="rg-sub">
           Register as an organizer on <strong>Tictify</strong>
         </p>
+
+        {inviteCode && (
+          <div className="rg-invite-pill">
+            Invited by a Campus Partner ({inviteCode})
+          </div>
+        )}
 
         <form className="rg-form" onSubmit={handleSubmit}>
           {/* Name */}
@@ -362,6 +379,14 @@ input, button { font-family:var(--font-b); outline:none; }
 }
 .rg-sub { font-size:clamp(13.5px,1.8vw,14.5px); color:var(--muted); line-height:1.55; margin-bottom:32px; }
 .rg-sub strong { color:var(--text); }
+
+/* ── Invite pill ── */
+.rg-invite-pill {
+  display:inline-block; margin:-16px 0 24px; padding:8px 16px;
+  background:var(--gold-dim); border:1px solid rgba(232,201,106,.35);
+  color:var(--gold); font-size:12.5px; font-weight:600; letter-spacing:.02em;
+  border-radius:999px; overflow-wrap:anywhere;
+}
 
 /* ── Form ── */
 .rg-form { display:flex; flex-direction:column; gap:16px; }

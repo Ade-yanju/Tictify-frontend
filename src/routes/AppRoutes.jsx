@@ -8,9 +8,13 @@ import Checkout from "../pages/Checkout";
 import TicketSuccess from "../pages/TicketSuccess";
 import PaymentPending from "../pages/PaymentPending";
 import MyTickets from "../pages/MyTickets";
+import CampusAmbassadors from "../pages/CampusAmbassadors";
+import AmbassadorDashboard from "../pages/AmbassadorDashboard";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
 
 /* ================= ORGANIZER ================= */
 import OrganizerDashboard from "../pages/organizer/OrganizerDashboard";
@@ -27,6 +31,7 @@ import AdminOrganizers from "../pages/admin/AdminOrganizers";
 import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
 import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
+import AdminAmbassadors from "../pages/admin/AdminAmbassadors";
 
 /* ================= GUARDS ================= */
 import ProtectedRoute from "./ProtectedRoute";
@@ -45,10 +50,14 @@ export default function AppRoutes() {
         <Route path="/success/:reference" element={<TicketSuccess />} />
         <Route path="/payment/pending" element={<PaymentPending />} />
         <Route path="/my-tickets" element={<MyTickets />} />
+        <Route path="/campusambassadors" element={<CampusAmbassadors />} />
+        <Route path="/ambassador" element={<AmbassadorDashboard />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* ========= ORGANIZER ========= */}
         <Route
@@ -188,6 +197,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <AdminRoute>
                 <AdminSalesAnalytics />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/ambassadors"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminAmbassadors />
               </AdminRoute>
             </ProtectedRoute>
           }

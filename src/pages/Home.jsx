@@ -526,6 +526,9 @@ function Footer() {
             <button onClick={() => navigate("/register")}>Create an event</button>
             <button onClick={() => navigate("/login")}>Organizer login</button>
             <button onClick={() => scrollTo("organizers")}>Features</button>
+            <button onClick={() => navigate("/campusambassadors")}>
+              Become a Campus Partner
+            </button>
           </div>
 
           <div className="tf-footer-col">

@@ -41,6 +41,9 @@ const BASE_CSS = `
     .lg-input { font-size:16px !important; } /* prevents iOS focus zoom */
   }
 
+  .lg-forgot { display:block; margin:14px auto 0; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:4px 8px; transition:color .2s; }
+  .lg-forgot:hover { color:var(--gold); }
+
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 `;
 
@@ -228,7 +231,11 @@ export default function Login() {
       const { user } = res;
       if (!user?.role) throw new Error();
       navigate(
-        user.role === "admin" ? "/admin/dashboard" : "/organizer/dashboard",
+        user.role === "admin"
+          ? "/admin/dashboard"
+          : user.role === "ambassador"
+            ? "/ambassador"
+            : "/organizer/dashboard",
         { replace: true },
       );
     } catch {
@@ -500,6 +507,14 @@ export default function Login() {
             Sign In →
           </button>
         </form>
+
+        <button
+          type="button"
+          className="lg-forgot"
+          onClick={() => navigate("/forgot-password")}
+        >
+          Forgot password?
+        </button>
 
         <p
           style={{
