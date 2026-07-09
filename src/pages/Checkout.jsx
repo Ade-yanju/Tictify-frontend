@@ -77,6 +77,7 @@ export default function Checkout() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [qty, setQty] = useState(1);
   const [focused, setFocused] = useState({});
   const [event, setEvent] = useState(null);
   const [ticket, setTicket] = useState(null);
@@ -129,7 +130,7 @@ export default function Checkout() {
     (async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/payments/quote?price=${ticket.price}`,
+          `${import.meta.env.VITE_API_URL}/api/payments/quote?price=${ticket.price}&qty=${qty}`,
         );
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -141,7 +142,7 @@ export default function Checkout() {
     return () => {
       active = false;
     };
-  }, [ticket]);
+  }, [ticket, qty]);
 
   async function handlePayment() {
     if (!canPay) return;
@@ -157,6 +158,7 @@ export default function Checkout() {
           body: JSON.stringify({
             eventId: id,
             ticketType: ticket.name,
+            quantity: qty,
             name,
             email,
             ...(promoterRef ? { promoter: promoterRef } : {}),
@@ -323,6 +325,41 @@ export default function Checkout() {
                     </div>
                   </div>
                 )}
+
+                <div className="ck-field">
+                  <label className="ck-label">Tickets</label>
+                  <div
+                    className="ck-stepper"
+                    role="group"
+                    aria-label="Ticket quantity"
+                  >
+                    <button
+                      type="button"
+                      className="ck-step-btn"
+                      aria-label="Decrease quantity"
+                      disabled={qty <= 1}
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    >
+                      −
+                    </button>
+                    <span className="ck-step-num">{qty}</span>
+                    <button
+                      type="button"
+                      className="ck-step-btn"
+                      aria-label="Increase quantity"
+                      disabled={qty >= 10}
+                      onClick={() => setQty((q) => Math.min(10, q + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                  {qty > 1 && ticket && (
+                    <p className="ck-step-note">
+                      One QR code admits all {qty * (ticket.groupSize || 1)} of
+                      you — arrive together or split entries at the gate.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -349,13 +386,15 @@ export default function Checkout() {
                     </div>
                     <div className="ck-sum-row">
                       <span>Quantity</span>
-                      <span className="ck-sum-val">1</span>
+                      <span className="ck-sum-val">{qty}</span>
                     </div>
                     <div className="ck-sum-row">
-                      <span>Ticket</span>
+                      <span>Ticket × {qty}</span>
                       <span className="ck-sum-val ck-num">
                         {ticket.price > 0
-                          ? `₦${ticket.price.toLocaleString()}`
+                          ? `₦${Number(
+                              quote?.subtotal ?? ticket.price * qty,
+                            ).toLocaleString()}`
                           : "Free — ₦0"}
                       </span>
                     </div>
@@ -395,7 +434,7 @@ export default function Checkout() {
                 <span className="ck-sum-total-label">Total</span>
                 <span className="ck-sum-total-num">
                   {ticket?.price > 0
-                    ? `₦${Number(quote?.total ?? ticket.price).toLocaleString()}`
+                    ? `₦${Number(quote?.total ?? ticket.price * qty).toLocaleString()}`
                     : "Free"}
                 </span>
               </div>
@@ -542,6 +581,14 @@ img { display:block; }
 .ck-select:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
 .ck-select option { background:var(--surface); color:var(--text); }
 .ck-caret { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; font-size:12px; }
+
+/* ── Quantity stepper ── */
+.ck-stepper { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:5px; }
+.ck-step-btn { width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text); font-size:18px; line-height:1; display:grid; place-items:center; cursor:pointer; transition:border-color .2s, background .2s, color .2s; }
+.ck-step-btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }
+.ck-step-btn:disabled { opacity:.35; cursor:not-allowed; }
+.ck-step-num { min-width:36px; text-align:center; font-family:var(--font-h); font-weight:700; font-size:16px; color:var(--gold); font-variant-numeric:tabular-nums; }
+.ck-step-note { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.6; }
 
 /* ── Order summary ── */
 .ck-sum { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--r); padding:clamp(20px,4vw,32px); animation:ckFadeUp .4s ease .1s both; }

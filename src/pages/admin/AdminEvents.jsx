@@ -116,6 +116,12 @@ export default function AdminEvents() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const itemsPerPage = 10;
 
@@ -144,7 +150,38 @@ export default function AdminEvents() {
     }
 
     load();
-  }, [navigate]);
+  }, [navigate, reloadKey]);
+
+  async function confirmCancel() {
+    if (!cancelTarget || cancelBusy) return;
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/events/${cancelTarget._id}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify(
+            cancelReason.trim() ? { reason: cancelReason.trim() } : {},
+          ),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Unable to cancel event");
+      setCancelTarget(null);
+      setCancelReason("");
+      setNotice(data.message || "Event cancelled");
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setCancelError(err.message || "Unable to cancel event");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
 
   // Filter and sort logic
   useEffect(() => {
@@ -206,6 +243,7 @@ export default function AdminEvents() {
             <option value="LIVE">Live</option>
             <option value="ENDED">Ended</option>
             <option value="UPCOMING">Upcoming</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
 
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="aev-select">
@@ -234,6 +272,7 @@ export default function AdminEvents() {
                     <th className="aev-th">Date</th>
                     <th className="aev-th">Tickets</th>
                     <th className="aev-th">Status</th>
+                    <th className="aev-th">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,6 +299,22 @@ export default function AdminEvents() {
                       </td>
                       <td className="aev-td">
                         <StatusBadge status={event.status} />
+                      </td>
+                      <td className="aev-td">
+                        {["LIVE", "DRAFT"].includes(event.status) ? (
+                          <button
+                            className="aev-cancel-btn"
+                            onClick={() => {
+                              setCancelReason("");
+                              setCancelError("");
+                              setCancelTarget(event);
+                            }}
+                          >
+                            Cancel event
+                          </button>
+                        ) : (
+                          <span className="aev-no-action">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -302,6 +357,63 @@ export default function AdminEvents() {
         <StatCard label="Total Tickets Sold" value={filteredEvents.reduce((sum, e) => sum + (e.ticketsSold || 0), 0)} icon={Ic.ticket} />
         <StatCard label="Total Revenue" value={`₦${filteredEvents.reduce((sum, e) => sum + (e.revenue || 0), 0).toLocaleString()}`} icon={Ic.coins} />
       </section>
+
+      {/* Cancel confirm modal */}
+      {cancelTarget && (
+        <div className="aev-overlay" role="dialog" aria-modal="true">
+          <div className="aev-modal">
+            <h3 className="aev-modal-title is-danger">Cancel this event?</h3>
+            <p className="aev-modal-event">{cancelTarget.title}</p>
+            <p className="aev-modal-text">
+              This blocks sales and gate entry, and holds the event&apos;s
+              revenue from the organizer&apos;s wallet for refunds.
+            </p>
+            <label className="aev-modal-label" htmlFor="aev-cancel-reason">
+              Reason (optional)
+            </label>
+            <textarea
+              id="aev-cancel-reason"
+              className="aev-modal-input"
+              rows={3}
+              placeholder="e.g. Suspected fraudulent activity"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+            {cancelError && <p className="aev-modal-error">{cancelError}</p>}
+            <div className="aev-modal-actions">
+              <button
+                className="aev-modal-ghost"
+                disabled={cancelBusy}
+                onClick={() => setCancelTarget(null)}
+              >
+                Keep event
+              </button>
+              <button
+                className="aev-modal-danger"
+                disabled={cancelBusy}
+                onClick={confirmCancel}
+              >
+                {cancelBusy ? "Cancelling…" : "Cancel event"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result notice */}
+      {notice && (
+        <div className="aev-overlay" role="dialog" aria-modal="true">
+          <div className="aev-modal">
+            <h3 className="aev-modal-title is-ok">Event cancelled</h3>
+            <p className="aev-modal-text">{notice}</p>
+            <div className="aev-modal-actions">
+              <button className="aev-btn-gold" onClick={() => setNotice("")}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
@@ -387,6 +499,7 @@ function StatusBadge({ status }) {
     LIVE: "is-live",
     ENDED: "is-ended",
     UPCOMING: "is-upcoming",
+    CANCELLED: "is-cancelled",
   };
   return (
     <span className={`aev-badge ${badgeClass[status] || "is-upcoming"}`}>
@@ -516,6 +629,29 @@ button, input, select { font-family:var(--font-b); }
 .aev-badge.is-live { background:var(--live); color:#080910; }
 .aev-badge.is-ended { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
 .aev-badge.is-upcoming { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
+.aev-badge.is-cancelled { background:rgba(224,92,92,.12); color:var(--danger); border:1px dashed rgba(224,92,92,.5); }
+
+/* ── Cancel action & modal ── */
+.aev-cancel-btn { background:transparent; border:1px solid rgba(224,92,92,.4); color:var(--danger); font-size:12px; font-weight:600; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:background .2s, border-color .2s; }
+.aev-cancel-btn:hover { background:rgba(224,92,92,.1); border-color:var(--danger); }
+.aev-no-action { color:var(--muted); }
+.aev-overlay { position:fixed; inset:0; z-index:3000; background:rgba(8,9,16,.8); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:grid; place-items:center; padding:20px; }
+.aev-modal { width:min(100%,420px); background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:clamp(24px,5vw,32px); animation:aev-fade .3s ease; }
+.aev-modal-title { font-family:var(--font-h); font-size:19px; font-weight:700; margin-bottom:8px; }
+.aev-modal-title.is-danger { color:var(--danger); }
+.aev-modal-title.is-ok { color:var(--live); }
+.aev-modal-event { font-weight:600; font-size:14px; margin-bottom:10px; overflow-wrap:anywhere; }
+.aev-modal-text { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:18px; }
+.aev-modal-label { display:block; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.aev-modal-input { width:100%; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:12px 14px; color:var(--text); font-size:14px; font-family:var(--font-b); outline:none; resize:vertical; transition:border-color .2s, box-shadow .2s; }
+.aev-modal-input:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
+.aev-modal-error { color:var(--danger); font-size:13px; margin-top:10px; }
+.aev-modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; flex-wrap:wrap; }
+.aev-modal-ghost { background:transparent; border:1px solid var(--border); color:var(--text); font-size:13.5px; font-weight:600; padding:11px 20px; border-radius:999px; cursor:pointer; transition:border-color .2s; }
+.aev-modal-ghost:hover:not(:disabled) { border-color:var(--border-h); }
+.aev-modal-danger { background:var(--danger); border:none; color:#080910; font-size:13.5px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+.aev-modal-danger:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 26px rgba(224,92,92,.3); }
+.aev-modal-ghost:disabled, .aev-modal-danger:disabled { opacity:.5; cursor:not-allowed; }
 
 /* ── Empty state ── */
 .aev-empty { padding:64px 20px; text-align:center; }

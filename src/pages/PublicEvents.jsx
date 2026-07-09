@@ -8,6 +8,18 @@ import { useNavigate } from "react-router-dom";
 
 const logo = "/logo.png";
 
+const CATEGORIES = [
+  "All",
+  "Nightlife",
+  "Comedy",
+  "Concert",
+  "Sports",
+  "Workshop",
+  "Festival",
+  "Campus",
+  "Other",
+];
+
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
     const el = document.createElement("style");
@@ -165,6 +177,7 @@ function EventCard({ event, onClick, index }) {
 
       <div className="pe-card-body">
         <h3 className="pe-card-title">{event.title}</h3>
+        {event.city && <span className="pe-card-city">{event.city}</span>}
         <p className="pe-card-meta">
           <span className="pe-card-ic">{Ic.pin}</span> {event.location}
         </p>
@@ -195,6 +208,7 @@ export default function PublicEvents() {
 
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -221,13 +235,15 @@ export default function PublicEvents() {
     const q = search.toLowerCase().trim();
     return events.filter((e) => {
       if (new Date(e.endDate) <= now) return false;
+      if (category !== "All" && (e.category || "Other") !== category)
+        return false;
       return (
         !q ||
         e.title?.toLowerCase().includes(q) ||
         e.location?.toLowerCase().includes(q)
       );
     });
-  }, [events, search]);
+  }, [events, search, category]);
 
   return (
     <div className="pe-page">
@@ -271,6 +287,20 @@ export default function PublicEvents() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Category chips */}
+          <div className="pe-cats" aria-label="Filter by category">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                className={`pe-cat ${category === c ? "is-active" : ""}`}
+                aria-pressed={category === c}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -382,6 +412,16 @@ img { display:block; }
 .pe-clear { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); font-size:20px; line-height:1; padding:4px; transition:color .2s; }
 .pe-clear:hover { color:var(--text); }
 .pe-search input::-webkit-search-cancel-button { -webkit-appearance:none; }
+
+/* ── Category chips ── */
+.pe-cats { display:flex; gap:8px; margin-top:16px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.pe-cats::-webkit-scrollbar { display:none; }
+.pe-cat { flex:0 0 auto; background:var(--card); border:1px solid var(--border); color:var(--muted); font-size:13px; font-weight:600; padding:8px 16px; border-radius:999px; white-space:nowrap; transition:color .25s, background .25s, border-color .25s; }
+.pe-cat:hover { color:var(--text); border-color:var(--border-h); }
+.pe-cat.is-active { background:var(--gold); border-color:var(--gold); color:#080910; font-weight:700; }
+
+/* ── Card city label ── */
+.pe-card-city { align-self:flex-start; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gold); background:var(--gold-dim); border:1px solid rgba(232,201,106,.25); padding:3px 10px; border-radius:999px; }
 
 /* ── Main / results ── */
 .pe-main { flex:1; padding-bottom:clamp(48px,8vw,96px); }

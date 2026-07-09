@@ -241,6 +241,38 @@ export default function AmbassadorDashboard() {
                   value={`₦${(stats.salesRevenue ?? 0).toLocaleString()}`}
                   tone="gold"
                 />
+                <div className="amb-kpi">
+                  <div className="amb-kpi-icon is-gold">{Ic.coins}</div>
+                  <div className="amb-kpi-content">
+                    <p className="amb-kpi-label">Commission balance</p>
+                    <h3 className="amb-kpi-value amb-kpi-value-gold">
+                      ₦{(stats.commissionBalance ?? 0).toLocaleString()}
+                    </h3>
+                    <p className="amb-kpi-earned">
+                      ₦{(stats.commissionEarned ?? 0).toLocaleString()} earned
+                      all-time
+                    </p>
+                    <p className="amb-kpi-sub">
+                      5% of platform fees from your sales &amp; organizers
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Commission withdrawal */}
+              <section className="amb-withdraw">
+                {(stats.commissionBalance ?? 0) >= 500 ? (
+                  <button
+                    className="amb-btn amb-btn-gold"
+                    onClick={() => navigate("/organizer/withdraw")}
+                  >
+                    Withdraw commissions →
+                  </button>
+                ) : (
+                  <p className="amb-withdraw-note">
+                    Withdrawals unlock at ₦500
+                  </p>
+                )}
               </section>
             </>
           )}
@@ -326,6 +358,13 @@ img { display:block; }
 .amb-kpi-content { min-width:0; }
 .amb-kpi-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); line-height:1.5; }
 .amb-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(20px,3vw,27px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
+.amb-kpi-value-gold { color:var(--gold); }
+.amb-kpi-earned { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:6px; }
+.amb-kpi-sub { font-size:11.5px; color:var(--muted); opacity:.8; line-height:1.5; margin-top:4px; }
+
+/* ── Commission withdrawal ── */
+.amb-withdraw { display:flex; justify-content:center; animation:ambFadeUp .55s ease both; }
+.amb-withdraw-note { font-size:13px; color:var(--muted); text-align:center; }
 
 /* ── Loading / error ── */
 .amb-loading { display:flex; flex-direction:column; align-items:center; gap:14px; padding:80px 0; color:var(--muted); font-size:14px; }

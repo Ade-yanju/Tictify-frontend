@@ -60,6 +60,17 @@ const NavIc = {
   ),
 };
 
+const CATEGORIES = [
+  "Nightlife",
+  "Comedy",
+  "Concert",
+  "Sports",
+  "Workshop",
+  "Festival",
+  "Campus",
+  "Other",
+];
+
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/organizer/dashboard", icon: NavIc.dashboard },
   { label: "Create Event", path: "/organizer/create-event", icon: NavIc.create },
@@ -142,6 +153,8 @@ export default function CreateEvent() {
     title: "",
     description: "",
     location: "",
+    category: "Other",
+    city: "",
     startTime: "",
     endTime: "",
     capacity: "",
@@ -224,6 +237,8 @@ export default function CreateEvent() {
         title: form.title,
         description: form.description,
         location: form.location,
+        category: form.category,
+        city: form.city,
         date: form.startTime,
         endDate: form.endTime,
         banner: bannerUrl,
@@ -269,13 +284,18 @@ export default function CreateEvent() {
     formData.append("image", banner);
 
     const res = await fetch(
-      `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_KEY}`,
-      { method: "POST", body: formData },
+      `${import.meta.env.VITE_API_URL}/api/uploads/banner`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      },
     );
 
-    const data = await res.json();
-    if (!data.success) throw new Error("Banner upload failed");
-    return data.data.url;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url)
+      throw new Error(data.message || "Banner upload failed");
+    return data.url;
   };
 
   return (
@@ -392,6 +412,41 @@ export default function CreateEvent() {
                   id="cev-location"
                   name="location"
                   placeholder="Location"
+                  className="cev-input"
+                  onChange={updateField}
+                />
+              </div>
+              <div className="cev-field">
+                <label className="cev-field-label" htmlFor="cev-category">
+                  Category
+                </label>
+                <div className="cev-selectwrap">
+                  <select
+                    id="cev-category"
+                    name="category"
+                    className="cev-input cev-selectinput"
+                    value={form.category}
+                    onChange={updateField}
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="cev-caret" aria-hidden="true">
+                    ▾
+                  </span>
+                </div>
+              </div>
+              <div className="cev-field">
+                <label className="cev-field-label" htmlFor="cev-city">
+                  City
+                </label>
+                <input
+                  id="cev-city"
+                  name="city"
+                  placeholder="e.g. Lagos"
                   className="cev-input"
                   onChange={updateField}
                 />
@@ -727,6 +782,12 @@ input, textarea, select { font-family:var(--font-b); }
 .cev-input::placeholder { color:var(--muted); }
 .cev-input:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
 .cev-textarea { resize:vertical; min-height:100px; line-height:1.55; }
+
+/* category select */
+.cev-selectwrap { position:relative; }
+.cev-selectinput { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:38px; }
+.cev-selectinput option { background:var(--surface); color:var(--text); }
+.cev-caret { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; font-size:12px; }
 
 /* tickets */
 .cev-tickets { display:flex; flex-direction:column; gap:10px; }
