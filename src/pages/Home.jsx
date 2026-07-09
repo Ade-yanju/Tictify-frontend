@@ -538,7 +538,7 @@ function Footer() {
               Find my tickets
             </button>
             <button onClick={() => scrollTo("guests")}>Why Tictify</button>
-            <button onClick={() => navigate("/become-affiliate")}>
+            <button onClick={() => navigate("/affiliate")}>
               Become an affiliate
             </button>
           </div>

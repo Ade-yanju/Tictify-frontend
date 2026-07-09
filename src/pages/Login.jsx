@@ -236,7 +236,7 @@ export default function Login() {
           : user.role === "ambassador"
             ? "/ambassador"
             : user.role === "affiliate"
-              ? "/affiliate"
+              ? "/affiliate/dashboard"
               : "/organizer/dashboard",
         { replace: true },
       );

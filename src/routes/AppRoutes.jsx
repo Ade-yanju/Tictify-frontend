@@ -54,8 +54,9 @@ export default function AppRoutes() {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/campusambassadors" element={<CampusAmbassadors />} />
         <Route path="/ambassador" element={<AmbassadorDashboard />} />
+        <Route path="/affiliate" element={<BecomeAffiliate />} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
-        <Route path="/affiliate" element={<AffiliateDashboard />} />
+        <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />
