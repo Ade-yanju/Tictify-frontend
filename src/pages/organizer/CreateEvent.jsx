@@ -249,6 +249,15 @@ export default function CreateEvent() {
           quantity: Number(t.quantity),
           price: eventType === "FREE" ? 0 : Number(t.price),
           groupSize: Math.max(1, Number(t.groupSize) || 1),
+          ...(eventType === "PAID" &&
+          t.earlyBirdPrice !== "" &&
+          t.earlyBirdPrice != null &&
+          t.earlyBirdUntil
+            ? {
+                earlyBirdPrice: Number(t.earlyBirdPrice),
+                earlyBirdUntil: t.earlyBirdUntil,
+              }
+            : {}),
         })),
       };
 
@@ -551,6 +560,62 @@ export default function CreateEvent() {
                       title="How many guests one ticket admits — e.g. 4 for a Group of Friends bundle"
                     />
                   </div>
+                  {eventType === "PAID" && (
+                    <div className="cev-eb-grid">
+                      <div className="cev-field">
+                        <label
+                          className="cev-field-label"
+                          htmlFor={`cev-ebprice-${i}`}
+                        >
+                          Early-bird price ₦ (optional)
+                        </label>
+                        <input
+                          id={`cev-ebprice-${i}`}
+                          type="number"
+                          min="0"
+                          placeholder="Early-bird price ₦"
+                          className="cev-input"
+                          value={t.earlyBirdPrice ?? ""}
+                          onChange={(e) =>
+                            updateTicket(i, "earlyBirdPrice", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="cev-field">
+                        <label
+                          className="cev-field-label"
+                          htmlFor={`cev-ebuntil-${i}`}
+                        >
+                          until
+                        </label>
+                        <input
+                          id={`cev-ebuntil-${i}`}
+                          type="datetime-local"
+                          className="cev-input"
+                          value={t.earlyBirdUntil ?? ""}
+                          onChange={(e) =>
+                            updateTicket(i, "earlyBirdUntil", e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {eventType === "PAID" &&
+                    t.earlyBirdPrice !== "" &&
+                    t.earlyBirdPrice != null &&
+                    t.earlyBirdUntil && (
+                      <p className="cev-group-hint">
+                        Early-bird ₦{Number(t.earlyBirdPrice).toLocaleString()}{" "}
+                        until{" "}
+                        {new Date(t.earlyBirdUntil).toLocaleString("en-NG", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    )}
                   {Number(t.groupSize) > 1 && (
                     <p className="cev-group-hint">
                       One QR code admits {t.groupSize} guests at the gate
@@ -797,7 +862,8 @@ input, textarea, select { font-family:var(--font-b); }
 .cev-ticket-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:10px; }
 .cev-add { margin-top:12px; width:100%; background:transparent; border:1.5px dashed rgba(232,201,106,.45); color:var(--gold); padding:12px; border-radius:var(--r-sm); font-weight:600; font-size:13.5px; transition:background .25s, border-color .25s; }
 .cev-add-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.cev-group-hint { margin-top:8px; font-size:12px; color:var(--gold); background:var(--gold-dim); border-radius:8px; padding:7px 12px; display:inline-block; }
+.cev-group-hint { margin-top:8px; margin-right:8px; font-size:12px; color:var(--gold); background:var(--gold-dim); border-radius:8px; padding:7px 12px; display:inline-block; }
+.cev-eb-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:10px; margin-top:10px; }
 @media (max-width:560px) { .cev-add-row { grid-template-columns:1fr; } }
 .cev-add:hover { background:var(--gold-dim); border-color:var(--gold); }
 

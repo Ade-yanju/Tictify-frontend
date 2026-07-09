@@ -146,6 +146,27 @@ function fmtMoney(n) {
   return `₦${v.toLocaleString()}`;
 }
 
+const CATEGORIES = [
+  "Nightlife",
+  "Comedy",
+  "Concert",
+  "Sports",
+  "Workshop",
+  "Festival",
+  "Campus",
+  "Other",
+];
+
+/* datetime → value usable by <input type="datetime-local"> */
+function toLocalInput(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (isNaN(dt)) return "";
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
+
 export default function MyEvents() {
   injectStyles("tictify-mev-css", CSS);
   const navigate = useNavigate();
@@ -158,6 +179,15 @@ export default function MyEvents() {
   const [promoEvent, setPromoEvent] = useState(null);
   const [exportingId, setExportingId] = useState(null);
   const [errorNotice, setErrorNotice] = useState(null);
+  const [editEvent, setEditEvent] = useState(null);
+  const [discountEvent, setDiscountEvent] = useState(null);
+  const [successNotice, setSuccessNotice] = useState("");
+
+  useEffect(() => {
+    if (!successNotice) return;
+    const t = setTimeout(() => setSuccessNotice(""), 3000);
+    return () => clearTimeout(t);
+  }, [successNotice]);
 
   /* ================= FETCH ================= */
   async function fetchEvents() {
@@ -301,6 +331,31 @@ export default function MyEvents() {
         />
       )}
 
+      {editEvent && (
+        <EditEventModal
+          event={editEvent}
+          onClose={() => setEditEvent(null)}
+          onSaved={async (message) => {
+            setEditEvent(null);
+            setSuccessNotice(message || "Event updated successfully");
+            await fetchEvents();
+          }}
+        />
+      )}
+
+      {discountEvent && (
+        <DiscountModal
+          event={discountEvent}
+          onClose={() => setDiscountEvent(null)}
+        />
+      )}
+
+      {successNotice && (
+        <div className="mev-toast" role="status">
+          {successNotice}
+        </div>
+      )}
+
       {/* HEADER */}
       <header className="mev-head">
         <div>
@@ -411,6 +466,20 @@ export default function MyEvents() {
                     onClick={() => setPromoEvent(event)}
                   >
                     Promoter link
+                  </button>
+
+                  <button
+                    className="mev-abtn mev-abtn-tool"
+                    onClick={() => setEditEvent(event)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    className="mev-abtn mev-abtn-tool"
+                    onClick={() => setDiscountEvent(event)}
+                  >
+                    Discount codes
                   </button>
 
                   <button
@@ -560,6 +629,400 @@ function PromoterModal({ event, onClose }) {
             onClick={copyLink}
           >
             {copied ? "Copied ✓" : "Copy link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditEventModal({ event, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    title: event.title || "",
+    description: event.description || "",
+    location: event.location || "",
+    city: event.city || "",
+    category: CATEGORIES.includes(event.category) ? event.category : "Other",
+    startTime: toLocalInput(event.date),
+    endTime: toLocalInput(event.endDate),
+    capacity: event.capacity ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/events/${event._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            title: form.title,
+            description: form.description,
+            location: form.location,
+            city: form.city,
+            category: form.category,
+            ...(form.startTime ? { date: form.startTime } : {}),
+            ...(form.endTime ? { endDate: form.endTime } : {}),
+            ...(form.capacity !== "" && form.capacity != null
+              ? { capacity: Number(form.capacity) }
+              : {}),
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to update event");
+      onSaved(data.message || "Event updated successfully");
+    } catch (err) {
+      setError(err.message || "Failed to update event");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mev-overlay" onClick={onClose}>
+      <div
+        className="mev-modal mev-edit-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>Edit event</h3>
+
+        <div className="mev-form-grid">
+          <div className="mev-form-field mev-form-span2">
+            <label className="mev-form-label" htmlFor="mev-edit-title">
+              Title
+            </label>
+            <input
+              id="mev-edit-title"
+              className="mev-form-input"
+              name="title"
+              value={form.title}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <label className="mev-form-label" htmlFor="mev-edit-desc">
+              Description
+            </label>
+            <textarea
+              id="mev-edit-desc"
+              rows={3}
+              className="mev-form-input mev-form-textarea"
+              name="description"
+              value={form.description}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <label className="mev-form-label" htmlFor="mev-edit-location">
+              Location
+            </label>
+            <input
+              id="mev-edit-location"
+              className="mev-form-input"
+              name="location"
+              value={form.location}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field">
+            <label className="mev-form-label" htmlFor="mev-edit-city">
+              City
+            </label>
+            <input
+              id="mev-edit-city"
+              className="mev-form-input"
+              name="city"
+              value={form.city}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field">
+            <label className="mev-form-label" htmlFor="mev-edit-category">
+              Category
+            </label>
+            <select
+              id="mev-edit-category"
+              className="mev-form-input mev-form-select"
+              name="category"
+              value={form.category}
+              onChange={update}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mev-form-field">
+            <label className="mev-form-label" htmlFor="mev-edit-start">
+              Starts
+            </label>
+            <input
+              id="mev-edit-start"
+              type="datetime-local"
+              className="mev-form-input"
+              name="startTime"
+              value={form.startTime}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field">
+            <label className="mev-form-label" htmlFor="mev-edit-end">
+              Ends
+            </label>
+            <input
+              id="mev-edit-end"
+              type="datetime-local"
+              className="mev-form-input"
+              name="endTime"
+              value={form.endTime}
+              onChange={update}
+            />
+          </div>
+
+          <div className="mev-form-field">
+            <label className="mev-form-label" htmlFor="mev-edit-capacity">
+              Capacity
+            </label>
+            <input
+              id="mev-edit-capacity"
+              type="number"
+              min="1"
+              className="mev-form-input"
+              name="capacity"
+              value={form.capacity}
+              onChange={update}
+            />
+          </div>
+        </div>
+
+        {error && <p className="mev-form-err">{error}</p>}
+
+        <div className="mev-modal-actions">
+          <button
+            className="mev-btn mev-btn-ghost"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            className="mev-btn mev-btn-gold"
+            onClick={save}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscountModal({ event, onClose }) {
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
+  const [newCode, setNewCode] = useState("");
+  const [percentOff, setPercentOff] = useState("");
+  const [maxUses, setMaxUses] = useState("");
+
+  async function loadCodes() {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/discounts/event/${event._id}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      const data = await res.json().catch(() => []);
+      if (!res.ok)
+        throw new Error(data.message || "Unable to load discount codes");
+      setCodes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || "Unable to load discount codes");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCodes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function createCode() {
+    if (creating) return;
+    setCreating(true);
+    setError("");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/discounts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          eventId: event._id,
+          code: newCode.trim(),
+          percentOff: Number(percentOff),
+          maxUses: Number(maxUses),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to create code");
+      setNewCode("");
+      setPercentOff("");
+      setMaxUses("");
+      await loadCodes();
+    } catch (err) {
+      setError(err.message || "Failed to create code");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function toggleCode(id) {
+    if (togglingId) return;
+    setTogglingId(id);
+    setError("");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/discounts/${id}/toggle`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to update code");
+      setCodes((list) =>
+        list.map((c) => (c._id === id ? { ...c, active: data.active } : c)),
+      );
+    } catch (err) {
+      setError(err.message || "Failed to update code");
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  const canCreate =
+    newCode.trim().length >= 2 &&
+    Number(percentOff) > 0 &&
+    Number(percentOff) <= 100 &&
+    Number(maxUses) > 0;
+
+  return (
+    <div className="mev-overlay" onClick={onClose}>
+      <div
+        className="mev-modal mev-disc-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>Discount codes</h3>
+        <p className="mev-promo-explainer">{event.title}</p>
+
+        {loading ? (
+          <p className="mev-disc-loading">Loading codes…</p>
+        ) : codes.length === 0 ? (
+          <p className="mev-disc-empty">
+            No discount codes yet — create one below.
+          </p>
+        ) : (
+          <div className="mev-disc-list">
+            {codes.map((c) => (
+              <div className="mev-disc-row" key={c._id}>
+                <div className="mev-disc-info">
+                  <span className="mev-disc-code">{c.code}</span>
+                  <span className="mev-disc-meta">
+                    {c.percentOff}% off · {c.uses ?? 0}/{c.maxUses} used
+                  </span>
+                </div>
+                <span
+                  className={`mev-disc-pill ${c.active ? "is-on" : "is-off"}`}
+                >
+                  {c.active ? "Active" : "Inactive"}
+                </span>
+                <button
+                  className="mev-abtn mev-abtn-tool mev-disc-toggle"
+                  disabled={togglingId === c._id}
+                  onClick={() => toggleCode(c._id)}
+                >
+                  {togglingId === c._id
+                    ? "…"
+                    : c.active
+                      ? "Disable"
+                      : "Enable"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mev-disc-create">
+          <p className="mev-promo-label">New code</p>
+          <div className="mev-disc-create-row">
+            <input
+              className="mev-form-input mev-disc-code-input"
+              placeholder="CODE"
+              value={newCode}
+              onChange={(e) =>
+                setNewCode(
+                  e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9_-]/g, "")
+                    .slice(0, 30),
+                )
+              }
+            />
+            <input
+              className="mev-form-input mev-disc-num-input"
+              type="number"
+              min="1"
+              max="100"
+              placeholder="% off"
+              value={percentOff}
+              onChange={(e) => setPercentOff(e.target.value)}
+            />
+            <input
+              className="mev-form-input mev-disc-num-input"
+              type="number"
+              min="1"
+              placeholder="Max uses"
+              value={maxUses}
+              onChange={(e) => setMaxUses(e.target.value)}
+            />
+            <button
+              className="mev-btn mev-btn-gold mev-disc-create-btn"
+              disabled={!canCreate || creating}
+              onClick={createCode}
+            >
+              {creating ? "Creating…" : "Create"}
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="mev-form-err">{error}</p>}
+
+        <div className="mev-modal-actions">
+          <button className="mev-btn mev-btn-ghost" onClick={onClose}>
+            Close
           </button>
         </div>
       </div>
@@ -728,6 +1191,46 @@ button { font-family:var(--font-b); cursor:pointer; }
 /* ── Error modal ── */
 .mev-error-modal { border-color:rgba(224,92,92,.35); background:linear-gradient(180deg, rgba(224,92,92,.08), var(--surface) 55%); }
 .mev-error-modal h3 { color:var(--danger); }
+
+/* ── Success toast ── */
+.mev-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:2100; max-width:min(92vw,420px); background:rgba(107,240,160,.12); border:1px solid rgba(107,240,160,.4); color:var(--live); font-size:13.5px; font-weight:600; padding:12px 20px; border-radius:999px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); animation:mevPop .3s ease; text-align:center; }
+
+/* ── Edit event modal ── */
+.mev-edit-modal { width:min(100%,540px); text-align:left; max-height:90svh; overflow-y:auto; }
+.mev-edit-modal h3 { text-align:left; margin-bottom:18px; }
+.mev-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.mev-form-span2 { grid-column:1 / -1; }
+.mev-form-field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.mev-form-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.mev-form-input { width:100%; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; font-family:var(--font-b); outline:none; color-scheme:dark; transition:border-color .2s, box-shadow .2s; }
+.mev-form-input::placeholder { color:var(--muted); }
+.mev-form-input:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
+.mev-form-textarea { resize:vertical; min-height:80px; line-height:1.55; }
+.mev-form-select { appearance:none; -webkit-appearance:none; cursor:pointer; }
+.mev-form-select option { background:var(--surface); color:var(--text); }
+.mev-form-err { margin-top:14px; padding:11px 14px; border-radius:var(--r-sm); background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.3); color:var(--danger); font-size:13px; line-height:1.5; }
+.mev-edit-modal .mev-modal-actions, .mev-disc-modal .mev-modal-actions { justify-content:flex-end; }
+@media (max-width:480px) { .mev-form-grid { grid-template-columns:1fr; } }
+
+/* ── Discount codes modal ── */
+.mev-disc-modal { width:min(100%,520px); text-align:left; max-height:90svh; overflow-y:auto; }
+.mev-disc-modal h3 { text-align:left; }
+.mev-disc-loading, .mev-disc-empty { color:var(--muted); font-size:13.5px; padding:14px 0; }
+.mev-disc-list { display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+.mev-disc-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:11px 13px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:var(--r-sm); }
+.mev-disc-info { display:flex; flex-direction:column; gap:2px; flex:1; min-width:120px; }
+.mev-disc-code { font-family:ui-monospace, monospace; font-weight:700; font-size:13.5px; letter-spacing:.05em; color:var(--gold); overflow-wrap:anywhere; }
+.mev-disc-meta { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.mev-disc-pill { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:4px 10px; border-radius:999px; white-space:nowrap; }
+.mev-disc-pill.is-on { background:rgba(107,240,160,.14); color:var(--live); border:1px solid rgba(107,240,160,.35); }
+.mev-disc-pill.is-off { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--border); }
+.mev-disc-toggle { flex-shrink:0; }
+.mev-disc-create { border-top:1px dashed var(--border-h); padding-top:16px; }
+.mev-disc-create-row { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.mev-disc-code-input { font-family:ui-monospace, monospace; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
+.mev-disc-create-btn { grid-column:1 / -1; padding:11px 20px; font-size:13.5px; }
+.mev-disc-create-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+@media (max-width:400px) { .mev-disc-create-row { grid-template-columns:1fr 1fr; } .mev-disc-code-input { grid-column:1 / -1; } }
 
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width:480px) {

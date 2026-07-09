@@ -92,7 +92,9 @@ const NAV = [
   { label: "Ambassadors", path: "/admin/ambassadors", icon: Ic.grad },
 ];
 
-const STATUSES = ["ALL", "APPLIED", "APPROVED", "REJECTED"];
+const STATUSES = ["ALL", "APPLIED", "APPROVED", "REJECTED", "REVOKED"];
+
+const fmtNaira = (n) => `₦${Number(n || 0).toLocaleString()}`;
 
 const normStatus = (s) => (s || "APPLIED").toUpperCase();
 
@@ -109,6 +111,21 @@ export default function AdminAmbassadors() {
   const [processingId, setProcessingId] = useState(null);
   const [selected, setSelected] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [leaders, setLeaders] = useState([]);
+
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/ambassadors/leaderboard`,
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setLeaders(Array.isArray(data) ? data : []);
+    } catch {
+      /* leaderboard is non-blocking — leave as-is */
+    }
+  }
 
   async function loadAmbassadors() {
     const token = getToken();
@@ -135,6 +152,7 @@ export default function AdminAmbassadors() {
 
   useEffect(() => {
     loadAmbassadors();
+    loadLeaderboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
@@ -158,11 +176,21 @@ export default function AdminAmbassadors() {
       setTimeout(() => setSuccessMessage(""), 3000);
 
       setSelected(null);
-      await loadAmbassadors();
+      await Promise.all([loadAmbassadors(), loadLeaderboard()]);
     } catch {
       setError("Action failed. Please try again.");
     } finally {
       setProcessingId(null);
+    }
+  }
+
+  function confirmRevoke(id) {
+    if (
+      window.confirm(
+        "Revoke this partner? Their invite code will stop working immediately."
+      )
+    ) {
+      handleAction(id, "revoke");
     }
   }
 
@@ -203,6 +231,95 @@ export default function AdminAmbassadors() {
             <button className="aam-success-close" onClick={() => setSuccessMessage("")}>×</button>
           </div>
         )}
+
+        {/* Partner leaderboard */}
+        <section className="aam-lb">
+          <h2 className="aam-lb-title">Partner leaderboard</h2>
+          {leaders.length === 0 ? (
+            <p className="aam-lb-empty">No approved partners yet.</p>
+          ) : (
+            <div className="aam-lb-rows">
+              {leaders.map((l, i) => (
+                <div
+                  key={l.id}
+                  className={`aam-lb-row ${l.status === "REVOKED" ? "is-revoked" : ""}`}
+                >
+                  <span
+                    className={`aam-lb-rank ${
+                      i === 0
+                        ? "is-1"
+                        : i === 1
+                          ? "is-2"
+                          : i === 2
+                            ? "is-3"
+                            : ""
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+
+                  <div className="aam-lb-who">
+                    <span className="aam-lb-name">
+                      {l.fullName || "Partner"}
+                      {l.status === "REVOKED" && (
+                        <span className="aam-lb-revoked-badge">REVOKED</span>
+                      )}
+                    </span>
+                    <span className="aam-lb-uni">{l.university || "—"}</span>
+                    {l.inviteCode && (
+                      <span className="aam-code-badge">{l.inviteCode}</span>
+                    )}
+                  </div>
+
+                  <div className="aam-lb-stats">
+                    <div className="aam-lb-stat">
+                      <span className="aam-lb-num">
+                        {Number(l.ticketsSold || 0).toLocaleString()}
+                      </span>
+                      <span className="aam-lb-cap">Tickets</span>
+                    </div>
+                    <div className="aam-lb-stat">
+                      <span className="aam-lb-num">{fmtNaira(l.revenue)}</span>
+                      <span className="aam-lb-cap">Revenue</span>
+                    </div>
+                    <div className="aam-lb-stat">
+                      <span className="aam-lb-num">
+                        {Number(l.organizersOnboarded || 0).toLocaleString()}
+                      </span>
+                      <span className="aam-lb-cap">Organizers</span>
+                    </div>
+                    <div className="aam-lb-stat">
+                      <span className="aam-lb-num">
+                        {fmtNaira(l.commissionEarned)}
+                      </span>
+                      <span className="aam-lb-cap">Commission</span>
+                    </div>
+                  </div>
+
+                  <div className="aam-lb-actions">
+                    {l.status === "APPROVED" ? (
+                      <button
+                        className="aam-btn-danger aam-btn-sm"
+                        disabled={processingId === l.id}
+                        onClick={() => confirmRevoke(l.id)}
+                      >
+                        {processingId === l.id ? "..." : "Revoke"}
+                      </button>
+                    ) : (
+                      <button
+                        className="aam-btn-gold-ghost aam-btn-sm"
+                        disabled={processingId === l.id}
+                        onClick={() => handleAction(l.id, "reinstate")}
+                      >
+                        {processingId === l.id ? "..." : "Reinstate"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Filter */}
         <section className="aam-filter">
@@ -278,6 +395,36 @@ export default function AdminAmbassadors() {
                       <p className="aam-hint">Click to review</p>
                     </div>
                   )}
+
+                  {normStatus(amb.status) === "APPROVED" && (
+                    <div className="aam-card-actions">
+                      <button
+                        className="aam-btn-danger aam-btn-sm"
+                        disabled={processingId === amb._id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          confirmRevoke(amb._id);
+                        }}
+                      >
+                        {processingId === amb._id ? "..." : "Revoke"}
+                      </button>
+                    </div>
+                  )}
+
+                  {normStatus(amb.status) === "REVOKED" && (
+                    <div className="aam-card-actions">
+                      <button
+                        className="aam-btn-gold-ghost aam-btn-sm"
+                        disabled={processingId === amb._id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAction(amb._id, "reinstate");
+                        }}
+                      >
+                        {processingId === amb._id ? "..." : "Reinstate"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -292,6 +439,8 @@ export default function AdminAmbassadors() {
           onClose={() => setSelected(null)}
           onApprove={() => handleAction(selected._id, "approve")}
           onReject={() => handleAction(selected._id, "reject")}
+          onRevoke={() => confirmRevoke(selected._id)}
+          onReinstate={() => handleAction(selected._id, "reinstate")}
           isProcessing={processingId === selected._id}
         />
       )}
@@ -392,6 +541,7 @@ function StatusBadge({ status }) {
     APPLIED: "is-applied",
     APPROVED: "is-approved",
     REJECTED: "is-rejected",
+    REVOKED: "is-revoked",
   };
   return (
     <span className={`aam-badge ${badgeClass[status] || "is-applied"}`}>
@@ -400,7 +550,15 @@ function StatusBadge({ status }) {
   );
 }
 
-function AmbassadorModal({ ambassador, onClose, onApprove, onReject, isProcessing }) {
+function AmbassadorModal({
+  ambassador,
+  onClose,
+  onApprove,
+  onReject,
+  onRevoke,
+  onReinstate,
+  isProcessing,
+}) {
   const status = normStatus(ambassador.status);
   return (
     <div className="aam-modal" onClick={onClose}>
@@ -464,6 +622,16 @@ function AmbassadorModal({ ambassador, onClose, onApprove, onReject, isProcessin
                 {isProcessing ? "..." : "Approve"}
               </button>
             </>
+          )}
+          {status === "APPROVED" && (
+            <button className="aam-btn-danger" onClick={onRevoke} disabled={isProcessing}>
+              {isProcessing ? "..." : "Revoke"}
+            </button>
+          )}
+          {status === "REVOKED" && (
+            <button className="aam-btn-gold-ghost" onClick={onReinstate} disabled={isProcessing}>
+              {isProcessing ? "..." : "Reinstate"}
+            </button>
           )}
         </div>
       </div>
@@ -619,6 +787,37 @@ button, input, select { font-family:var(--font-b); }
 .aam-badge.is-applied { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
 .aam-badge.is-approved { background:var(--live); color:#080910; }
 .aam-badge.is-rejected { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
+.aam-badge.is-revoked { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
+
+/* ── Card actions (revoke / reinstate) ── */
+.aam-card-actions { padding:12px 18px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; }
+.aam-btn-sm { padding:8px 16px !important; font-size:12.5px !important; }
+.aam-btn-gold-ghost { background:transparent; border:1px solid rgba(232,201,106,.45); color:var(--gold); padding:11px 20px; border-radius:999px; cursor:pointer; font-weight:700; font-size:13.5px; transition:background .2s, border-color .2s; }
+.aam-btn-gold-ghost:hover:not(:disabled) { background:var(--gold-dim); border-color:var(--gold); }
+.aam-btn-gold-ghost:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Partner leaderboard ── */
+.aam-lb { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(16px,2.6vw,24px); animation:aam-fade .4s ease both; }
+.aam-lb-title { font-family:var(--font-h); font-weight:700; font-size:clamp(16px,2vw,19px); letter-spacing:-.01em; margin-bottom:16px; }
+.aam-lb-empty { color:var(--muted); font-size:14px; padding:8px 0; }
+.aam-lb-rows { display:flex; flex-direction:column; gap:8px; }
+.aam-lb-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:13px 15px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:var(--r-sm); transition:border-color .2s; }
+.aam-lb-row:hover { border-color:var(--border-h); }
+.aam-lb-row.is-revoked { opacity:.55; }
+.aam-lb-rank { flex:0 0 auto; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-h); font-weight:800; font-size:13px; background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--muted); font-variant-numeric:tabular-nums; }
+.aam-lb-rank.is-1 { background:var(--gold); border-color:var(--gold); color:#080910; box-shadow:0 0 14px var(--gold-glo); }
+.aam-lb-rank.is-2 { background:rgba(220,224,232,.85); border-color:rgba(220,224,232,.85); color:#080910; }
+.aam-lb-rank.is-3 { background:rgba(205,140,90,.85); border-color:rgba(205,140,90,.85); color:#080910; }
+.aam-lb-who { display:flex; flex-direction:column; gap:3px; min-width:140px; flex:1 1 160px; }
+.aam-lb-name { font-family:var(--font-h); font-weight:700; font-size:14px; overflow-wrap:anywhere; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.aam-lb-revoked-badge { font-family:var(--font-b); font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--danger); background:rgba(224,92,92,.15); border:1px solid rgba(224,92,92,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
+.aam-lb-uni { font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
+.aam-lb-who .aam-code-badge { margin-top:2px; }
+.aam-lb-stats { display:flex; gap:clamp(12px,2vw,26px); flex-wrap:wrap; flex:2 1 260px; }
+.aam-lb-stat { display:flex; flex-direction:column; gap:2px; min-width:64px; }
+.aam-lb-num { font-family:var(--font-h); font-weight:700; font-size:14px; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.aam-lb-cap { font-size:10.5px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.aam-lb-actions { flex:0 0 auto; margin-left:auto; }
 
 /* ── Empty state ── */
 .aam-empty { padding:64px 20px; text-align:center; }

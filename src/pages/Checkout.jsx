@@ -39,6 +39,19 @@ function Progress() {
   );
 }
 
+/* ── Early-bird helpers: earlyBirdUntil in future + earlyBirdPrice set ── */
+function isEarlyBird(t) {
+  return !!(
+    t &&
+    t.earlyBirdPrice != null &&
+    t.earlyBirdUntil &&
+    new Date(t.earlyBirdUntil) > new Date()
+  );
+}
+function effectivePrice(t) {
+  return isEarlyBird(t) ? Number(t.earlyBirdPrice) : t?.price;
+}
+
 function InputField({
   label,
   value,
@@ -85,6 +98,10 @@ export default function Checkout() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   const emailValid = useMemo(
     () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -129,10 +146,24 @@ export default function Checkout() {
     let active = true;
     (async () => {
       try {
+        const params =
+          `price=${ticket.price}&qty=${qty}` +
+          `&eventId=${id}&ticketType=${encodeURIComponent(ticket.name)}` +
+          (appliedCode ? `&code=${encodeURIComponent(appliedCode)}` : "");
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/payments/quote?price=${ticket.price}&qty=${qty}`,
+          `${import.meta.env.VITE_API_URL}/api/payments/quote?${params}`,
         );
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          if (appliedCode) {
+            const data = await res.json().catch(() => ({}));
+            if (active) {
+              setCodeError(data.message || "Invalid discount code");
+              setCodeInput("");
+              setAppliedCode("");
+            }
+          }
+          throw new Error();
+        }
         const data = await res.json();
         if (active && data && typeof data.total === "number") setQuote(data);
       } catch {
@@ -142,7 +173,7 @@ export default function Checkout() {
     return () => {
       active = false;
     };
-  }, [ticket, qty]);
+  }, [ticket, qty, id, appliedCode]);
 
   async function handlePayment() {
     if (!canPay) return;
@@ -162,6 +193,9 @@ export default function Checkout() {
             name,
             email,
             ...(promoterRef ? { promoter: promoterRef } : {}),
+            ...(quote?.discount?.code
+              ? { discountCode: quote.discount.code }
+              : {}),
           }),
         },
       );
@@ -314,7 +348,9 @@ export default function Checkout() {
                               : ""}{" "}
                             —{" "}
                             {t.price > 0
-                              ? `₦${t.price.toLocaleString()}`
+                              ? `₦${Number(effectivePrice(t)).toLocaleString()}${
+                                  isEarlyBird(t) ? " · Early bird" : ""
+                                }`
                               : "Free"}
                           </option>
                         ))}
@@ -389,13 +425,28 @@ export default function Checkout() {
                       <span className="ck-sum-val">{qty}</span>
                     </div>
                     <div className="ck-sum-row">
-                      <span>Ticket × {qty}</span>
+                      <span>
+                        Ticket × {qty}
+                        {ticket.price > 0 && isEarlyBird(ticket) && (
+                          <span className="ck-eb-badge">EARLY BIRD</span>
+                        )}
+                      </span>
                       <span className="ck-sum-val ck-num">
-                        {ticket.price > 0
-                          ? `₦${Number(
-                              quote?.subtotal ?? ticket.price * qty,
-                            ).toLocaleString()}`
-                          : "Free — ₦0"}
+                        {ticket.price > 0 ? (
+                          <>
+                            {isEarlyBird(ticket) && (
+                              <s className="ck-eb-strike">
+                                ₦{Number(ticket.price * qty).toLocaleString()}
+                              </s>
+                            )}
+                            ₦
+                            {Number(
+                              quote?.subtotal ?? effectivePrice(ticket) * qty,
+                            ).toLocaleString()}
+                          </>
+                        ) : (
+                          "Free — ₦0"
+                        )}
                       </span>
                     </div>
                     {ticket.price > 0 && quote && (
@@ -428,13 +479,77 @@ export default function Checkout() {
                 )}
               </div>
 
+              {/* ── Discount code ── */}
+              {ticket?.price > 0 && (
+                <div className="ck-disc">
+                  {quote?.discount ? (
+                    <div className="ck-disc-applied">
+                      <span>
+                        Discount ({quote.discount.code} −
+                        {quote.discount.percentOff}%) — −₦
+                        {Number(quote.discountAmount || 0).toLocaleString()}
+                      </span>
+                      <button
+                        type="button"
+                        className="ck-disc-remove"
+                        aria-label="Remove discount"
+                        onClick={() => {
+                          setAppliedCode("");
+                          setCodeInput("");
+                          setCodeError("");
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="ck-disc-toggle"
+                        aria-expanded={codeOpen}
+                        onClick={() => setCodeOpen((v) => !v)}
+                      >
+                        Have a discount code?{" "}
+                        <span aria-hidden="true">{codeOpen ? "▴" : "▾"}</span>
+                      </button>
+                      {codeOpen && (
+                        <div className="ck-disc-row">
+                          <input
+                            className="ck-input ck-disc-input"
+                            placeholder="DISCOUNT CODE"
+                            value={codeInput}
+                            onChange={(e) => {
+                              setCodeInput(e.target.value.toUpperCase());
+                              setCodeError("");
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="ck-btn-ghost ck-disc-apply"
+                            disabled={!codeInput.trim()}
+                            onClick={() => {
+                              setCodeError("");
+                              setAppliedCode(codeInput.trim());
+                            }}
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      )}
+                      {codeError && <p className="ck-disc-err">{codeError}</p>}
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="ck-sum-divider" aria-hidden="true" />
 
               <div className="ck-sum-total">
                 <span className="ck-sum-total-label">Total</span>
                 <span className="ck-sum-total-num">
                   {ticket?.price > 0
-                    ? `₦${Number(quote?.total ?? ticket.price * qty).toLocaleString()}`
+                    ? `₦${Number(quote?.total ?? effectivePrice(ticket) * qty).toLocaleString()}`
                     : "Free"}
                 </span>
               </div>
@@ -608,6 +723,24 @@ img { display:block; }
 .ck-sum-total { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.22); border-radius:var(--r-sm); margin-bottom:16px; }
 .ck-sum-total-label { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
 .ck-sum-total-num { font-family:var(--font-h); font-weight:800; font-size:clamp(22px,3vw,26px); color:var(--gold); font-variant-numeric:tabular-nums; }
+
+/* ── Discount code ── */
+.ck-disc { margin-bottom:16px; }
+.ck-disc-toggle { background:none; border:none; padding:0; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:color .2s; }
+.ck-disc-toggle:hover { color:var(--gold); }
+.ck-disc-row { display:flex; gap:8px; margin-top:10px; }
+.ck-disc-input { flex:1; min-width:0; padding:11px 14px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; }
+.ck-disc-input::placeholder { letter-spacing:.05em; }
+.ck-disc-apply { flex-shrink:0; padding:10px 18px; font-size:13px; }
+.ck-disc-apply:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+.ck-disc-err { margin-top:8px; font-size:12px; color:var(--danger); line-height:1.5; }
+.ck-disc-applied { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--r-sm); background:rgba(107,240,160,.08); border:1px solid rgba(107,240,160,.3); color:var(--live); font-size:13px; line-height:1.5; font-variant-numeric:tabular-nums; }
+.ck-disc-remove { background:none; border:none; padding:2px 4px; color:var(--live); font-size:13px; line-height:1; cursor:pointer; flex-shrink:0; opacity:.8; transition:opacity .2s; }
+.ck-disc-remove:hover { opacity:1; }
+
+/* ── Early bird ── */
+.ck-eb-badge { display:inline-block; margin-left:8px; font-size:9.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); background:var(--gold-dim); border:1px solid rgba(232,201,106,.35); border-radius:999px; padding:2px 8px; vertical-align:middle; white-space:nowrap; }
+.ck-eb-strike { color:var(--muted); text-decoration:line-through; margin-right:8px; font-weight:400; }
 
 /* ── Error banner ── */
 .ck-error-banner { padding:12px 16px; border-radius:var(--r-sm); margin-bottom:16px; background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.3); color:var(--danger); font-size:13px; line-height:1.5; }

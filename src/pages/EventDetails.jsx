@@ -103,8 +103,22 @@ function Footer() {
   );
 }
 
+/* ── Early-bird helpers: earlyBirdUntil in future + earlyBirdPrice set ── */
+function isEarlyBird(t) {
+  return !!(
+    t &&
+    t.earlyBirdPrice != null &&
+    t.earlyBirdUntil &&
+    new Date(t.earlyBirdUntil) > new Date()
+  );
+}
+function effectivePrice(t) {
+  return isEarlyBird(t) ? Number(t.earlyBirdPrice) : t?.price;
+}
+
 /* ── Ticket-type option card ─────────────────────────────── */
 function TicketOption({ ticket, selected, onSelect }) {
+  const eb = isEarlyBird(ticket) && ticket.price > 0;
   return (
     <label
       onClick={() => onSelect(ticket)}
@@ -124,10 +138,26 @@ function TicketOption({ ticket, selected, onSelect }) {
           {ticket.description && (
             <span className="ed-ticket-desc">{ticket.description}</span>
           )}
+          {eb && (
+            <span className="ed-eb-caption">
+              EARLY BIRD until{" "}
+              {new Date(ticket.earlyBirdUntil).toLocaleDateString("en-NG", {
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
+          )}
         </span>
       </div>
-      <span className="ed-ticket-price">
-        {ticket.price > 0 ? `₦${ticket.price.toLocaleString()}` : "Free"}
+      <span className="ed-ticket-pricing">
+        {eb && (
+          <s className="ed-eb-strike">₦{ticket.price.toLocaleString()}</s>
+        )}
+        <span className="ed-ticket-price">
+          {ticket.price > 0
+            ? `₦${Number(effectivePrice(ticket)).toLocaleString()}`
+            : "Free"}
+        </span>
       </span>
     </label>
   );
@@ -366,7 +396,7 @@ export default function EventDetails() {
           <span className="ed-ctabar-price">
             {selectedTicket
               ? selectedTicket.price > 0
-                ? `₦${selectedTicket.price.toLocaleString()}`
+                ? `₦${Number(effectivePrice(selectedTicket)).toLocaleString()}`
                 : "Free"
               : "—"}
           </span>
@@ -483,6 +513,9 @@ img { display:block; }
 .ed-ticket-name { font-family:var(--font-h); font-weight:600; font-size:14px; color:var(--text); }
 .ed-ticket-desc { font-size:12px; color:var(--muted); }
 .ed-ticket-price { font-family:var(--font-h); font-weight:800; font-size:16px; color:var(--gold); white-space:nowrap; flex-shrink:0; }
+.ed-ticket-pricing { display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
+.ed-eb-strike { font-size:12px; color:var(--muted); text-decoration:line-through; white-space:nowrap; }
+.ed-eb-caption { display:inline-flex; align-self:flex-start; margin-top:3px; font-family:var(--font-h); font-size:9.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); background:var(--gold-dim); border:1px solid rgba(232,201,106,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
 
 /* email field */
 .ed-field { margin-bottom:20px; }
