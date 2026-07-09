@@ -305,7 +305,7 @@ export default function Checkout() {
               <div className="ck-fields">
                 <InputField
                   label="Full Name"
-                  placeholder="Jane Doe"
+                  placeholder="Gabriel Ogunfunminiyi"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   error={nameValid ? "" : "Enter your full name"}

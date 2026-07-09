@@ -236,7 +236,7 @@ export default function Register() {
             <input
               type="text"
               className={`rg-input${focused.name ? " is-f" : ""}`}
-              placeholder="Jane Doe"
+              placeholder="Gabriel Ogunfunminiyi"
               value={form.name}
               onChange={set("name")}
               onFocus={() => setFocused((f) => ({ ...f, name: true }))}
