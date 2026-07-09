@@ -10,6 +10,8 @@ import PaymentPending from "../pages/PaymentPending";
 import MyTickets from "../pages/MyTickets";
 import CampusAmbassadors from "../pages/CampusAmbassadors";
 import AmbassadorDashboard from "../pages/AmbassadorDashboard";
+import BecomeAffiliate from "../pages/BecomeAffiliate";
+import AffiliateDashboard from "../pages/AffiliateDashboard";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -52,6 +54,8 @@ export default function AppRoutes() {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/campusambassadors" element={<CampusAmbassadors />} />
         <Route path="/ambassador" element={<AmbassadorDashboard />} />
+        <Route path="/become-affiliate" element={<BecomeAffiliate />} />
+        <Route path="/affiliate" element={<AffiliateDashboard />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />

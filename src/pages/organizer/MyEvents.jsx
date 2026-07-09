@@ -649,6 +649,17 @@ function EditEventModal({ event, onClose, onSaved }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [affiliatesEnabled, setAffiliatesEnabled] = useState(
+    !!event.affiliatesEnabled,
+  );
+  const [affiliatePercent, setAffiliatePercent] = useState(
+    event.affiliatePercent ?? 15,
+  );
+
+  const affPercentClamped = Math.min(
+    50,
+    Math.max(1, Number(affiliatePercent) || 15),
+  );
 
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -675,6 +686,10 @@ function EditEventModal({ event, onClose, onSaved }) {
             ...(form.endTime ? { endDate: form.endTime } : {}),
             ...(form.capacity !== "" && form.capacity != null
               ? { capacity: Number(form.capacity) }
+              : {}),
+            affiliatesEnabled,
+            ...(affiliatesEnabled
+              ? { affiliatePercent: affPercentClamped }
               : {}),
           }),
         },
@@ -811,6 +826,41 @@ function EditEventModal({ event, onClose, onSaved }) {
               onChange={update}
             />
           </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <button
+              type="button"
+              className={`mev-aff-toggle ${affiliatesEnabled ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={affiliatesEnabled}
+              onClick={() => setAffiliatesEnabled((v) => !v)}
+            >
+              <span className="mev-aff-knob" aria-hidden="true" />
+              <span>Allow affiliates</span>
+            </button>
+          </div>
+
+          {affiliatesEnabled && (
+            <div className="mev-form-field mev-form-span2">
+              <label className="mev-form-label" htmlFor="mev-edit-aff-percent">
+                Affiliate commission %
+              </label>
+              <input
+                id="mev-edit-aff-percent"
+                type="number"
+                min="1"
+                max="50"
+                placeholder="15"
+                className="mev-form-input mev-aff-percent-input"
+                value={affiliatePercent}
+                onChange={(e) => setAffiliatePercent(e.target.value)}
+              />
+              <p className="mev-aff-hint">
+                Affiliates earn {affPercentClamped}% of each ticket they sell —
+                paid from your revenue.
+              </p>
+            </div>
+          )}
         </div>
 
         {error && <p className="mev-form-err">{error}</p>}
@@ -1209,6 +1259,17 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-form-select { appearance:none; -webkit-appearance:none; cursor:pointer; }
 .mev-form-select option { background:var(--surface); color:var(--text); }
 .mev-form-err { margin-top:14px; padding:11px 14px; border-radius:var(--r-sm); background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.3); color:var(--danger); font-size:13px; line-height:1.5; }
+
+/* affiliate toggle (checkbox-pill) */
+.mev-aff-toggle { display:inline-flex; align-items:center; gap:10px; align-self:flex-start; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:999px; padding:8px 18px 8px 8px; color:var(--muted); font-weight:600; font-size:13.5px; transition:border-color .25s, color .25s, background .25s; }
+.mev-aff-toggle:hover { border-color:var(--border-h); }
+.mev-aff-knob { position:relative; width:34px; height:20px; border-radius:999px; background:rgba(255,255,255,.1); flex-shrink:0; transition:background .25s; }
+.mev-aff-knob::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:transform .25s, background .25s; }
+.mev-aff-toggle.is-on { border-color:rgba(232,201,106,.5); background:var(--gold-dim); color:var(--gold); }
+.mev-aff-toggle.is-on .mev-aff-knob { background:var(--gold); }
+.mev-aff-toggle.is-on .mev-aff-knob::after { transform:translateX(14px); background:#080910; }
+.mev-aff-percent-input { max-width:200px; }
+.mev-aff-hint { margin-top:4px; font-size:12px; color:var(--gold); background:var(--gold-dim); border-radius:8px; padding:7px 12px; display:inline-block; line-height:1.5; }
 .mev-edit-modal .mev-modal-actions, .mev-disc-modal .mev-modal-actions { justify-content:flex-end; }
 @media (max-width:480px) { .mev-form-grid { grid-template-columns:1fr; } }
 

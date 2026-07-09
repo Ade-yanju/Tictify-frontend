@@ -165,6 +165,13 @@ export default function CreateEvent() {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
+  const [affiliatesEnabled, setAffiliatesEnabled] = useState(false);
+  const [affiliatePercent, setAffiliatePercent] = useState(15);
+
+  const affPercentClamped = Math.min(
+    50,
+    Math.max(1, Number(affiliatePercent) || 15),
+  );
 
   /* ================= HELPERS ================= */
   const updateField = (e) =>
@@ -244,6 +251,8 @@ export default function CreateEvent() {
         banner: bannerUrl,
         status,
         capacity: Number(form.capacity),
+        affiliatesEnabled,
+        ...(affiliatesEnabled ? { affiliatePercent: affPercentClamped } : {}),
         ticketTypes: form.ticketTypes.map((t) => ({
           name: t.name,
           quantity: Number(t.quantity),
@@ -634,6 +643,45 @@ export default function CreateEvent() {
               </button>
             </div>
           </div>
+
+          {/* AFFILIATES */}
+          <div className="cev-block">
+            <p className="cev-label">Affiliates</p>
+            <button
+              type="button"
+              className={`cev-aff-toggle ${affiliatesEnabled ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={affiliatesEnabled}
+              onClick={() => setAffiliatesEnabled((v) => !v)}
+            >
+              <span className="cev-aff-knob" aria-hidden="true" />
+              <span>Allow affiliates</span>
+            </button>
+
+            {affiliatesEnabled && (
+              <div className="cev-aff-fields">
+                <div className="cev-field">
+                  <label className="cev-field-label" htmlFor="cev-aff-percent">
+                    Affiliate commission %
+                  </label>
+                  <input
+                    id="cev-aff-percent"
+                    type="number"
+                    min="1"
+                    max="50"
+                    placeholder="15"
+                    className="cev-input"
+                    value={affiliatePercent}
+                    onChange={(e) => setAffiliatePercent(e.target.value)}
+                  />
+                </div>
+                <p className="cev-group-hint">
+                  Affiliates earn {affPercentClamped}% of each ticket they sell
+                  — paid from your revenue.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* ══════════ LIVE PREVIEW COLUMN (presentational only) ══════════ */}
@@ -825,6 +873,17 @@ input, textarea, select { font-family:var(--font-b); }
 .cev-toggle { display:flex; gap:8px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:999px; padding:5px; }
 .cev-toggle-btn { flex:1; padding:11px 12px; border-radius:999px; border:none; background:transparent; color:var(--muted); font-weight:600; font-size:13.5px; transition:background .25s, color .25s; }
 .cev-toggle-btn.is-active { background:linear-gradient(135deg,#E8C96A,#F5E196); color:#080910; font-family:var(--font-h); font-weight:700; }
+
+/* affiliate toggle (checkbox-pill) */
+.cev-aff-toggle { display:inline-flex; align-items:center; gap:10px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:999px; padding:8px 18px 8px 8px; color:var(--muted); font-weight:600; font-size:13.5px; transition:border-color .25s, color .25s, background .25s; }
+.cev-aff-toggle:hover { border-color:var(--border-h); }
+.cev-aff-knob { position:relative; width:34px; height:20px; border-radius:999px; background:rgba(255,255,255,.1); flex-shrink:0; transition:background .25s; }
+.cev-aff-knob::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:transform .25s, background .25s; }
+.cev-aff-toggle.is-on { border-color:rgba(232,201,106,.5); background:var(--gold-dim); color:var(--gold); }
+.cev-aff-toggle.is-on .cev-aff-knob { background:var(--gold); }
+.cev-aff-toggle.is-on .cev-aff-knob::after { transform:translateX(14px); background:#080910; }
+.cev-aff-fields { margin-top:14px; display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.cev-aff-fields .cev-field { width:min(100%,240px); }
 
 /* banner dropzone */
 .cev-banner { display:grid; place-items:center; width:100%; aspect-ratio:16/9; border-radius:var(--r-sm); border:1.5px dashed rgba(232,201,106,.45); background:var(--gold-dim); overflow:hidden; cursor:pointer; position:relative; transition:border-color .25s, background .25s; }

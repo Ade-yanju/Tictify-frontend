@@ -235,7 +235,9 @@ export default function Login() {
           ? "/admin/dashboard"
           : user.role === "ambassador"
             ? "/ambassador"
-            : "/organizer/dashboard",
+            : user.role === "affiliate"
+              ? "/affiliate"
+              : "/organizer/dashboard",
         { replace: true },
       );
     } catch {
