@@ -20,19 +20,41 @@ function injectStyles(id, content) {
 /* ── Inline icons (dependency-free) ─────────────────────── */
 const Ic = {
   ticket: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
       <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
       <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
     </svg>
   ),
   check: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 12.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8.5 12.5l2.5 2.5 4.5-5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   lock: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
       <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
       <path d="M8 10.5V8a4 4 0 018 0v2.5" />
     </svg>
@@ -52,13 +74,22 @@ function Header() {
           onClick={() => navigate("/")}
         />
         <nav className="mtw-nav-links" aria-label="Primary">
-          <button className="mtw-link mtw-hide-sm" onClick={() => navigate("/events")}>
+          <button
+            className="mtw-link mtw-hide-sm"
+            onClick={() => navigate("/events")}
+          >
             Events
           </button>
-          <button className="mtw-btn mtw-btn-ghost" onClick={() => navigate("/login")}>
+          <button
+            className="mtw-btn mtw-btn-ghost"
+            onClick={() => navigate("/login")}
+          >
             Login
           </button>
-          <button className="mtw-btn mtw-btn-gold" onClick={() => navigate("/register")}>
+          <button
+            className="mtw-btn mtw-btn-gold"
+            onClick={() => navigate("/register")}
+          >
             Sign Up
           </button>
         </nav>
@@ -152,8 +183,8 @@ export default function MyTickets() {
               </div>
               <h1 className="mtw-title">Your ticket wallet</h1>
               <p className="mtw-sub">
-                Every ticket you&rsquo;ve bought, delivered to your inbox in
-                one tap.
+                Every ticket you&rsquo;ve bought, delivered to your inbox in one
+                tap.
               </p>
 
               <form className="mtw-form" onSubmit={handleSubmit}>
@@ -164,7 +195,7 @@ export default function MyTickets() {
                   id="mtw-email"
                   className={`mtw-input ${focused ? "is-focus" : ""} ${email && !emailValid ? "is-invalid" : ""}`}
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="gabriel@tictify.ng"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setFocused(true)}

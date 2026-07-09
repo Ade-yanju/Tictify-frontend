@@ -130,7 +130,7 @@ export default function BuyTicket({ event }) {
                 <input
                   className={`bt-input ${emailFocused ? "is-focused" : ""} ${email && !emailValid ? "is-invalid" : ""}`}
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="gabriel@tictify.ng"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)}

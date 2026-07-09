@@ -355,7 +355,7 @@ export default function EventDetails() {
                 <label className="ed-label">Your Email</label>
                 <input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="gabriel@tictify.ng"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)}

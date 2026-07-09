@@ -86,7 +86,7 @@ export default function ForgotPassword() {
                   id="fp-email"
                   type="email"
                   className="fp-input"
-                  placeholder="you@example.com"
+                  placeholder="gabriel@tictify.ng"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
@@ -111,9 +111,18 @@ export default function ForgotPassword() {
         ) : (
           <div className="fp-success" role="status">
             <div className="fp-success-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <circle cx="12" cy="12" r="9" />
-                <path d="M8.5 12.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M8.5 12.5l2.5 2.5 4.5-5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
             <h2 className="fp-title">Check your inbox</h2>

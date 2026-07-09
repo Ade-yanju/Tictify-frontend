@@ -251,7 +251,7 @@ export default function Register() {
             <input
               type="email"
               className={`rg-input${focused.email ? " is-f" : ""}`}
-              placeholder="you@example.com"
+              placeholder="gabriel@tictify.ng"
               value={form.email}
               onChange={set("email")}
               onFocus={() => setFocused((f) => ({ ...f, email: true }))}

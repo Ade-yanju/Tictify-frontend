@@ -316,7 +316,7 @@ export default function Checkout() {
                 <InputField
                   label="Email Address"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="gabriel@tictify.ng"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   error={emailValid ? "" : "Enter a valid email address"}
@@ -466,7 +466,10 @@ export default function Checkout() {
                           <div className="ck-sum-row">
                             <span>Secure payment processing</span>
                             <span className="ck-sum-val ck-num">
-                              ₦{Number(quote.processingFee || 0).toLocaleString()}
+                              ₦
+                              {Number(
+                                quote.processingFee || 0,
+                              ).toLocaleString()}
                             </span>
                           </div>
                           <p className="ck-sum-caption">
@@ -582,7 +585,7 @@ export default function Checkout() {
                   : "Confirm Free Ticket →"}
               </button>
 
-              <p className="ck-trust">🔒 Secured by ERCASPAY</p>
+              <p className="ck-trust">🔒 Secured by PAYSTACK</p>
             </div>
           </aside>
         </div>
