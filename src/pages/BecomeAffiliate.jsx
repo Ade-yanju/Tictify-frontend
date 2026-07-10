@@ -136,7 +136,7 @@ export default function BecomeAffiliate() {
     setSubmitting(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        `${import.meta.env.VITE_API_URL}/api/affiliates/join`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -144,15 +144,17 @@ export default function BecomeAffiliate() {
             name: name.trim(),
             email,
             password,
-            role: "affiliate",
           }),
         },
       );
       const data = await res.json().catch(() => ({}));
-      if (res.status !== 201 && !res.ok) {
-        throw new Error(data.message || "Registration failed. Please try again.");
+      if (!res.ok || !data.paymentUrl) {
+        throw new Error(data.message || "Could not start signup. Please try again.");
       }
-      setAffiliateCode(data.affiliateCode || "");
+      // ₦1,000 membership fee → Paystack; on success they're
+      // redirected to login and their dashboard shows the code
+      window.location.href = data.paymentUrl;
+      return;
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -276,8 +278,9 @@ export default function BecomeAffiliate() {
                       className="baf-cta"
                       disabled={submitting}
                     >
-                      {submitting ? "Creating account…" : "Create affiliate account →"}
+                      {submitting ? "Starting secure payment…" : "Pay ₦1,000 & join →"}
                     </button>
+                  <p className="baf-feenote">One-time ₦1,000 membership fee · paid securely via Paystack · your account activates the moment payment succeeds</p>
                   </form>
 
                   <p className="baf-login-note">
@@ -340,6 +343,7 @@ img { display:block; }
 
 @keyframes bafFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 
+.baf-feenote { margin-top:12px; font-size:12.5px; color:var(--muted); text-align:center; line-height:1.6; }
 .baf-page { min-height:100svh; background:var(--bg); font-family:var(--font-b); display:flex; flex-direction:column; }
 .baf-container { width:100%; max-width:1080px; margin:0 auto; padding:0 clamp(16px,4.5vw,32px); }
 
