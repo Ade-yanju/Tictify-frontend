@@ -544,6 +544,15 @@ function Footer() {
           </div>
         </div>
 
+        <div className="tf-footer-legal">
+          <button onClick={() => navigate("/terms")}>Terms of Service</button>
+          <span aria-hidden="true">·</span>
+          <button onClick={() => navigate("/privacy")}>Privacy Policy</button>
+          <span aria-hidden="true">·</span>
+          <button onClick={() => navigate("/refunds")}>Refunds</button>
+          <span aria-hidden="true">·</span>
+          <a href="mailto:tictify@gmail.com">tictify@gmail.com</a>
+        </div>
         <div className="tf-footer-bottom">
           <p>© {new Date().getFullYear()} Tictify. All rights reserved.</p>
           <p className="tf-footer-made">Built for events across Nigeria 🇳🇬</p>
@@ -703,6 +712,10 @@ section { scroll-margin-top:88px; }
 .tf-footer-col h4 { font-family:var(--font-h); font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text); margin-bottom:4px; }
 .tf-footer-col button { background:none; border:none; color:var(--muted); font-size:14px; text-align:left; padding:2px 0; transition:color .25s; }
 .tf-footer-col button:hover { color:var(--gold); }
+.tf-footer-legal { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:16px 0 0; }
+.tf-footer-legal button, .tf-footer-legal a { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:none; padding:0; font-family:var(--font-b); }
+.tf-footer-legal button:hover, .tf-footer-legal a:hover { color: var(--gold); }
+.tf-footer-legal span { color: var(--border); }
 .tf-footer-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border-top:1px solid var(--border); padding:20px 0 26px; }
 .tf-footer-bottom p { color:var(--muted); font-size:13px; }
 
@@ -723,7 +736,11 @@ section { scroll-margin-top:88px; }
   .tf-frame { width:min(78vw, 340px); }
   .tf-footer-grid { grid-template-columns:1fr 1fr; }
   .tf-footer-brand { grid-column:1 / -1; }
-  .tf-footer-bottom { flex-direction:column; align-items:flex-start; }
+  .tf-footer-legal { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:16px 0 0; }
+.tf-footer-legal button, .tf-footer-legal a { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:none; padding:0; font-family:var(--font-b); }
+.tf-footer-legal button:hover, .tf-footer-legal a:hover { color: var(--gold); }
+.tf-footer-legal span { color: var(--border); }
+.tf-footer-bottom { flex-direction:column; align-items:flex-start; }
 }
 @media (max-width: 380px) {
   .tf-footer-grid { grid-template-columns:1fr; }

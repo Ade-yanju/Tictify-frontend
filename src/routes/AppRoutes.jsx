@@ -11,6 +11,7 @@ import MyTickets from "../pages/MyTickets";
 import CampusAmbassadors from "../pages/CampusAmbassadors";
 import AmbassadorDashboard from "../pages/AmbassadorDashboard";
 import BecomeAffiliate from "../pages/BecomeAffiliate";
+import Legal from "../pages/Legal";
 import AffiliateDashboard from "../pages/AffiliateDashboard";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
@@ -55,6 +56,10 @@ export default function AppRoutes() {
         <Route path="/campusambassadors" element={<CampusAmbassadors />} />
         <Route path="/ambassador" element={<AmbassadorDashboard />} />
         <Route path="/affiliate" element={<BecomeAffiliate />} />
+        <Route path="/legal" element={<Legal />} />
+        <Route path="/terms" element={<Legal />} />
+        <Route path="/privacy" element={<Legal />} />
+        <Route path="/refunds" element={<Legal />} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
         <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
