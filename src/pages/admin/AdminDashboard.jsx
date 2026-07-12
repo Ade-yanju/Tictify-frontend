@@ -187,11 +187,11 @@ export default function AdminDashboard() {
     >
       {/* KPI Grid */}
       <section className="adb-kpis">
-        <KPICard label="Total Revenue" value={`₦${(stats.revenue || 0).toLocaleString()}`} icon={Ic.coins} trend="+12%" />
-        <KPICard label="Platform Fees" value={`₦${(stats.platformFees || 0).toLocaleString()}`} icon={Ic.chart} trend="+8%" />
-        <KPICard label="Tickets Sold" value={stats.ticketsSold || 0} icon={Ic.ticket} trend="+15%" />
-        <KPICard label="Active Events" value={stats.events || 0} icon={Ic.cal} trend="+5%" />
-        <KPICard label="Registered Organizers" value={stats.organizers || 0} icon={Ic.users} trend="+3%" />
+        <KPICard label="Total Revenue" value={`₦${(stats.revenue || 0).toLocaleString()}`} icon={Ic.coins} />
+        <KPICard label="Platform Fees" value={`₦${(stats.platformFees || 0).toLocaleString()}`} icon={Ic.chart} />
+        <KPICard label="Tickets Sold" value={stats.ticketsSold || 0} icon={Ic.ticket} />
+        <KPICard label="Active Events" value={stats.events || 0} icon={Ic.cal} />
+        <KPICard label="Registered Organizers" value={stats.organizers || 0} icon={Ic.users} />
         <KPICard label="Pending Withdrawals" value={`₦${(stats.pendingAmount || 0).toLocaleString()}`} icon={Ic.clock} />
       </section>
 
