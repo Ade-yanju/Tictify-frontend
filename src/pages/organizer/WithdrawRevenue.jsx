@@ -480,7 +480,7 @@ export default function WithdrawRevenue() {
             <div className="wdr-feebox">
               {(() => {
                 const amt = Number(form.amount);
-                const fee = amt <= 5000 ? 10 : amt <= 50000 ? 25 : 50;
+                const fee = 100; // ₦50 stamp duty + ₦50 platform fee (mirrors the server)
                 return (
                   <>
                     <div className="wdr-feerow">
@@ -488,11 +488,15 @@ export default function WithdrawRevenue() {
                       <span>₦{amt.toLocaleString()}</span>
                     </div>
                     <div className="wdr-feerow">
-                      <span>Bank transfer fee</span>
-                      <span>− ₦{fee}</span>
+                      <span>Stamp duty</span>
+                      <span>− ₦50</span>
+                    </div>
+                    <div className="wdr-feerow">
+                      <span>Platform fee</span>
+                      <span>− ₦50</span>
                     </div>
                     <div className="wdr-feerow is-total">
-                      <span>You receive</span>
+                      <span>Your bank receives</span>
                       <span>₦{(amt - fee).toLocaleString()}</span>
                     </div>
                   </>
