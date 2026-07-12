@@ -166,27 +166,40 @@ export default function WithdrawRevenue() {
   const [modal, setModal] = useState({
     open: false,
     type: "success",
+    title: "",
     message: "",
   });
 
-  useEffect(() => {
-    async function loadBalance() {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/dashboard/organizer`,
-          {
-            headers: { Authorization: `Bearer ${getToken()}` },
-          },
-        );
-        const data = await res.json();
-        setBalance(Number(data?.stats?.walletBalance || 0));
-      } catch (err) {
-        // Balance fetch failed - keep default 0
-      } finally {
-        setLoadingBalance(false);
-      }
+  // OTP confirmation step (opened after a 201 { requiresOtp: true } response)
+  const [otpStep, setOtpStep] = useState({
+    open: false,
+    withdrawalId: null,
+    message: "",
+  });
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+
+  async function loadBalance() {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/dashboard/organizer`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      const data = await res.json();
+      setBalance(Number(data?.stats?.walletBalance || 0));
+    } catch (err) {
+      // Balance fetch failed - keep default 0
+    } finally {
+      setLoadingBalance(false);
     }
+  }
+
+  useEffect(() => {
     loadBalance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fixed: Ensure the input value is always a clean number string (no commas)
@@ -242,17 +255,92 @@ export default function WithdrawRevenue() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Withdrawal failed");
 
+      if (data.requiresOtp) {
+        // No money moves yet — the server emailed a 6-digit code.
+        // Keep the form filled so a re-request is painless if the code expires.
+        setOtp("");
+        setOtpError("");
+        setOtpStep({
+          open: true,
+          withdrawalId: data.withdrawalId,
+          message:
+            data.message || "We sent a 6-digit confirmation code to your email.",
+        });
+      } else {
+        // Legacy path (no OTP required) — original success behavior
+        setModal({
+          open: true,
+          type: "success",
+          title: "",
+          message: "Payout successful! Funds are arriving now.",
+        });
+        setBalance((prev) => prev - amountNum);
+        setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
+      }
+    } catch (err) {
+      setModal({ open: true, type: "error", title: "", message: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function closeOtpStep() {
+    setOtpStep({ open: false, withdrawalId: null, message: "" });
+    setOtp("");
+    setOtpError("");
+  }
+
+  async function confirmOtp(e) {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      setOtpError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/withdrawals/${otpStep.withdrawalId}/confirm`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ otp }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data.message || "Confirmation failed. Try again.";
+        // Expired code / too many attempts / withdrawal gone → start over
+        if (res.status === 404 || /expired|too many attempts/i.test(msg)) {
+          closeOtpStep();
+          setModal({ open: true, type: "error", title: "", message: msg });
+        } else {
+          // Wrong code — server message includes attempts left
+          setOtpError(msg);
+        }
+        return;
+      }
+
+      closeOtpStep();
       setModal({
         open: true,
         type: "success",
-        message: "Payout successful! Funds are arriving now.",
+        title:
+          data.status === "PAID" ? "Payout on the way! 🎉" : "Withdrawal confirmed",
+        message: data.message || "Your withdrawal has been confirmed.",
       });
-      setBalance((prev) => prev - amountNum);
       setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
+      loadBalance();
     } catch (err) {
-      setModal({ open: true, type: "error", message: err.message });
+      setOtpError(err.message || "Something went wrong. Try again.");
     } finally {
-      setLoading(false);
+      setOtpLoading(false);
     }
   }
 
@@ -285,7 +373,7 @@ export default function WithdrawRevenue() {
                 </svg>
               )}
             </div>
-            <h3>{modal.type === "error" ? "Error" : "Success"}</h3>
+            <h3>{modal.title || (modal.type === "error" ? "Error" : "Success")}</h3>
             <p>{modal.message}</p>
             <button
               className="wdr-btn wdr-btn-gold"
@@ -294,6 +382,64 @@ export default function WithdrawRevenue() {
               OK
             </button>
           </div>
+        </div>
+      )}
+
+      {otpStep.open && (
+        <div className="wdr-overlay">
+          <form
+            className="wdr-modal is-otp"
+            onSubmit={confirmOtp}
+            aria-label="Confirm withdrawal with the code from your email"
+          >
+            <div className="wdr-modal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                <path d="M3.5 7.5l8.5 6 8.5-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3>Check your email</h3>
+            <p>{otpStep.message}</p>
+            <input
+              className="wdr-input wdr-otp-input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={otp}
+              onChange={(e) => {
+                setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setOtpError("");
+              }}
+              aria-label="6-digit confirmation code"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+            />
+            {otpError && (
+              <p className="wdr-otp-error" role="alert">
+                {otpError}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="wdr-btn wdr-btn-gold wdr-otp-confirm"
+              disabled={otpLoading || otp.length !== 6}
+            >
+              {otpLoading ? "Confirming..." : "Confirm withdrawal"}
+            </button>
+            <button
+              type="button"
+              className="wdr-otp-cancel"
+              onClick={closeOtpStep}
+              disabled={otpLoading}
+            >
+              Cancel
+            </button>
+            <p className="wdr-otp-note">
+              The code expires in 10 minutes. No money moves without it.
+            </p>
+          </form>
         </div>
       )}
 
@@ -531,4 +677,17 @@ button { cursor:pointer; }
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition:none !important; }
   .wdr-spinner { animation:wdrSpin 1s linear infinite !important; }
 }
+
+/* ── OTP confirmation step ── */
+.wdr-modal.is-otp { border-color:rgba(232,201,106,.38); background:linear-gradient(180deg, rgba(232,201,106,.09), var(--surface) 60%); }
+.wdr-modal.is-otp h3 { color:var(--gold); }
+.wdr-modal.is-otp .wdr-modal-icon { background:var(--gold-dim); color:var(--gold); }
+.wdr-modal.is-otp .wdr-otp-input { display:block; width:100%; max-width:260px; margin:0 auto 16px; padding:14px 10px; text-align:center; font-family:var(--font-h); font-weight:700; font-size:clamp(22px,7vw,28px); letter-spacing:.35em; text-indent:.35em; font-variant-numeric:tabular-nums; }
+.wdr-modal.is-otp .wdr-otp-input::placeholder { color:rgba(139,136,126,.45); letter-spacing:.35em; }
+.wdr-modal .wdr-otp-error { margin:-2px 0 16px; padding:10px 14px; background:rgba(224,92,92,.12); border:1px solid rgba(224,92,92,.3); border-radius:var(--r-sm); color:var(--danger); font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.wdr-otp-confirm { width:100%; }
+.wdr-otp-cancel { width:100%; margin-top:10px; padding:8px; background:none; border:none; color:var(--muted); font-size:13.5px; font-weight:500; transition:color .2s; }
+.wdr-otp-cancel:hover { color:var(--text); }
+.wdr-otp-cancel:disabled { opacity:.5; cursor:not-allowed; }
+.wdr-modal .wdr-otp-note { margin:14px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; }
 `;
