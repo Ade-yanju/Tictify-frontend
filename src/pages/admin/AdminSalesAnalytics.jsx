@@ -111,6 +111,12 @@ export default function AdminSalesAnalytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /* ── Platform Finance (additive) ── */
+  const [finance, setFinance] = useState(null);
+  const [financeLoading, setFinanceLoading] = useState(true);
+  const [financeError, setFinanceError] = useState("");
+  const [financeRetry, setFinanceRetry] = useState(0);
+
   /* ================= LOAD ANALYTICS ================= */
   useEffect(() => {
     const token = getToken();
@@ -148,6 +154,42 @@ export default function AdminSalesAnalytics() {
     load();
   }, [navigate]);
 
+  /* ================= LOAD PLATFORM FINANCE ================= */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return; // main effect handles the redirect
+
+    let cancelled = false;
+    setFinanceLoading(true);
+    setFinanceError("");
+
+    async function loadFinance() {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/finance`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        if (!res.ok) throw new Error("Unable to load platform finance");
+
+        const json = await res.json();
+        if (!cancelled) setFinance(json);
+      } catch {
+        // silent-retain: keep last loaded figures, just surface a retry note
+        if (!cancelled) setFinanceError("Couldn't refresh platform finance.");
+      } finally {
+        if (!cancelled) setFinanceLoading(false);
+      }
+    }
+
+    loadFinance();
+    return () => {
+      cancelled = true;
+    };
+  }, [financeRetry]);
+
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
@@ -179,6 +221,14 @@ export default function AdminSalesAnalytics() {
       navigate={navigate}
       onLogout={handleLogout}
     >
+      {/* ================= PLATFORM FINANCE ================= */}
+      <FinanceSection
+        finance={finance}
+        loading={financeLoading}
+        error={financeError}
+        onRetry={() => setFinanceRetry((n) => n + 1)}
+      />
+
       {/* ================= CHARTS ================= */}
       <section className="asa-grid">
         <Chart
@@ -342,6 +392,171 @@ function Table({ title, rows }) {
   );
 }
 
+/* ================= PLATFORM FINANCE ================= */
+
+const naira = (v) => `₦${Number(v || 0).toLocaleString()}`;
+const num = (v) => Number(v || 0).toLocaleString();
+
+function FinKpi({ label, value, sub, danger }) {
+  return (
+    <div className={`asa-fin-kpi ${danger ? "is-danger" : ""}`}>
+      <p className="asa-fin-kpi-label">{label}</p>
+      <h3 className="asa-fin-kpi-value">{value}</h3>
+      {sub && <p className="asa-fin-kpi-sub">{sub}</p>}
+    </div>
+  );
+}
+
+function FinanceSection({ finance, loading, error, onRetry }) {
+  /* Loading skeleton (only when nothing has been loaded yet) */
+  if (loading && !finance) {
+    return (
+      <section className="asa-fin">
+        <h2 className="asa-fin-heading">Platform Finance</h2>
+        <div className="asa-skel" style={{ height: 140 }} />
+        <div className="asa-fin-skel-grid">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="asa-skel" style={{ height: 100 }} />
+          ))}
+        </div>
+        <div className="asa-fin-skel-grid">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="asa-skel" style={{ height: 100 }} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  /* Error with nothing to retain — just a small retry note */
+  if (!finance) {
+    return (
+      <section className="asa-fin">
+        <div className="asa-fin-head">
+          <h2 className="asa-fin-heading">Platform Finance</h2>
+          <span className="asa-fin-retry-note">
+            {error || "Couldn't load platform finance."}
+            <button className="asa-fin-retry-btn" onClick={onRetry}>
+              Retry
+            </button>
+          </span>
+        </div>
+      </section>
+    );
+  }
+
+  const s = finance.sales || {};
+  const c = finance.commissions || {};
+  const m = finance.memberships || {};
+  const w = finance.withdrawals || {};
+  const r = finance.refunds || {};
+
+  return (
+    <section className="asa-fin">
+      <div className="asa-fin-head">
+        <h2 className="asa-fin-heading">Platform Finance</h2>
+        {error && (
+          <span className="asa-fin-retry-note">
+            {error} Showing last loaded figures.
+            <button className="asa-fin-retry-btn" onClick={onRetry}>
+              Retry
+            </button>
+          </span>
+        )}
+      </div>
+
+      {/* Hero — net platform revenue */}
+      <div className="asa-fin-hero">
+        <p className="asa-fin-hero-label">Net platform revenue</p>
+        <h2 className="asa-fin-hero-value">{naira(finance.netPlatformRevenue)}</h2>
+        <p className="asa-fin-hero-sub">
+          Platform fees + affiliate memberships + transfer-fee margin − ambassador commissions
+        </p>
+      </div>
+
+      {/* Money in */}
+      <div>
+        <h3 className="asa-fin-group-title">Money in</h3>
+        <div className="asa-fin-grid">
+          <FinKpi
+            label="Gross volume"
+            value={naira(s.grossVolume)}
+            sub="everything guests paid"
+          />
+          <FinKpi
+            label="Platform fees"
+            value={naira(s.platformFees)}
+            sub="your % on sales"
+          />
+          <FinKpi
+            label="Affiliate memberships"
+            value={naira(m.affiliateJoinRevenue)}
+            sub={`${num(m.affiliatesJoined)} joined`}
+          />
+          <FinKpi
+            label="Transfer-fee margin"
+            value={naira(w.transferFeeMargin)}
+            sub={`${num(w.processed)} payouts`}
+          />
+          <FinKpi
+            label="Processing fees"
+            value={naira(s.processingFees)}
+            sub="passed through to Paystack — not yours"
+          />
+          <FinKpi
+            label="Tickets sold"
+            value={num(s.ticketsSold)}
+            sub={`${num(s.orders)} orders`}
+          />
+        </div>
+      </div>
+
+      {/* Money out & held */}
+      <div>
+        <h3 className="asa-fin-group-title">Money out &amp; held</h3>
+        <div className="asa-fin-grid">
+          <FinKpi
+            label="Organizer ticket revenue"
+            value={naira(s.ticketRevenue)}
+          />
+          <FinKpi
+            label="Affiliate commissions paid"
+            value={naira(c.affiliatePaid)}
+            sub={`${num(c.affiliatePayments)} payments · organizer-funded`}
+          />
+          <FinKpi
+            label="Ambassador commissions"
+            value={naira(c.ambassadorPaid)}
+            sub={`${num(c.ambassadorPayments)} payments · platform-funded`}
+            danger
+          />
+          <FinKpi
+            label="Withdrawals paid out"
+            value={naira(w.paidOut)}
+            sub={`${num(w.processed)} processed`}
+          />
+          <FinKpi
+            label="Refunds"
+            value={naira(r.amount)}
+            sub={`${num(r.count)} orders`}
+            danger
+          />
+          <FinKpi
+            label="Wallet liabilities"
+            value={naira(finance.walletLiabilities)}
+            sub="held in wallets — owed out"
+          />
+        </div>
+      </div>
+
+      {/* How the money flows */}
+      <p className="asa-fin-flow">
+        Guest pays → organizer gets ticket price → Tictify keeps fees → partners earn cuts → wallets pay out.
+      </p>
+    </section>
+  );
+}
+
 function LoadingModal() {
   injectStyles("tictify-admin-sales-css", CSS);
   return (
@@ -419,6 +634,29 @@ button, input, select { font-family:var(--font-b); }
 .asa-row-name { font-weight:600; overflow-wrap:anywhere; }
 .asa-row-sold { color:var(--muted); font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .asa-row-revenue { font-family:var(--font-h); font-weight:700; color:var(--gold); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* ── Platform Finance ── */
+.asa-fin { display:flex; flex-direction:column; gap:clamp(14px,2vw,20px); min-width:0; animation:asa-fade .4s ease both; }
+.asa-fin-head { display:flex; align-items:center; justify-content:space-between; gap:10px 14px; flex-wrap:wrap; }
+.asa-fin-heading { font-family:var(--font-h); font-weight:700; font-size:18px; letter-spacing:-.01em; }
+.asa-fin-retry-note { display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12.5px; min-width:0; }
+.asa-fin-retry-btn { background:none; border:1px solid var(--border); color:var(--gold); font-size:12px; font-weight:600; padding:4px 12px; border-radius:999px; cursor:pointer; transition:border-color .2s, background .2s; }
+.asa-fin-retry-btn:hover { border-color:var(--gold); background:var(--gold-dim); }
+.asa-fin-hero { background:linear-gradient(135deg, rgba(232,201,106,.16) 0%, rgba(232,201,106,.05) 55%, rgba(255,255,255,.03) 100%); border:1px solid rgba(232,201,106,.28); border-radius:var(--r); padding:clamp(20px,3vw,32px); min-width:0; }
+.asa-fin-hero-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.asa-fin-hero-value { font-family:var(--font-h); font-weight:800; font-size:clamp(30px,5vw,46px); line-height:1.15; letter-spacing:-.02em; color:var(--gold); font-variant-numeric:tabular-nums; margin-top:8px; word-break:break-word; }
+.asa-fin-hero-sub { color:var(--muted); font-size:13px; line-height:1.6; margin-top:10px; max-width:640px; }
+.asa-fin-group-title { font-family:var(--font-h); font-weight:700; font-size:14px; margin-bottom:12px; }
+.asa-fin-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:clamp(10px,1.6vw,16px); }
+.asa-fin-kpi { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(14px,2vw,20px); min-width:0; transition:transform .25s, border-color .25s; }
+.asa-fin-kpi:hover { transform:translateY(-2px); border-color:var(--border-h); }
+.asa-fin-kpi-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.asa-fin-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(17px,2vw,22px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
+.asa-fin-kpi-sub { color:var(--muted); font-size:12px; line-height:1.5; margin-top:5px; overflow-wrap:anywhere; }
+.asa-fin-kpi.is-danger { border-color:rgba(224,92,92,.3); background:rgba(224,92,92,.06); }
+.asa-fin-kpi.is-danger .asa-fin-kpi-value { color:var(--danger); }
+.asa-fin-flow { color:var(--muted); font-size:12.5px; line-height:1.7; border:1px dashed var(--border); border-radius:var(--r-sm); padding:10px 14px; overflow-wrap:anywhere; }
+.asa-fin-skel-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:12px; }
 
 /* ── Loading / skeleton ── */
 .asa-loading { min-height:100svh; background:var(--bg); color:var(--text); padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:18px; max-width:1280px; margin:0 auto; font-family:var(--font-b); }
