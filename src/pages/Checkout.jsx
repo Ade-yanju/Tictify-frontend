@@ -268,7 +268,23 @@ export default function Checkout() {
       <div className="ck-banner">
         {event.banner && (
           <>
-            <img className="ck-banner-img" src={event.banner} alt="" />
+            {event.bannerFit === "contain" ? (
+              <>
+                <img
+                  className="ck-banner-img ck-bimg-back"
+                  src={event.banner}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className="ck-banner-img ck-bimg-front"
+                  src={event.banner}
+                  alt=""
+                />
+              </>
+            ) : (
+              <img className="ck-banner-img" src={event.banner} alt="" />
+            )}
             <div className="ck-banner-fade" aria-hidden="true" />
           </>
         )}
@@ -647,6 +663,12 @@ img { display:block; }
 .ck-banner-fade { position:absolute; inset:0; background:linear-gradient(to bottom, transparent 30%, var(--bg) 100%); }
 .ck-back { position:absolute; top:16px; left:16px; display:inline-flex; align-items:center; gap:6px; background:rgba(8,9,16,.75); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border-h); color:var(--text); padding:9px 16px; border-radius:999px; cursor:pointer; font-size:13px; transition:border-color .2s, transform .2s; }
 .ck-back:hover { border-color:var(--gold); transform:translateY(-1px); }
+
+/* banner display mode (cover / contain) */
+img.ck-bimg-back { position:absolute; inset:0; object-fit:cover; filter:blur(18px) saturate(1.1); transform:scale(1.15); opacity:.55; }
+img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
+.ck-banner .ck-banner-fade { z-index:2; }
+.ck-banner .ck-back { z-index:3; }
 
 /* ── Body wrap ── */
 .ck-wrap { max-width:1100px; margin:-24px auto 0; position:relative; z-index:1; padding:0 clamp(16px,5vw,48px) 80px; }

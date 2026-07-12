@@ -163,7 +163,25 @@ function EventCard({ event, onClick, index }) {
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <div className="pe-card-media">
-        <img src={event.banner} alt={event.title} loading="lazy" />
+        {event.bannerFit === "contain" ? (
+          <>
+            <img
+              src={event.banner}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              className="pe-bimg-back"
+            />
+            <img
+              src={event.banner}
+              alt={event.title}
+              loading="lazy"
+              className="pe-bimg-front"
+            />
+          </>
+        ) : (
+          <img src={event.banner} alt={event.title} loading="lazy" />
+        )}
         <div className="pe-card-shade" aria-hidden="true" />
         <div className="pe-card-status">
           <StatusBadge type={state.type} label={state.label} />
@@ -444,6 +462,11 @@ img { display:block; }
 .pe-card-price { position:absolute; bottom:12px; right:12px; font-family:var(--font-h); font-weight:800; font-size:13px; padding:6px 13px; border-radius:999px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid transparent; }
 .pe-card-price.is-paid { color:var(--gold); background:rgba(8,9,16,.6); border-color:rgba(232,201,106,.35); }
 .pe-card-price.is-free { color:var(--live); background:rgba(8,9,16,.6); border-color:rgba(107,240,160,.35); }
+
+/* banner display mode (cover / contain) */
+.pe-card .pe-card-media img.pe-bimg-back { position:absolute; inset:0; object-fit:cover; filter:blur(18px) saturate(1.1); transform:scale(1.15); opacity:.55; }
+.pe-card .pe-card-media img.pe-bimg-front { position:relative; z-index:1; object-fit:contain; transform:none; }
+.pe-card-media .pe-card-shade, .pe-card-media .pe-card-status, .pe-card-media .pe-card-price { z-index:2; }
 
 /* badges */
 .pe-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; font-family:var(--font-h); font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }

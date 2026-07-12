@@ -649,6 +649,9 @@ function EditEventModal({ event, onClose, onSaved }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [bannerFit, setBannerFit] = useState(
+    event.bannerFit === "contain" ? "contain" : "cover",
+  );
   const [affiliatesEnabled, setAffiliatesEnabled] = useState(
     !!event.affiliatesEnabled,
   );
@@ -682,6 +685,7 @@ function EditEventModal({ event, onClose, onSaved }) {
             location: form.location,
             city: form.city,
             category: form.category,
+            bannerFit,
             ...(form.startTime ? { date: form.startTime } : {}),
             ...(form.endTime ? { endDate: form.endTime } : {}),
             ...(form.capacity !== "" && form.capacity != null
@@ -825,6 +829,38 @@ function EditEventModal({ event, onClose, onSaved }) {
               value={form.capacity}
               onChange={update}
             />
+          </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <span className="mev-form-label">Banner display</span>
+            <div
+              className="mev-bfit-row"
+              role="group"
+              aria-label="Banner display"
+            >
+              <button
+                type="button"
+                className={`mev-bfit-pill ${bannerFit === "cover" ? "is-selected" : ""}`}
+                aria-pressed={bannerFit === "cover"}
+                onClick={() => setBannerFit("cover")}
+              >
+                Fill frame
+                <span className="mev-bfit-desc">
+                  cinematic crop — edges may be cut
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`mev-bfit-pill ${bannerFit === "contain" ? "is-selected" : ""}`}
+                aria-pressed={bannerFit === "contain"}
+                onClick={() => setBannerFit("contain")}
+              >
+                Show everything
+                <span className="mev-bfit-desc">
+                  whole flyer visible, blurred backdrop
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="mev-form-field mev-form-span2">
@@ -1259,6 +1295,13 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-form-select { appearance:none; -webkit-appearance:none; cursor:pointer; }
 .mev-form-select option { background:var(--surface); color:var(--text); }
 .mev-form-err { margin-top:14px; padding:11px 14px; border-radius:var(--r-sm); background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.3); color:var(--danger); font-size:13px; line-height:1.5; }
+
+/* banner display selector (cover / contain) */
+.mev-bfit-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.mev-bfit-pill { display:flex; flex-direction:column; gap:3px; text-align:left; padding:11px 14px; background:rgba(255,255,255,.03); border:1.5px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:var(--font-h); font-weight:700; font-size:13px; transition:border-color .2s, background .2s, color .2s; }
+.mev-bfit-pill:hover { border-color:var(--border-h); }
+.mev-bfit-pill.is-selected { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); }
+.mev-bfit-desc { font-family:var(--font-b); font-weight:400; font-size:11.5px; color:var(--muted); line-height:1.45; }
 
 /* affiliate toggle (checkbox-pill) */
 .mev-aff-toggle { display:inline-flex; align-items:center; gap:10px; align-self:flex-start; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:999px; padding:8px 18px 8px 8px; color:var(--muted); font-weight:600; font-size:13.5px; transition:border-color .25s, color .25s, background .25s; }

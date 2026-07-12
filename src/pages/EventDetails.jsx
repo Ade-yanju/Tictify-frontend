@@ -281,7 +281,23 @@ export default function EventDetails() {
 
           {/* ── Hero banner ── */}
           <div className="ed-hero">
-            <img src={event.banner} alt={event.title} />
+            {event.bannerFit === "contain" ? (
+              <>
+                <img
+                  src={event.banner}
+                  alt=""
+                  aria-hidden="true"
+                  className="ed-bimg-back"
+                />
+                <img
+                  src={event.banner}
+                  alt={event.title}
+                  className="ed-bimg-front"
+                />
+              </>
+            ) : (
+              <img src={event.banner} alt={event.title} />
+            )}
             <div className="ed-hero-shade" aria-hidden="true" />
           </div>
 
@@ -474,6 +490,11 @@ img { display:block; }
 .ed-hero { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--border); aspect-ratio:21/9; margin-bottom:clamp(24px,4vw,40px); }
 .ed-hero img { width:100%; height:100%; object-fit:cover; object-position:center; }
 .ed-hero-shade { position:absolute; inset:0; background:linear-gradient(to top, rgba(8,9,16,.75) 0%, transparent 45%); }
+
+/* banner display mode (cover / contain) */
+.ed-hero img.ed-bimg-back { position:absolute; inset:0; object-fit:cover; filter:blur(18px) saturate(1.1); transform:scale(1.15); opacity:.55; }
+.ed-hero img.ed-bimg-front { position:relative; z-index:1; object-fit:contain; }
+.ed-hero .ed-hero-shade { z-index:2; }
 
 /* ── Layout ── */
 .ed-layout { display:grid; grid-template-columns:1fr; gap:clamp(24px,4vw,40px); align-items:start; }

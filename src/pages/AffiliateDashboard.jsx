@@ -334,7 +334,25 @@ export default function AffiliateDashboard() {
                       <article className="afd-event" key={ev._id}>
                         <div className="afd-event-banner">
                           {ev.banner ? (
-                            <img src={ev.banner} alt="" loading="lazy" />
+                            ev.bannerFit === "contain" ? (
+                              <>
+                                <img
+                                  src={ev.banner}
+                                  alt=""
+                                  aria-hidden="true"
+                                  loading="lazy"
+                                  className="afd-bimg-back"
+                                />
+                                <img
+                                  src={ev.banner}
+                                  alt=""
+                                  loading="lazy"
+                                  className="afd-bimg-front"
+                                />
+                              </>
+                            ) : (
+                              <img src={ev.banner} alt="" loading="lazy" />
+                            )
                           ) : (
                             <span
                               className="afd-event-fallback"
@@ -493,6 +511,11 @@ img { display:block; }
 .afd-event-banner img { width:100%; height:100%; object-fit:cover; }
 .afd-event-fallback { font-family:var(--font-h); font-weight:800; font-size:40px; color:rgba(232,201,106,.4); }
 .afd-pill { position:absolute; top:12px; left:12px; background:var(--gold); color:#080910; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap; }
+
+/* banner display mode (cover / contain) */
+.afd-event-banner img.afd-bimg-back { position:absolute; inset:0; object-fit:cover; filter:blur(18px) saturate(1.1); transform:scale(1.15); opacity:.55; }
+.afd-event-banner img.afd-bimg-front { position:relative; z-index:1; object-fit:contain; }
+.afd-event-banner .afd-pill { z-index:2; }
 .afd-event-body { flex:1; padding:16px 18px 6px; }
 .afd-event-title { font-family:var(--font-h); font-weight:700; font-size:16px; letter-spacing:-.01em; margin-bottom:6px; overflow-wrap:anywhere; }
 .afd-event-meta { color:var(--muted); font-size:13px; line-height:1.5; overflow-wrap:anywhere; }

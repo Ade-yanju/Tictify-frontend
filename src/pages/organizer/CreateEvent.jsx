@@ -163,6 +163,7 @@ export default function CreateEvent() {
 
   const [banner, setBanner] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [bannerFit, setBannerFit] = useState("cover");
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
   const [affiliatesEnabled, setAffiliatesEnabled] = useState(false);
@@ -249,6 +250,7 @@ export default function CreateEvent() {
         date: form.startTime,
         endDate: form.endTime,
         banner: bannerUrl,
+        bannerFit,
         status,
         capacity: Number(form.capacity),
         affiliatesEnabled,
@@ -368,11 +370,27 @@ export default function CreateEvent() {
             <p className="cev-label">Event banner</p>
             <label className={`cev-banner ${preview ? "has-img" : ""}`}>
               {preview ? (
-                <img
-                  src={preview}
-                  alt="Event banner preview"
-                  className="cev-banner-img"
-                />
+                bannerFit === "contain" ? (
+                  <>
+                    <img
+                      src={preview}
+                      alt=""
+                      aria-hidden="true"
+                      className="cev-banner-img cev-bimg-back"
+                    />
+                    <img
+                      src={preview}
+                      alt="Event banner preview"
+                      className="cev-banner-img cev-bimg-front"
+                    />
+                  </>
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Event banner preview"
+                    className="cev-banner-img"
+                  />
+                )
               ) : (
                 <div className="cev-banner-empty">
                   <span className="cev-banner-icon" aria-hidden="true">
@@ -404,6 +422,52 @@ export default function CreateEvent() {
                 }}
               />
             </label>
+
+            {preview && (
+              <div className="cev-bfit">
+                <p className="cev-bfit-title">Banner display</p>
+                <div
+                  className="cev-bfit-row"
+                  role="group"
+                  aria-label="Banner display"
+                >
+                  <button
+                    type="button"
+                    className={`cev-bfit-card ${bannerFit === "cover" ? "is-selected" : ""}`}
+                    aria-pressed={bannerFit === "cover"}
+                    onClick={() => setBannerFit("cover")}
+                  >
+                    <span className="cev-bfit-thumb">
+                      <img src={preview} alt="" />
+                    </span>
+                    <span className="cev-bfit-name">Fill frame</span>
+                    <span className="cev-bfit-desc">
+                      cinematic crop — edges may be cut
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`cev-bfit-card ${bannerFit === "contain" ? "is-selected" : ""}`}
+                    aria-pressed={bannerFit === "contain"}
+                    onClick={() => setBannerFit("contain")}
+                  >
+                    <span className="cev-bfit-thumb">
+                      <img
+                        src={preview}
+                        alt=""
+                        aria-hidden="true"
+                        className="cev-bimg-back"
+                      />
+                      <img src={preview} alt="" className="cev-bimg-front" />
+                    </span>
+                    <span className="cev-bfit-name">Show everything</span>
+                    <span className="cev-bfit-desc">
+                      whole flyer visible, blurred backdrop
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* DETAILS */}
@@ -690,7 +754,19 @@ export default function CreateEvent() {
           <div className="cev-preview-card">
             <div className="cev-preview-banner">
               {preview ? (
-                <img src={preview} alt="" />
+                bannerFit === "contain" ? (
+                  <>
+                    <img
+                      src={preview}
+                      alt=""
+                      aria-hidden="true"
+                      className="cev-bimg-back"
+                    />
+                    <img src={preview} alt="" className="cev-bimg-front" />
+                  </>
+                ) : (
+                  <img src={preview} alt="" />
+                )
               ) : (
                 <span className="cev-preview-banner-empty" aria-hidden="true">
                   <svg
@@ -958,6 +1034,22 @@ input, textarea, select { font-family:var(--font-b); }
   .cev-actionbar { flex-direction:column-reverse; }
   .cev-actionbar .cev-btn { width:100%; }
 }
+
+/* ── Banner display mode (cover / contain) ── */
+.cev-bfit { margin-top:14px; }
+.cev-bfit-title { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.cev-bfit-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.cev-bfit-card { display:flex; flex-direction:column; gap:3px; text-align:left; padding:10px; background:rgba(255,255,255,.03); border:1.5px solid var(--border); border-radius:var(--r-sm); transition:border-color .2s, background .2s; }
+.cev-bfit-card:hover { border-color:var(--border-h); }
+.cev-bfit-card.is-selected { border-color:var(--gold); background:var(--gold-dim); }
+.cev-bfit-thumb { display:block; position:relative; width:100%; aspect-ratio:16/9; border-radius:8px; overflow:hidden; background:var(--surface); margin-bottom:7px; }
+.cev-bfit-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.cev-bfit-name { font-family:var(--font-h); font-weight:700; font-size:13px; color:var(--text); }
+.cev-bfit-card.is-selected .cev-bfit-name { color:var(--gold); }
+.cev-bfit-desc { font-size:11.5px; color:var(--muted); line-height:1.45; }
+.cev-preview-banner .cev-chip { z-index:2; }
+img.cev-bimg-back { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:blur(18px) saturate(1.1); transform:scale(1.15); opacity:.55; }
+img.cev-bimg-front { position:relative; z-index:1; width:100%; height:100%; object-fit:contain; display:block; }
 
 /* ── Modals ── */
 .cev-overlay { position:fixed; inset:0; z-index:3000; background:rgba(8,9,16,.8); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:grid; place-items:center; padding:20px; }
