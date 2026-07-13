@@ -52,6 +52,21 @@ function effectivePrice(t) {
   return isEarlyBird(t) ? Number(t.earlyBirdPrice) : t?.price;
 }
 
+/* In-app browsers (TikTok, Instagram, Facebook…) block the bank
+   redirects Paystack needs for 3D-Secure/OTP, so payments stall on
+   "Please close this web page to continue". Detect them and warn the
+   guest to reopen in a real browser BEFORE they reach Paystack. */
+function detectInAppBrowser() {
+  const ua = navigator.userAgent || "";
+  if (/musical_ly|Bytedance|TikTok/i.test(ua)) return "TikTok";
+  if (/Instagram/i.test(ua)) return "Instagram";
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return "Facebook";
+  if (/Snapchat/i.test(ua)) return "Snapchat";
+  if (/Twitter/i.test(ua)) return "X (Twitter)";
+  if (/LinkedInApp/i.test(ua)) return "LinkedIn";
+  return null;
+}
+
 function InputField({
   label,
   value,
@@ -102,6 +117,25 @@ export default function Checkout() {
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState("");
   const [codeError, setCodeError] = useState("");
+  const inAppBrowser = useMemo(() => detectInAppBrowser(), []);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function copyCheckoutLink() {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Older webviews lack the clipboard API — fall back to a hidden textarea
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
+  }
 
   const emailValid = useMemo(
     () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -295,6 +329,39 @@ export default function Checkout() {
 
       {/* ── BODY ── */}
       <div className="ck-wrap">
+        {inAppBrowser && (
+          <div className="ck-iab" role="alert">
+            <div className="ck-iab-head">
+              <span className="ck-iab-icon" aria-hidden="true">⚠️</span>
+              <strong>
+                You&apos;re inside {inAppBrowser}&apos;s browser — card
+                payments won&apos;t complete here.
+              </strong>
+            </div>
+            <p className="ck-iab-body">
+              {inAppBrowser} blocks the secure bank verification step, so
+              your payment would get stuck. Open this page in Safari or
+              Chrome instead:
+            </p>
+            <ol className="ck-iab-steps">
+              <li>
+                Tap the <strong>⋯</strong> (or share) icon in the corner
+              </li>
+              <li>
+                Choose <strong>“Open in browser”</strong>
+              </li>
+            </ol>
+            <button
+              type="button"
+              className="ck-iab-copy"
+              onClick={copyCheckoutLink}
+            >
+              {linkCopied
+                ? "✓ Link copied — paste it in your browser"
+                : "Copy checkout link"}
+            </button>
+          </div>
+        )}
         <Progress />
 
         <div className="ck-shell">
@@ -714,6 +781,18 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-input:focus, .ck-input.is-focused { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
 .ck-input.is-invalid { border-color:rgba(224,92,92,.45); }
 .ck-field-err { font-size:11px; color:var(--danger); margin-top:6px; }
+
+/* ── In-app browser warning ── */
+.ck-iab { background:rgba(224,92,92,0.08); border:1px solid rgba(224,92,92,0.45); border-radius:16px; padding:18px 20px; margin-bottom:20px; }
+.ck-iab-head { display:flex; align-items:flex-start; gap:10px; color:var(--text); font-size:14px; line-height:1.45; }
+.ck-iab-icon { font-size:18px; line-height:1.2; }
+.ck-iab-body { font-size:13px; color:var(--muted); margin:10px 0 8px; line-height:1.55; }
+.ck-iab-steps { font-size:13px; color:var(--text); margin:0 0 14px; padding-left:20px; line-height:1.7; }
+.ck-iab-copy { width:100%; padding:12px 16px; border-radius:12px; border:1px solid var(--gold); background:var(--gold-dim); color:var(--gold); font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:background .18s ease; }
+.ck-iab-copy:hover { background:var(--gold-glo); }
+@media (max-width:480px) {
+  .ck-iab { padding:15px 16px; border-radius:14px; }
+}
 
 .ck-selectwrap { position:relative; }
 .ck-select { width:100%; padding:14px 40px 14px 16px; appearance:none; -webkit-appearance:none; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }
