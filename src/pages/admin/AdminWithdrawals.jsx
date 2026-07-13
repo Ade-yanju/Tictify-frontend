@@ -115,6 +115,7 @@ export default function AdminWithdrawals() {
   const [processingId, setProcessingId] = useState(null);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [actionError, setActionError] = useState("");
 
   async function loadWithdrawals() {
     const token = getToken();
@@ -148,6 +149,7 @@ export default function AdminWithdrawals() {
     if (processingId) return;
 
     setProcessingId(id);
+    setActionError("");
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/admin/withdrawals/${id}/${action}`,
@@ -157,15 +159,23 @@ export default function AdminWithdrawals() {
         }
       );
 
-      if (!res.ok) throw new Error("Action failed");
+      /* Surface the server's actual reason — the payout path returns
+         Paystack's own error (e.g. transfers not enabled, balance too
+         low) and puts the request back in the pending queue. */
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Action failed");
 
-      setSuccessMessage(`Withdrawal ${action}d successfully!`);
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setSuccessMessage(data.message || `Withdrawal ${action}d successfully!`);
+      setTimeout(() => setSuccessMessage(""), 5000);
 
       setSelectedWithdrawal(null);
       await loadWithdrawals();
-    } catch {
-      setError("Action failed. Please try again.");
+    } catch (err) {
+      // Inline banner — a failed action must NOT eject the admin
+      // to the full-page error screen (their session is fine)
+      setActionError(err.message || "Action failed. Please try again.");
+      setSelectedWithdrawal(null);
+      await loadWithdrawals();
     } finally {
       setProcessingId(null);
     }
@@ -207,6 +217,14 @@ export default function AdminWithdrawals() {
           <div className="awd-success">
             <span>{successMessage}</span>
             <button className="awd-success-close" onClick={() => setSuccessMessage("")}>×</button>
+          </div>
+        )}
+
+        {/* Action failure — shows Paystack's real reason, request stays pending */}
+        {actionError && (
+          <div className="awd-action-err" role="alert">
+            <span>{actionError}</span>
+            <button className="awd-action-err-close" onClick={() => setActionError("")}>×</button>
           </div>
         )}
 
@@ -578,6 +596,8 @@ button, input, select { font-family:var(--font-b); }
 /* ── Success alert ── */
 .awd-success { background:rgba(107,240,160,.1); border:1px solid rgba(107,240,160,.4); color:var(--live); padding:13px 18px; border-radius:var(--r-sm); display:flex; justify-content:space-between; align-items:center; gap:12px; font-weight:600; font-size:14px; animation:awd-fade .3s ease; }
 .awd-success-close { background:none; border:none; color:var(--live); font-size:20px; cursor:pointer; line-height:1; }
+.awd-action-err { background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.4); color:var(--danger); padding:13px 18px; border-radius:var(--r-sm); display:flex; justify-content:space-between; align-items:center; gap:12px; font-weight:600; font-size:14px; animation:awd-fade .3s ease; }
+.awd-action-err-close { background:none; border:none; color:var(--danger); font-size:20px; cursor:pointer; line-height:1; }
 
 /* ── Filter ── */
 .awd-filter { display:flex; flex-direction:column; gap:10px; }
