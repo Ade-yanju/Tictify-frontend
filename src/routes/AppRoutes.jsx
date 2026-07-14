@@ -35,6 +35,7 @@ import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
 import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
 import AdminAmbassadors from "../pages/admin/AdminAmbassadors";
+import AdminAffiliates from "../pages/admin/AdminAffiliates";
 
 /* ================= GUARDS ================= */
 import ProtectedRoute from "./ProtectedRoute";
@@ -218,6 +219,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <AdminRoute>
                 <AdminAmbassadors />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/affiliates"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminAffiliates />
               </AdminRoute>
             </ProtectedRoute>
           }

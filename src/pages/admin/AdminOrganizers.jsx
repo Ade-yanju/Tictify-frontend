@@ -81,6 +81,18 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    label: "Affiliates",
+    path: "/admin/affiliates",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9 15l6-6" strokeLinecap="round" />
+        <circle cx="9" cy="9" r="1.4" />
+        <circle cx="15" cy="15" r="1.4" />
+      </svg>
+    ),
+  },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -93,6 +105,7 @@ export default function AdminOrganizers() {
   const [organizers, setOrganizers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedOrg, setSelectedOrg] = useState(null);
 
   /* ================= LOAD ORGANIZERS ================= */
   useEffect(() => {
@@ -172,7 +185,7 @@ export default function AdminOrganizers() {
             <div
               key={o._id}
               className="aor-leader-row"
-              onClick={() => navigate(`/admin/organizers/${o._id}`)}
+              onClick={() => setSelectedOrg(o)}
             >
               <span className={`aor-rank ${i === 0 ? "is-first" : ""}`}>#{i + 1}</span>
 
@@ -195,7 +208,7 @@ export default function AdminOrganizers() {
           <div
             key={o._id}
             className="aor-org-card"
-            onClick={() => navigate(`/admin/organizers/${o._id}`)}
+            onClick={() => setSelectedOrg(o)}
           >
             <div className="aor-org-info">
               <strong className="aor-name">{o.name}</strong>
@@ -211,6 +224,47 @@ export default function AdminOrganizers() {
           </div>
         ))}
       </section>
+
+      {/* ================= ORGANIZER DETAIL ================= */}
+      {selectedOrg && (
+        <div
+          className="aor-modal-overlay"
+          onClick={() => setSelectedOrg(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="aor-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="aor-modal-close"
+              onClick={() => setSelectedOrg(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="aor-modal-avatar">
+              {(selectedOrg.name || "?").charAt(0).toUpperCase()}
+            </div>
+            <h3 className="aor-modal-name">{selectedOrg.name}</h3>
+            <a className="aor-modal-email" href={`mailto:${selectedOrg.email}`}>
+              {selectedOrg.email}
+            </a>
+            <div className="aor-modal-stats">
+              <div className="aor-modal-stat">
+                <span className="aor-modal-stat-label">Events</span>
+                <strong>{selectedOrg.events ?? 0}</strong>
+              </div>
+              <div className="aor-modal-stat">
+                <span className="aor-modal-stat-label">Tickets Sold</span>
+                <strong>{selectedOrg.ticketsSold ?? 0}</strong>
+              </div>
+              <div className="aor-modal-stat">
+                <span className="aor-modal-stat-label">Revenue</span>
+                <strong>₦{(selectedOrg.revenue || 0).toLocaleString()}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
@@ -396,6 +450,21 @@ button, input, select { font-family:var(--font-b); }
 /* ── Error ── */
 .aor-error { min-height:100svh; background:var(--bg); display:grid; place-items:center; padding:20px; font-family:var(--font-b); }
 .aor-error-card { width:min(100%,420px); background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(26px,5vw,40px); text-align:center; animation:aor-fade .35s ease; }
+
+/* ── Organizer detail modal ── */
+.aor-modal-overlay { position:fixed; inset:0; background:rgba(8,9,16,.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:200; animation:aor-fade .2s ease; }
+.aor-modal { position:relative; width:min(100%,440px); background:var(--surface); border:1px solid var(--border-h); border-radius:var(--r); padding:clamp(26px,5vw,38px); text-align:center; animation:aor-fade .3s ease; }
+.aor-modal-close { position:absolute; top:14px; right:16px; background:none; border:none; color:var(--muted); font-size:26px; line-height:1; cursor:pointer; }
+.aor-modal-close:hover { color:var(--text); }
+.aor-modal-avatar { width:64px; height:64px; border-radius:50%; margin:0 auto 14px; background:var(--gold-dim); border:1px solid var(--gold); color:var(--gold); font-family:var(--font-h); font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.aor-modal-name { font-family:var(--font-h); font-size:20px; margin-bottom:4px; }
+.aor-modal-email { display:block; color:var(--muted); font-size:13px; text-decoration:none; margin-bottom:22px; word-break:break-all; }
+.aor-modal-email:hover { color:var(--gold); }
+.aor-modal-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.aor-modal-stat { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:14px 8px; display:flex; flex-direction:column; gap:6px; }
+.aor-modal-stat-label { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.aor-modal-stat strong { font-size:15px; }
+@media (max-width:380px) { .aor-modal-stats { grid-template-columns:1fr; } }
 .aor-error-icon { width:46px; height:46px; border-radius:50%; background:rgba(224,92,92,.12); color:var(--danger); display:grid; place-items:center; margin:0 auto 16px; font-family:var(--font-h); font-weight:800; font-size:20px; }
 .aor-error-card h2 { font-family:var(--font-h); font-size:20px; color:var(--text); margin-bottom:8px; }
 .aor-error-card p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:22px; }
