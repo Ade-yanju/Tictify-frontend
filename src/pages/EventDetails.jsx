@@ -246,10 +246,6 @@ export default function EventDetails() {
   }
 
   const eventDate = new Date(event.date);
-  const totalSold = (event.ticketTypes || []).reduce(
-    (s, t) => s + (t.sold || 0),
-    0,
-  );
   const shareOnWhatsApp = () =>
     window.open(
       `https://wa.me/?text=${encodeURIComponent(
@@ -305,11 +301,6 @@ export default function EventDetails() {
           <div className="ed-layout">
             {/* LEFT — event info */}
             <section className="ed-info">
-              {totalSold > 0 && (
-                <span className="ed-soldpill">
-                  🔥 {totalSold.toLocaleString()} tickets claimed
-                </span>
-              )}
               <h1 className="ed-title">{event.title}</h1>
 
               <div className="ed-meta">
@@ -501,7 +492,6 @@ img { display:block; }
 
 /* ── Info column ── */
 .ed-info { animation:edFadeUp .4s ease both; min-width:0; }
-.ed-soldpill { display:inline-flex; align-items:center; gap:7px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--gold); font-family:var(--font-h); font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:7px 15px; border-radius:999px; margin-bottom:16px; }
 .ed-wa { display:inline-flex; align-items:center; gap:8px; font-size:13px; padding:8px 16px; }
 .ed-wa-ic { display:inline-grid; place-items:center; color:#25D366; flex-shrink:0; }
 .ed-wa-ic svg { width:15px; height:15px; }
