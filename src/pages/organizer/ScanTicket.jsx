@@ -5,7 +5,22 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { scanTicket } from "../../services/ticketService";
+import {
+  scanTicket,
+  fetchGateManifest,
+  syncGateAdmits,
+} from "../../services/ticketService";
+import {
+  getDeviceId,
+  newScanId,
+  saveManifest,
+  loadCached,
+  localScan,
+  recordOnlineAdmit,
+  pendingCount,
+  getPending,
+  markSynced,
+} from "../../services/gateOffline";
 import { getToken } from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -149,12 +164,124 @@ export default function ScanTicket() {
   const qrRegionId = "qr-reader";
   const scannerRef = useRef(null);
   const activeScanRef = useRef(false);
+  const deviceIdRef = useRef(getDeviceId());
+  const flushingRef = useRef(false);
 
   const [manualCode, setManualCode] = useState("");
   const [processing, setProcessing] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [modal, setModal] = useState(null);
   const [gate, setGate] = useState(null);
+
+  /* ── Offline state ── */
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [manifestState, setManifestState] = useState("idle"); // idle|loading|ready|error
+  const [manifestInfo, setManifestInfo] = useState(null); // { eventTitle, count, generatedAt }
+  const [queued, setQueued] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncSummary, setSyncSummary] = useState(null); // { synced, conflicts:[...] }
+
+  async function refreshQueued() {
+    if (!eventId) return;
+    try {
+      setQueued(await pendingCount(eventId));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /* ── Pull the manifest and cache it for offline use ── */
+  async function loadManifest({ silent = false } = {}) {
+    if (!eventId) return;
+    if (!silent) setManifestState("loading");
+    try {
+      const data = await fetchGateManifest(eventId);
+      const { record } = await saveManifest(eventId, data);
+      setManifestInfo({
+        eventTitle: data.eventTitle,
+        count: (data.tickets || []).length,
+        generatedAt: record?.manifest?.generatedAt,
+      });
+      setManifestState("ready");
+    } catch (err) {
+      // Network failure → fall back to whatever we cached earlier
+      const cached = await loadCached(eventId);
+      if (cached?.manifest) {
+        setManifestInfo({
+          eventTitle: cached.manifest.eventTitle,
+          count: (cached.manifest.tickets || []).length,
+          generatedAt: cached.manifest.generatedAt,
+        });
+        setManifestState("ready");
+        if (err.offline) setOnline(false);
+      } else {
+        setManifestState("error");
+      }
+    }
+  }
+
+  /* ── Flush queued offline admits to the server, reconcile ── */
+  async function flushQueue({ announce = true } = {}) {
+    if (!eventId || flushingRef.current) return;
+    let pending;
+    try {
+      pending = await getPending(eventId);
+    } catch {
+      return;
+    }
+    if (!pending.length) {
+      await refreshQueued();
+      return;
+    }
+
+    flushingRef.current = true;
+    setSyncing(true);
+    try {
+      const resp = await syncGateAdmits(
+        eventId,
+        pending.map((p) => ({
+          code: p.code,
+          clientScanId: p.clientScanId,
+          at: p.at,
+          deviceId: p.deviceId,
+        })),
+      );
+      const results = resp.results || [];
+      // admitted + already are both durably recorded server-side
+      const done = results
+        .filter((r) => r.result === "admitted" || r.result === "already")
+        .map((r) => r.clientScanId);
+      await markSynced(eventId, done);
+
+      // A conflict = this device admitted the guest offline, but the
+      // server refused (another device/online already took the seat).
+      const conflicts = results
+        .filter((r) => r.result === "denied")
+        .map((r) => {
+          const src = pending.find((p) => p.clientScanId === r.clientScanId);
+          return { code: r.code || src?.code, reason: r.reason, message: r.message };
+        });
+
+      setOnline(true);
+      await loadManifest({ silent: true }); // pull authoritative counts back
+      await refreshQueued();
+      if (announce) {
+        setSyncSummary({
+          synced: done.length,
+          denied: results.filter((r) => r.result === "denied").length,
+          conflicts,
+        });
+      }
+    } catch (err) {
+      if (err.offline) setOnline(false);
+      // leave the queue intact; it retries on next reconnect
+    } finally {
+      flushingRef.current = false;
+      setSyncing(false);
+    }
+  }
 
   /* ================= LIVE GATE STATS ================= */
   async function fetchGate() {
@@ -188,6 +315,27 @@ export default function ScanTicket() {
       navigate("/organizer/scan/select", { replace: true });
     }
   }, [eventId, navigate]);
+
+  /* ================= ARM OFFLINE GATE ================= */
+  useEffect(() => {
+    if (!eventId) return;
+    loadManifest();
+    refreshQueued();
+    flushQueue({ announce: false }); // clear any leftover queue on entry
+
+    const goOnline = () => {
+      setOnline(true);
+      flushQueue({ announce: true });
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   /* ================= START CAMERA ================= */
   const startCamera = async () => {
@@ -248,12 +396,74 @@ export default function ScanTicket() {
     activeScanRef.current = false;
   };
 
+  /* ── Offline validation against the cached manifest ── */
+  async function doOfflineScan(code) {
+    const r = await localScan(eventId, code, deviceIdRef.current);
+    await refreshQueued();
+
+    if (r.status === "VALID") {
+      const groupInfo =
+        r.groupSize > 1
+          ? ` · ${r.remaining} of ${r.groupSize} entries left`
+          : "";
+      setModal({
+        type: "success",
+        offline: true,
+        message: `${r.guestName || "Guest"} admitted${groupInfo}${
+          r.cacheWarning ? ` — ⚠️ ${r.cacheWarning}` : ""
+        }`,
+      });
+    } else if (r.status === "USED") {
+      setModal({
+        type: "error",
+        offline: true,
+        message: `Already admitted — all ${r.groupSize} on this ticket are in${
+          r.guestName ? ` (${r.guestName})` : ""
+        }`,
+      });
+      activeScanRef.current = true;
+    } else {
+      setModal({
+        type: "error",
+        offline: true,
+        message: `Not valid — ${r.message || "this code isn't in the guest list"}`,
+      });
+      activeScanRef.current = true;
+    }
+    await stopCamera();
+  }
+
   /* ================= SCAN HANDLER ================= */
   async function handleScan(code) {
     setProcessing(true);
+    const trimmed = code.trim();
 
+    // Offline (known or last-known) → validate locally, queue for sync
+    if (!online) {
+      try {
+        await doOfflineScan(trimmed);
+      } finally {
+        setTimeout(() => setProcessing(false), 900);
+      }
+      return;
+    }
+
+    const clientScanId = newScanId();
     try {
-      const res = await scanTicket(code.trim(), eventId);
+      const res = await scanTicket(trimmed, eventId, {
+        clientScanId,
+        deviceId: deviceIdRef.current,
+      });
+
+      // keep the local manifest baseline fresh + never re-send this scan
+      await recordOnlineAdmit(
+        eventId,
+        trimmed,
+        clientScanId,
+        deviceIdRef.current,
+        res.admitted,
+      );
+      await refreshQueued();
 
       const groupInfo =
         res.groupSize > 1
@@ -270,10 +480,20 @@ export default function ScanTicket() {
       await stopCamera();
       fetchGate();
     } catch (err) {
+      if (err.offline) {
+        // Lost signal mid-scan → seamlessly fall back to offline
+        setOnline(false);
+        try {
+          await doOfflineScan(trimmed);
+        } finally {
+          setTimeout(() => setProcessing(false), 900);
+        }
+        return;
+      }
+      // A real server verdict (used / wrong event / cancelled)
       setModal({
         type: "error",
-        message:
-          err.message || "Invalid, used, or wrong event ticket",
+        message: err.message || "Invalid, used, or wrong event ticket",
       });
       activeScanRef.current = true;
     } finally {
@@ -315,7 +535,58 @@ export default function ScanTicket() {
         </div>
       )}
 
+      {syncSummary && (
+        <SyncSummary {...syncSummary} onClose={() => setSyncSummary(null)} />
+      )}
+
       <div className="sct-stage">
+        {!online && (
+          <div className="sct-offline-banner" role="status">
+            <span className="sct-offline-dot" aria-hidden="true" />
+            <span>
+              <strong>OFFLINE</strong> — validating from the cached guest list.
+              {queued > 0 ? ` ${queued} admit${queued === 1 ? "" : "s"} queued to sync.` : ""}
+            </span>
+          </div>
+        )}
+
+        {online && queued > 0 && (
+          <div className="sct-sync-strip" role="status">
+            <span>
+              {syncing
+                ? "Syncing queued admits…"
+                : `${queued} offline admit${queued === 1 ? "" : "s"} waiting to sync`}
+            </span>
+            <button
+              className="sct-mini-btn"
+              onClick={() => flushQueue({ announce: true })}
+              disabled={syncing}
+            >
+              {syncing ? "Syncing…" : "Sync now"}
+            </button>
+          </div>
+        )}
+
+        <div className="sct-manifest-row">
+          <span className="sct-manifest-status">
+            {manifestState === "loading" && "Loading guest list…"}
+            {manifestState === "ready" &&
+              manifestInfo &&
+              `📋 ${manifestInfo.count} tickets cached for offline`}
+            {manifestState === "error" &&
+              "⚠️ No cached guest list — connect once to enable offline"}
+            {manifestState === "idle" && ""}
+          </span>
+          <button
+            className="sct-mini-btn"
+            onClick={() => loadManifest()}
+            disabled={manifestState === "loading" || !online}
+            title={online ? "Refresh cached guest list" : "Reconnect to refresh"}
+          >
+            Refresh list
+          </button>
+        </div>
+
         {gate && (
           <section className="sct-gate" aria-live="polite">
             <div className="sct-gate-top">
@@ -420,13 +691,62 @@ export default function ScanTicket() {
             Verify Code
           </button>
         </form>
+
+        <p className="sct-note">
+          ℹ️ <strong>Offline mode</strong> validates against the guest list cached on
+          this device. It can't stop two phones that are both offline from admitting
+          the same single-entry ticket — any such clashes are flagged here the moment
+          the devices sync.
+        </p>
       </div>
     </Shell>
   );
 }
 
+/* ================= SYNC SUMMARY / CONFLICTS ================= */
+function SyncSummary({ synced, conflicts = [], onClose }) {
+  const hasConflicts = conflicts.length > 0;
+  return (
+    <div className="sct-overlay">
+      <div className={`sct-modal ${hasConflicts ? "is-error" : "is-success"}`}>
+        <div className="sct-modal-icon" aria-hidden="true">
+          {hasConflicts ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 8v5M12 16.5v.5" strokeLinecap="round" />
+              <path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12.5l5 5L20 6.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+        <h3>{hasConflicts ? "Synced with conflicts" : "All synced"}</h3>
+        <p>
+          {synced} offline admit{synced === 1 ? "" : "s"} synced to the server.
+          {hasConflicts
+            ? ` ${conflicts.length} could NOT be admitted — another device or an online scan already took ${conflicts.length === 1 ? "that seat" : "those seats"}:`
+            : " Everything reconciled cleanly."}
+        </p>
+        {hasConflicts && (
+          <ul className="sct-conflicts">
+            {conflicts.map((c, i) => (
+              <li key={i}>
+                <code>{String(c.code || "").slice(0, 22)}</code> — {c.message || c.reason}
+              </li>
+            ))}
+          </ul>
+        )}
+        <button className="sct-btn sct-btn-gold" onClick={onClose}>
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ================= MODAL ================= */
-function Modal({ type, message, onClose }) {
+function Modal({ type, message, offline, onClose }) {
   return (
     <div className="sct-overlay">
       <div className={`sct-modal ${type === "error" ? "is-error" : "is-success"}`}>
@@ -441,6 +761,7 @@ function Modal({ type, message, onClose }) {
             </svg>
           )}
         </div>
+        {offline && <span className="sct-modal-tag">OFFLINE CHECK</span>}
         <h3>
           {type === "error"
             ? "Access Denied"
@@ -577,6 +898,27 @@ input { font-family:var(--font-b); }
 .sct-modal.is-success h3 { color:var(--live); }
 .sct-modal.is-error h3 { color:var(--danger); }
 .sct-modal p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:22px; overflow-wrap:anywhere; }
+
+/* ── Offline banner + sync strip + manifest row ── */
+.sct-offline-banner { display:flex; align-items:center; gap:10px; background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.4); color:#F2B8B8; border-radius:var(--r-sm); padding:11px 14px; margin-bottom:12px; font-size:13px; line-height:1.5; }
+.sct-offline-banner strong { color:var(--danger); font-family:var(--font-h); letter-spacing:.06em; }
+.sct-offline-dot { width:9px; height:9px; flex-shrink:0; border-radius:50%; background:var(--danger); animation:sctGatePulse 1.8s ease-in-out infinite; }
+.sct-sync-strip { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:12px; font-size:13px; color:var(--text); }
+.sct-manifest-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.sct-manifest-status { font-size:12px; color:var(--muted); line-height:1.5; }
+.sct-mini-btn { flex-shrink:0; background:var(--card); border:1px solid var(--border-h); color:var(--text); font-size:12px; font-weight:600; padding:7px 14px; border-radius:999px; transition:border-color .2s, background .2s; }
+.sct-mini-btn:hover:not(:disabled) { border-color:rgba(232,201,106,.5); }
+.sct-mini-btn:disabled { opacity:.45; cursor:not-allowed; }
+
+/* ── Honesty note ── */
+.sct-note { margin-top:20px; font-size:12px; line-height:1.6; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:13px 15px; }
+.sct-note strong { color:var(--text); }
+
+/* ── Offline modal tag + conflicts list ── */
+.sct-modal-tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.12em; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px 10px; margin-bottom:10px; }
+.sct-conflicts { list-style:none; text-align:left; margin:0 0 20px; padding:0; display:flex; flex-direction:column; gap:8px; max-height:180px; overflow-y:auto; }
+.sct-conflicts li { font-size:12.5px; color:var(--muted); line-height:1.5; background:rgba(224,92,92,.08); border:1px solid rgba(224,92,92,.25); border-radius:8px; padding:8px 10px; overflow-wrap:anywhere; }
+.sct-conflicts code { color:var(--danger); font-size:11.5px; }
 
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width:1023px) {
