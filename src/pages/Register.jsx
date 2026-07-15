@@ -5,9 +5,26 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { register } from "../services/authService";
+import {
+  register,
+  verifyEmail,
+  resendVerification,
+} from "../services/authService";
 
 const logo = "/logo.png";
+
+/* Where a fresh session lands (mirrors Login.jsx) */
+function roleHome(role) {
+  return role === "admin"
+    ? "/admin/dashboard"
+    : role === "ambassador"
+      ? "/ambassador"
+      : role === "affiliate"
+        ? "/affiliate/dashboard"
+        : "/organizer/dashboard";
+}
+
+const RESEND_COOLDOWN_S = 30;
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -118,6 +135,22 @@ export default function Register() {
   const [modal, setModal] = useState(null);
   const [inviteCode, setInviteCode] = useState("");
 
+  /* Email verification step (after { requiresVerification: true }) */
+  const [verify, setVerify] = useState(null); // { email, message }
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpNote, setOtpNote] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  /* Resend cooldown countdown */
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
   useEffect(() => {
     const invite = new URLSearchParams(location.search).get("invite");
     if (invite && /^[A-Za-z0-9_-]{2,30}$/.test(invite)) {
@@ -145,24 +178,79 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register({
+      const result = await register({
         name: form.name,
         email: form.email,
         password: form.password,
         role: "organizer",
         ...(inviteCode ? { referredBy: inviteCode } : {}),
       });
-      setModal({
-        type: "success",
-        message: "Your organizer account is ready. You can now sign in.",
-      });
-    } catch {
+
+      if (result?.requiresVerification) {
+        // A 6-digit code was emailed — swap the card to the verify step
+        const email = form.email.trim().toLowerCase();
+        setOtp("");
+        setOtpError("");
+        setOtpNote("");
+        setResendIn(RESEND_COOLDOWN_S);
+        setVerify({
+          email,
+          message: result.message || `We sent a 6-digit code to ${email}`,
+        });
+      } else if (result?.token) {
+        // Email outage fail-open: session already persisted by authService
+        navigate(roleHome(result.user?.role), { replace: true });
+      } else {
+        setModal({
+          type: "success",
+          message: "Your organizer account is ready. You can now sign in.",
+        });
+      }
+    } catch (err) {
       setModal({
         type: "error",
-        message: "Registration failed. This email may already be in use.",
+        message:
+          err?.message || "Registration failed. This email may already be in use.",
       });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerify(e) {
+    e.preventDefault();
+    if (verifying) return;
+    if (otp.length !== 6) {
+      setOtpError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setVerifying(true);
+    setOtpError("");
+    setOtpNote("");
+    try {
+      // Success stores the token/user exactly like login does
+      const result = await verifyEmail({ email: verify.email, otp });
+      navigate(roleHome(result.user?.role), { replace: true });
+    } catch (err) {
+      setOtpError(err?.message || "Verification failed. Try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleResend() {
+    if (resendIn > 0 || resending) return;
+    setResending(true);
+    setOtpError("");
+    try {
+      await resendVerification(verify.email);
+      setOtpNote("A new code is on its way — check your inbox.");
+    } catch (err) {
+      setOtpError(err?.message || "Could not resend the code. Try again.");
+    } finally {
+      setResending(false);
+      setResendIn(RESEND_COOLDOWN_S);
     }
   }
 
@@ -218,6 +306,73 @@ export default function Register() {
           onClick={() => navigate("/")}
         />
 
+        {verify ? (
+          /* ── Email verification step ── */
+          <>
+            <h2 className="rg-title">Check your email</h2>
+            <p className="rg-sub">{verify.message}</p>
+
+            <form className="rg-form" onSubmit={handleVerify}>
+              <div>
+                <label className="rg-label">6-Digit Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="rg-input rg-otp"
+                  value={otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                    setOtpError("");
+                  }}
+                  aria-label="6-digit verification code"
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  required
+                />
+                {otpError && (
+                  <p className="rg-hint is-err" role="alert">
+                    {otpError}
+                  </p>
+                )}
+                {!otpError && otpNote && (
+                  <p className="rg-hint is-ok">{otpNote}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="rg-btn rg-btn-gold rg-submit"
+                disabled={verifying || otp.length !== 6}
+              >
+                {verifying ? "Verifying…" : "Verify & Continue →"}
+              </button>
+            </form>
+
+            <p className="rg-alt">
+              Didn&apos;t get it?{" "}
+              <button
+                type="button"
+                className="rg-link"
+                onClick={handleResend}
+                disabled={resendIn > 0 || resending}
+              >
+                {resendIn > 0
+                  ? `Resend code in ${resendIn}s`
+                  : resending
+                    ? "Sending…"
+                    : "Resend code"}
+              </button>
+            </p>
+            <p className="rg-otp-note">
+              The code expires in 10 minutes. Check your spam folder too.
+            </p>
+          </>
+        ) : (
+          /* ── Registration form ── */
+          <>
         <h2 className="rg-title">Create an account</h2>
         <p className="rg-sub">
           Register as an organizer on <strong>Tictify</strong>
@@ -314,6 +469,8 @@ export default function Register() {
             Sign in
           </button>
         </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -440,6 +597,18 @@ input, button { font-family:var(--font-b); outline:none; }
 .rg-link {
   background:none; border:none; color:var(--gold); cursor:pointer;
   font-weight:600; font-size:13px; text-decoration:underline; padding:0;
+}
+.rg-link:disabled { color:var(--muted); cursor:default; text-decoration:none; }
+
+/* ── Email verification (OTP) step ── */
+.rg-otp {
+  text-align:center; font-size:22px !important; font-weight:700;
+  letter-spacing:10px; font-family:var(--font-h);
+}
+.rg-otp::placeholder { letter-spacing:10px; }
+.rg-otp-note {
+  margin-top:14px; text-align:center; font-size:12px;
+  color:var(--muted); line-height:1.6;
 }
 
 /* ── Overlays (modal + loading) ── */

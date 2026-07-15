@@ -3,7 +3,24 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../services/authService";
+import {
+  login,
+  verifyEmail,
+  resendVerification,
+} from "../services/authService";
+
+/* Where a fresh session lands */
+function roleHome(role) {
+  return role === "admin"
+    ? "/admin/dashboard"
+    : role === "ambassador"
+      ? "/ambassador"
+      : role === "affiliate"
+        ? "/affiliate/dashboard"
+        : "/organizer/dashboard";
+}
+
+const RESEND_COOLDOWN_S = 30;
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -43,6 +60,23 @@ const BASE_CSS = `
 
   .lg-forgot { display:block; margin:14px auto 0; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:4px 8px; transition:color .2s; }
   .lg-forgot:hover { color:var(--gold); }
+
+  /* ── Email verification (OTP) step ── */
+  .lg-otp {
+    width:100%; padding:14px 16px; background:var(--card);
+    border:1px solid var(--border); border-radius:var(--r-sm);
+    color:var(--text); text-align:center; font-size:22px !important;
+    font-weight:700; letter-spacing:10px; font-family:var(--font-h);
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .lg-otp:focus { border-color:rgba(232,201,106,.5); box-shadow:0 0 0 3px var(--gold-dim); }
+  .lg-otp::placeholder { color:var(--muted); opacity:.6; letter-spacing:10px; }
+  .lg-resend {
+    background:none; border:none; color:var(--gold); cursor:pointer;
+    font-weight:600; font-size:13px; text-decoration:underline; padding:0;
+  }
+  .lg-resend:disabled { color:var(--muted); cursor:default; text-decoration:none; }
+  .lg-otp-note { margin-top:14px; text-align:center; font-size:12px; color:var(--muted); line-height:1.6; }
 
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 `;
@@ -212,6 +246,22 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
 
+  /* Email verification step (403 { requiresVerification: true }) */
+  const [verify, setVerify] = useState(null); // { email, message }
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpNote, setOtpNote] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  /* Resend cooldown countdown */
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   async function handleSubmit(e) {
@@ -230,20 +280,62 @@ export default function Login() {
       const res = await login({ email, password });
       const { user } = res;
       if (!user?.role) throw new Error();
-      navigate(
-        user.role === "admin"
-          ? "/admin/dashboard"
-          : user.role === "ambassador"
-            ? "/ambassador"
-            : user.role === "affiliate"
-              ? "/affiliate/dashboard"
-              : "/organizer/dashboard",
-        { replace: true },
-      );
-    } catch {
-      setModal({ type: "error", message: "Invalid email or password" });
+      navigate(roleHome(user.role), { replace: true });
+    } catch (err) {
+      if (err?.requiresVerification) {
+        // Correct password, unverified email — the server just emailed
+        // a fresh 6-digit code. Swap the card to the verify step.
+        setOtp("");
+        setOtpError("");
+        setOtpNote("");
+        setResendIn(RESEND_COOLDOWN_S);
+        setVerify({
+          email: email.trim().toLowerCase(),
+          message:
+            err.message || "Verify your email — we just sent you a new code",
+        });
+      } else {
+        setModal({ type: "error", message: "Invalid email or password" });
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerify(e) {
+    e.preventDefault();
+    if (verifying) return;
+    if (otp.length !== 6) {
+      setOtpError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setVerifying(true);
+    setOtpError("");
+    setOtpNote("");
+    try {
+      // Same response shape + persistence as a successful login
+      const result = await verifyEmail({ email: verify.email, otp });
+      navigate(roleHome(result.user?.role), { replace: true });
+    } catch (err) {
+      setOtpError(err?.message || "Verification failed. Try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleResend() {
+    if (resendIn > 0 || resending) return;
+    setResending(true);
+    setOtpError("");
+    try {
+      await resendVerification(verify.email);
+      setOtpNote("A new code is on its way — check your inbox.");
+    } catch (err) {
+      setOtpError(err?.message || "Could not resend the code. Try again.");
+    } finally {
+      setResending(false);
+      setResendIn(RESEND_COOLDOWN_S);
     }
   }
 
@@ -384,6 +476,135 @@ export default function Login() {
           🎟
         </div>
 
+        {verify ? (
+          /* ── Email verification step ── */
+          <>
+            <h2
+              style={{
+                fontFamily: "var(--font-h)",
+                fontSize: "clamp(22px,4vw,28px)",
+                fontWeight: 800,
+                letterSpacing: "-.02em",
+                marginBottom: 6,
+              }}
+            >
+              Check your email
+            </h2>
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--muted)",
+                marginBottom: 32,
+                lineHeight: 1.5,
+              }}
+            >
+              {verify.message}
+            </p>
+
+            <form
+              onSubmit={handleVerify}
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: ".08em",
+                    textTransform: "uppercase",
+                    color: "var(--muted)",
+                    marginBottom: 8,
+                  }}
+                >
+                  6-Digit Code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="lg-otp"
+                  value={otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                    setOtpError("");
+                  }}
+                  aria-label="6-digit verification code"
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  required
+                />
+                {otpError && (
+                  <p
+                    role="alert"
+                    style={{ fontSize: 12, marginTop: 8, color: "var(--danger)" }}
+                  >
+                    {otpError}
+                  </p>
+                )}
+                {!otpError && otpNote && (
+                  <p style={{ fontSize: 12, marginTop: 8, color: "var(--live)" }}>
+                    {otpNote}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifying || otp.length !== 6}
+                style={{
+                  width: "100%",
+                  padding: "16px 24px",
+                  marginTop: 8,
+                  borderRadius: 999,
+                  border: "none",
+                  background: "linear-gradient(135deg,#E8C96A,#F5E196)",
+                  color: "#080910",
+                  fontFamily: "var(--font-h)",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  cursor:
+                    verifying || otp.length !== 6 ? "not-allowed" : "pointer",
+                  opacity: verifying || otp.length !== 6 ? 0.7 : 1,
+                  transition: "opacity .2s, box-shadow .2s",
+                  boxShadow: "0 8px 24px rgba(232,201,106,.2)",
+                }}
+              >
+                {verifying ? "Verifying…" : "Verify & Continue →"}
+              </button>
+            </form>
+
+            <p
+              style={{
+                marginTop: 28,
+                textAlign: "center",
+                fontSize: 13,
+                color: "var(--muted)",
+              }}
+            >
+              Didn&apos;t get it?{" "}
+              <button
+                type="button"
+                className="lg-resend"
+                onClick={handleResend}
+                disabled={resendIn > 0 || resending}
+              >
+                {resendIn > 0
+                  ? `Resend code in ${resendIn}s`
+                  : resending
+                    ? "Sending…"
+                    : "Resend code"}
+              </button>
+            </p>
+            <p className="lg-otp-note">
+              The code expires in 10 minutes. Check your spam folder too.
+            </p>
+          </>
+        ) : (
+          /* ── Login form ── */
+          <>
         <h2
           style={{
             fontFamily: "var(--font-h)",
@@ -543,6 +764,8 @@ export default function Login() {
             Create an account
           </button>
         </p>
+          </>
+        )}
       </div>
     </div>
   );

@@ -13,7 +13,16 @@ export async function register(data) {
     throw new Error(err.message || "Registration failed");
   }
 
-  return res.json();
+  const result = await res.json();
+
+  // Fail-open path (total email outage): the server auto-verified the
+  // account and returned a session — persist it exactly like login does.
+  if (result.token) {
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("user", JSON.stringify(result.user));
+  }
+
+  return result;
 }
 
 /* ================= LOGIN ================= */
@@ -25,8 +34,12 @@ export async function login(data) {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Invalid credentials");
+    const err = await res.json().catch(() => ({}));
+    const error = new Error(err.message || "Invalid credentials");
+    // 403 { requiresVerification: true } → the pages show the OTP step
+    error.status = res.status;
+    error.requiresVerification = !!err.requiresVerification;
+    throw error;
   }
 
   const result = await res.json();
@@ -36,6 +49,43 @@ export async function login(data) {
   localStorage.setItem("user", JSON.stringify(result.user));
 
   return result;
+}
+
+/* ================= EMAIL VERIFICATION (OTP at signup) ================= */
+export async function verifyEmail(data) {
+  const res = await fetch(`${API}/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Verification failed");
+  }
+
+  const result = await res.json();
+
+  // ✅ Same response shape + persistence as a successful login
+  localStorage.setItem("token", result.token);
+  localStorage.setItem("user", JSON.stringify(result.user));
+
+  return result;
+}
+
+export async function resendVerification(email) {
+  const res = await fetch(`${API}/resend-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Could not resend the code");
+  }
+
+  return res.json();
 }
 
 /* ================= SESSION HELPERS ================= */
