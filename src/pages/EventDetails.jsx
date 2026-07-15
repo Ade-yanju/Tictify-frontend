@@ -455,7 +455,7 @@ img { display:block; }
 /* ── Header ── */
 .ed-header { position:sticky; top:0; z-index:100; background:rgba(8,9,16,.78); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--border); }
 .ed-nav { height:64px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.ed-logo { height:30px; cursor:pointer; }
+.ed-logo { height:48px; width:auto; cursor:pointer; }
 .ed-nav-links { display:flex; align-items:center; gap:8px; }
 .ed-link { background:none; border:none; color:var(--muted); font-size:14px; font-weight:500; padding:8px 14px; border-radius:999px; transition:color .25s, background .25s; }
 .ed-link:hover { color:var(--text); background:var(--card); }
@@ -571,7 +571,7 @@ img { display:block; }
 }
 @media (max-width: 480px) {
   .ed-nav { height:56px; }
-  .ed-logo { height:26px; }
+  .ed-logo { height:42px; }
   .ed-btn { padding:8px 14px; font-size:13px; }
   .ed-chip { padding:7px 13px; font-size:12.5px; }
 }

@@ -604,7 +604,7 @@ section { scroll-margin-top:88px; }
 .tf-header { position:sticky; top:0; z-index:1000; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); background:rgba(8,9,16,.72); border-bottom:1px solid transparent; transition:border-color .3s, background .3s; }
 .tf-header.is-scrolled { border-bottom-color:var(--border); background:rgba(8,9,16,.9); }
 .tf-nav { height:70px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.tf-logo { height:32px; cursor:pointer; display:block; }
+.tf-logo { height:52px; width:auto; cursor:pointer; display:block; }
 .tf-links { display:flex; align-items:center; gap:6px; }
 .tf-link { background:none; border:none; color:var(--muted); font-size:14.5px; font-weight:500; padding:9px 14px; border-radius:999px; transition:color .25s, background .25s; }
 .tf-link:hover { color:var(--text); background:var(--card); }
@@ -723,7 +723,12 @@ section { scroll-margin-top:88px; }
 @media (max-width: 920px) {
   .tf-links { display:none; }
   .tf-burger { display:flex; }
-  .tf-drawer { display:flex; flex-direction:column; gap:4px; position:fixed; inset:70px 0 0 0; background:rgba(8,9,16,.98); backdrop-filter:blur(16px); padding:22px clamp(18px,5vw,32px); z-index:999; transform:translateY(-8px); opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; }
+  /* NOTE: the header's backdrop-filter makes it the containing block for
+     position:fixed children — "fixed inset:70px 0 0 0" collapses to the
+     70px header box (zero-height background, links bleeding over the
+     hero). Anchor below the header with absolute + explicit height and a
+     fully OPAQUE background instead. */
+  .tf-drawer { display:flex; flex-direction:column; gap:4px; position:absolute; top:100%; left:0; right:0; height:calc(100vh - 70px); height:calc(100dvh - 70px); overflow-y:auto; background:#080910; padding:22px clamp(18px,5vw,32px); z-index:999; transform:translateY(-8px); opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; }
   .tf-drawer.is-open { opacity:1; transform:none; pointer-events:auto; }
   .tf-drawer-link { background:none; border:none; border-bottom:1px solid var(--border); color:var(--text); font-size:17px; font-weight:600; font-family:var(--font-h); text-align:left; padding:18px 4px; }
   .tf-drawer-cta { display:grid; gap:10px; margin-top:24px; }
