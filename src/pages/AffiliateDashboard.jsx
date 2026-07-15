@@ -87,6 +87,7 @@ export default function AffiliateDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedWaLink, setCopiedWaLink] = useState(false);
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [copiedEventId, setCopiedEventId] = useState(null);
@@ -188,6 +189,22 @@ export default function AffiliateDashboard() {
   const code = me?.affiliateCode || "";
   const balance = Number(me?.balance) || 0;
 
+  /* WhatsApp bot deep link — buyers who open it land in the Tictify
+     bot with this affiliate's code pre-attributed ("ref CODE").
+     Hidden entirely unless the bot number is configured. */
+  const waBotNumber = import.meta.env.VITE_WHATSAPP_NUMBER;
+  const waBotLink = waBotNumber
+    ? `https://wa.me/${waBotNumber}?text=${encodeURIComponent(
+        `Hi! I want tickets ref ${code}`,
+      )}`
+    : "";
+
+  async function copyWaBotLink() {
+    await copyText(waBotLink);
+    setCopiedWaLink(true);
+    setTimeout(() => setCopiedWaLink(false), 2000);
+  }
+
   return (
     <div className="afd-page">
       {/* Slim header with logout */}
@@ -258,6 +275,18 @@ export default function AffiliateDashboard() {
                     {Ic.copy}
                     <span>{copiedCode ? "Copied!" : "Copy code"}</span>
                   </button>
+                  {waBotNumber && (
+                    <button
+                      className="afd-btn afd-btn-ghost"
+                      onClick={copyWaBotLink}
+                      disabled={!code}
+                    >
+                      {Ic.copy}
+                      <span>
+                        {copiedWaLink ? "Copied!" : "Share on WhatsApp"}
+                      </span>
+                    </button>
+                  )}
                 </div>
                 <p className="afd-hero-note">
                   Every event link you copy below carries this code — sales
