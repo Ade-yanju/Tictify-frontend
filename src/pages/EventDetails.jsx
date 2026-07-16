@@ -212,7 +212,10 @@ export default function EventDetails() {
     () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
     [email],
   );
-  const canProceed = emailValid && selectedTicket;
+  /* Server refuses sales past salesEndAt — never offer a buy button
+     that's guaranteed to bounce */
+  const salesClosed = Boolean(event?.salesClosed);
+  const canProceed = emailValid && selectedTicket && !salesClosed;
 
   /* ── LOADING ── */
   if (loading) {
@@ -254,11 +257,13 @@ export default function EventDetails() {
       "_blank",
       "noopener,noreferrer",
     );
-  const ctaLabel = !selectedTicket
-    ? "Select a ticket type"
-    : !emailValid
-      ? "Enter your email"
-      : "Proceed to Payment →";
+  const ctaLabel = salesClosed
+    ? "Ticket sales have closed"
+    : !selectedTicket
+      ? "Select a ticket type"
+      : !emailValid
+        ? "Enter your email"
+        : "Proceed to Payment →";
   const goToCheckout = () =>
     navigate(`/checkout/${event._id}`, {
       state: { ticket: selectedTicket, email },
@@ -357,38 +362,66 @@ export default function EventDetails() {
                 ))}
               </div>
 
-              {/* Email */}
-              <div className="ed-field">
-                <label className="ed-label">Your Email</label>
-                <input
-                  type="email"
-                  placeholder="gabriel@tictify.ng"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  className={`ed-input ${emailFocused ? "is-focus" : ""} ${email && !emailValid ? "is-invalid" : ""}`}
-                />
-                {email && !emailValid && (
-                  <p className="ed-field-err">
-                    Please enter a valid email address
+              {salesClosed ? (
+                /* Sales window shut — the email box and CTA would only
+                   lead to a refusal, so state it plainly instead */
+                <div className="ed-closed" role="status">
+                  <div className="ed-closed-head">
+                    <span aria-hidden="true">🚪</span>
+                    <strong>Ticket sales have closed</strong>
+                  </div>
+                  <p className="ed-closed-body">
+                    {event.salesEndAt
+                      ? `Sales ended ${new Date(event.salesEndAt).toLocaleString(
+                          undefined,
+                          {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          },
+                        )}.`
+                      : "Sales for this event have ended."}{" "}
+                    No more tickets are available — including at the gate.
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  {/* Email */}
+                  <div className="ed-field">
+                    <label className="ed-label">Your Email</label>
+                    <input
+                      type="email"
+                      placeholder="gabriel@tictify.ng"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
+                      className={`ed-input ${emailFocused ? "is-focus" : ""} ${email && !emailValid ? "is-invalid" : ""}`}
+                    />
+                    {email && !emailValid && (
+                      <p className="ed-field-err">
+                        Please enter a valid email address
+                      </p>
+                    )}
+                  </div>
 
-              {/* CTA (hidden <768px — replaced by fixed bottom bar) */}
-              <button
-                disabled={!canProceed}
-                onClick={goToCheckout}
-                className="ed-cta ed-cta-panel"
-              >
-                {ctaLabel}
-              </button>
+                  {/* CTA (hidden <768px — replaced by fixed bottom bar) */}
+                  <button
+                    disabled={!canProceed}
+                    onClick={goToCheckout}
+                    className="ed-cta ed-cta-panel"
+                  >
+                    {ctaLabel}
+                  </button>
 
-              <p className="ed-secure">
-                <span className="ed-secure-ic">{Ic.lock}</span> Secure checkout
-                · No account required
-              </p>
+                  <p className="ed-secure">
+                    <span className="ed-secure-ic">{Ic.lock}</span> Secure
+                    checkout · No account required
+                  </p>
+                </>
+              )}
             </aside>
           </div>
         </div>
@@ -541,6 +574,11 @@ img { display:block; }
 .ed-cta { width:100%; padding:16px 24px; border-radius:999px; border:none; background:var(--gold); color:#080910; font-family:var(--font-h); font-weight:700; font-size:15px; transition:transform .2s, box-shadow .2s, background .2s, color .2s; }
 .ed-cta:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
 .ed-cta:disabled { background:rgba(255,255,255,0.08); color:var(--muted); cursor:not-allowed; }
+
+/* sales closed */
+.ed-closed { padding:16px 18px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid var(--border-h); }
+.ed-closed-head { display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:8px; }
+.ed-closed-body { font-size:12.5px; color:var(--muted); line-height:1.6; }
 .ed-secure { margin-top:14px; text-align:center; font-size:12px; color:var(--muted); display:flex; align-items:center; justify-content:center; gap:7px; }
 .ed-secure-ic { display:inline-grid; place-items:center; }
 .ed-secure-ic svg { width:13px; height:13px; }

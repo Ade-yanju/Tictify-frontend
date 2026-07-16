@@ -53,9 +53,10 @@ function effectivePrice(t) {
 }
 
 /* In-app browsers (TikTok, Instagram, Facebook…) block the bank
-   redirects Paystack needs for 3D-Secure/OTP, so payments stall on
-   "Please close this web page to continue". Detect them and warn the
-   guest to reopen in a real browser BEFORE they reach Paystack. */
+   redirects Paystack needs for 3D-Secure/OTP, so CARD payments stall on
+   "Please close this web page to continue". Bank transfer has no
+   redirect, so it works fine in here — detect the webview and default
+   the guest to transfer instead of pushing them out of the app. */
 function detectInAppBrowser() {
   const ua = navigator.userAgent || "";
   if (/musical_ly|Bytedance|TikTok/i.test(ua)) return "TikTok";
@@ -65,6 +66,17 @@ function detectInAppBrowser() {
   if (/Twitter/i.test(ua)) return "X (Twitter)";
   if (/LinkedInApp/i.test(ua)) return "LinkedIn";
   return null;
+}
+
+/* "14:03" / "1:02:11" — how long the transfer account stays valid */
+function formatCountdown(ms) {
+  if (!(ms > 0)) return null;
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }
 
 function InputField({
@@ -119,22 +131,40 @@ export default function Checkout() {
   const [codeError, setCodeError] = useState("");
   const inAppBrowser = useMemo(() => detectInAppBrowser(), []);
   const [linkCopied, setLinkCopied] = useState(false);
+  /* Card redirects break inside webviews — transfer always works, so
+     that's the default in one. Elsewhere card stays the default. */
+  const [payMethod, setPayMethod] = useState(() =>
+    detectInAppBrowser() ? "transfer" : "card",
+  );
+  const [transferInfo, setTransferInfo] = useState(null);
+  const [fallbackNote, setFallbackNote] = useState("");
+  const [copiedField, setCopiedField] = useState("");
+  const [now, setNow] = useState(() => Date.now());
 
-  async function copyCheckoutLink() {
-    const url = window.location.href;
+  /* Clipboard with a hidden-textarea fallback for old webviews */
+  async function copyText(text) {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
     } catch {
-      // Older webviews lack the clipboard API — fall back to a hidden textarea
       const ta = document.createElement("textarea");
-      ta.value = url;
+      ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
     }
+  }
+
+  async function copyCheckoutLink() {
+    await copyText(window.location.href);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2500);
+  }
+
+  async function copyField(field, text) {
+    await copyText(String(text));
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(""), 2000);
   }
 
   const emailValid = useMemo(
@@ -142,7 +172,11 @@ export default function Checkout() {
     [email],
   );
   const nameValid = name.trim().length >= 2;
-  const canPay = emailValid && nameValid && ticket && !processing;
+  /* The server refuses any sale past salesEndAt — say so up front
+     instead of rendering a button that's guaranteed to fail. */
+  const salesClosed = Boolean(event?.salesClosed);
+  const canPay =
+    emailValid && nameValid && ticket && !processing && !salesClosed;
 
   useEffect(() => {
     if (!id) {
@@ -209,39 +243,142 @@ export default function Checkout() {
     };
   }, [ticket, qty, id, appliedCode]);
 
+  /* One POST to /initiate. `method` is the wire value: "transfer" asks
+     for a dedicated account, anything else gets a Paystack link. */
+  async function initiate(method) {
+    const promoterRef = sessionStorage.getItem("tictify_ref");
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: id,
+          ticketType: ticket.name,
+          quantity: qty,
+          name,
+          email,
+          payMethod: method,
+          ...(promoterRef ? { promoter: promoterRef } : {}),
+          ...(quote?.discount?.code ? { discountCode: quote.discount.code } : {}),
+        }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Payment initialization failed");
+    return data;
+  }
+
+  /* Card (or free) — hand off to Paystack's hosted page */
+  async function payByLink() {
+    const data = await initiate("link");
+    if (!data?.paymentUrl) throw new Error("Payment initialization failed");
+    window.location.href = data.paymentUrl;
+  }
+
   async function handlePayment() {
     if (!canPay) return;
     setProcessing(true);
     setError("");
+    setFallbackNote("");
     try {
-      const promoterRef = sessionStorage.getItem("tictify_ref");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: id,
-            ticketType: ticket.name,
-            quantity: qty,
-            name,
-            email,
-            ...(promoterRef ? { promoter: promoterRef } : {}),
-            ...(quote?.discount?.code
-              ? { discountCode: quote.discount.code }
-              : {}),
-          }),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok || !data?.paymentUrl)
-        throw new Error(data.message || "Payment initialization failed");
-      window.location.href = data.paymentUrl;
+      /* Free tickets never touch the transfer path */
+      if (payMethod !== "transfer" || !(ticket.price > 0)) {
+        await payByLink();
+        return;
+      }
+
+      const data = await initiate("transfer");
+
+      /* Paystack couldn't provision an account — don't dead-end the
+         guest, quietly move them to the card path instead. */
+      if (data?.transferUnavailable) {
+        setFallbackNote(
+          "Bank transfer isn't available right now — taking you to secure card payment…",
+        );
+        await payByLink();
+        return;
+      }
+
+      if (!data?.transfer || !data?.accountNumber) {
+        throw new Error("Could not start the bank transfer");
+      }
+      setTransferInfo(data);
+      setProcessing(false);
     } catch (err) {
       setError(err.message || "Payment failed");
       setProcessing(false);
     }
   }
+
+  /* Escape hatch from the transfer panel back to card */
+  async function switchToCard() {
+    setProcessing(true);
+    setError("");
+    setFallbackNote("");
+    try {
+      await payByLink();
+    } catch (err) {
+      setError(err.message || "Payment failed");
+      setProcessing(false);
+    }
+  }
+
+  /* ── Waiting for the transfer: poll status every 5s, give up after
+     ~20 min. Cleans up on unmount so no interval outlives the page. ── */
+  useEffect(() => {
+    if (!transferInfo?.reference) return;
+    let stopped = false;
+    const startedAt = Date.now();
+    const LIMIT = 20 * 60 * 1000;
+
+    const poll = async () => {
+      if (stopped) return;
+      if (Date.now() - startedAt > LIMIT) {
+        clearInterval(timer);
+        return;
+      }
+      /* Skip work while the tab is hidden — resumes on return */
+      if (document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/status/${transferInfo.reference}`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (stopped) return;
+        if (data.status === "SUCCESS") {
+          clearInterval(timer);
+          navigate(`/success/${transferInfo.reference}`);
+        } else if (data.status === "FAILED") {
+          clearInterval(timer);
+          setError("That payment didn't go through. Please try again.");
+          setTransferInfo(null);
+        }
+      } catch {
+        /* transient network blip — the next tick retries */
+      }
+    };
+
+    const timer = setInterval(poll, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [transferInfo, navigate]);
+
+  /* 1s heartbeat drives the expiry countdown */
+  useEffect(() => {
+    if (!transferInfo?.expiresAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [transferInfo]);
+
+  const countdown = useMemo(() => {
+    if (!transferInfo?.expiresAt) return null;
+    const ms = new Date(transferInfo.expiresAt).getTime() - now;
+    return Number.isFinite(ms) ? formatCountdown(ms) : null;
+  }, [transferInfo, now]);
 
   useEffect(() => {
     const start = (e) => (touchStartX.current = e.touches[0].clientX);
@@ -329,28 +466,21 @@ export default function Checkout() {
 
       {/* ── BODY ── */}
       <div className="ck-wrap">
-        {inAppBrowser && (
-          <div className="ck-iab" role="alert">
+        {inAppBrowser && !transferInfo && (
+          <div className="ck-iab" role="status">
             <div className="ck-iab-head">
-              <span className="ck-iab-icon" aria-hidden="true">⚠️</span>
+              <span className="ck-iab-icon" aria-hidden="true">🏦</span>
               <strong>
-                You&apos;re inside {inAppBrowser}&apos;s browser — card
-                payments won&apos;t complete here.
+                You&apos;re in {inAppBrowser}&apos;s browser — card payments
+                can fail here.
               </strong>
             </div>
             <p className="ck-iab-body">
-              {inAppBrowser} blocks the secure bank verification step, so
-              your payment would get stuck. Open this page in Safari or
-              Chrome instead:
+              {inAppBrowser} blocks the secure bank verification step cards
+              need. <strong>Pay by bank transfer below and you&apos;re
+              done</strong> — it works right here, no app switching. Prefer
+              card? Open this page in your browser first.
             </p>
-            <ol className="ck-iab-steps">
-              <li>
-                Tap the <strong>⋯</strong> (or share) icon in the corner
-              </li>
-              <li>
-                Choose <strong>“Open in browser”</strong>
-              </li>
-            </ol>
             <button
               type="button"
               className="ck-iab-copy"
@@ -358,12 +488,91 @@ export default function Checkout() {
             >
               {linkCopied
                 ? "✓ Link copied — paste it in your browser"
-                : "Copy checkout link"}
+                : "Copy link for card payment"}
             </button>
           </div>
         )}
         <Progress />
 
+        {transferInfo ? (
+          <section className="ck-tr" aria-live="polite">
+            <h1 className="ck-tr-title">Send ₦{Number(transferInfo.total).toLocaleString()} to this account</h1>
+            <p className="ck-tr-sub">
+              Open your bank app and make the transfer. Your ticket is
+              issued automatically the moment the money lands — keep this
+              page open.
+            </p>
+
+            <div className="ck-tr-card">
+              <div className="ck-tr-row">
+                <span className="ck-tr-k">Bank</span>
+                <span className="ck-tr-v">{transferInfo.bankName || "—"}</span>
+              </div>
+
+              <div className="ck-tr-acct">
+                <span className="ck-tr-k">Account number</span>
+                <div className="ck-tr-acctrow">
+                  <span className="ck-tr-num">{transferInfo.accountNumber}</span>
+                  <button
+                    type="button"
+                    className="ck-tr-copy"
+                    onClick={() => copyField("acct", transferInfo.accountNumber)}
+                  >
+                    {copiedField === "acct" ? "✓ Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              {transferInfo.accountName && (
+                <div className="ck-tr-row">
+                  <span className="ck-tr-k">Account name</span>
+                  <span className="ck-tr-v">{transferInfo.accountName}</span>
+                </div>
+              )}
+
+              <div className="ck-tr-row">
+                <span className="ck-tr-k">Exact amount</span>
+                <span className="ck-tr-vrow">
+                  <span className="ck-tr-amt">
+                    ₦{Number(transferInfo.total).toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    className="ck-tr-copy"
+                    onClick={() => copyField("amt", transferInfo.total)}
+                  >
+                    {copiedField === "amt" ? "✓ Copied" : "Copy"}
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            <p className="ck-tr-warn">
+              ⚠️ Transfer the <strong>exact amount</strong> — a different
+              figure won&apos;t match your ticket automatically.
+            </p>
+
+            {countdown && (
+              <p className="ck-tr-exp">
+                This account expires in <strong>{countdown}</strong>
+              </p>
+            )}
+            {transferInfo.expiresAt && !countdown && (
+              <p className="ck-tr-exp ck-tr-exp-done">
+                This account has expired — use card instead.
+              </p>
+            )}
+
+            <div className="ck-tr-wait">
+              <span className="ck-tr-pulse" aria-hidden="true" />
+              Waiting for your transfer…
+            </div>
+
+            <button type="button" className="ck-tr-alt" onClick={switchToCard}>
+              I&apos;ll pay by card instead
+            </button>
+          </section>
+        ) : (
         <div className="ck-shell">
           {/* LEFT — Event info + attendee details */}
           <section className="ck-main">
@@ -479,6 +688,62 @@ export default function Checkout() {
                     </p>
                   )}
                 </div>
+
+                {/* Paid tickets only — free ones skip payment entirely */}
+                {ticket?.price > 0 && !salesClosed && (
+                  <div className="ck-field">
+                    <label className="ck-label">How do you want to pay?</label>
+                    <div
+                      className="ck-pm"
+                      role="radiogroup"
+                      aria-label="Payment method"
+                    >
+                      {[
+                        {
+                          id: "card",
+                          icon: "💳",
+                          label: "Card",
+                          note: "Visa, Mastercard, Verve",
+                        },
+                        {
+                          id: "transfer",
+                          icon: "🏦",
+                          label: "Bank transfer",
+                          note: "Works in any app",
+                        },
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={payMethod === m.id}
+                          className={`ck-pm-opt ${payMethod === m.id ? "is-on" : ""}`}
+                          onClick={() => setPayMethod(m.id)}
+                        >
+                          <span className="ck-pm-icon" aria-hidden="true">
+                            {m.icon}
+                          </span>
+                          <span className="ck-pm-text">
+                            <span className="ck-pm-label">{m.label}</span>
+                            <span className="ck-pm-note">{m.note}</span>
+                          </span>
+                          <span className="ck-pm-tick" aria-hidden="true">
+                            {payMethod === m.id ? "●" : ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {payMethod === "transfer" && (
+                      <p className="ck-step-note">
+                        We&apos;ll show you an account to send ₦
+                        {Number(
+                          quote?.total ?? effectivePrice(ticket) * qty,
+                        ).toLocaleString()}{" "}
+                        to. Your ticket is issued automatically once it lands.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -654,8 +919,37 @@ export default function Checkout() {
                 You&rsquo;re covered — valid QR ticket or your money back
               </p>
 
+              {/* Sales window shut — explain once, up front, instead of
+                  letting them fill the form and get refused */}
+              {salesClosed && (
+                <div className="ck-closed" role="status">
+                  <div className="ck-closed-head">
+                    <span aria-hidden="true">🚪</span>
+                    <strong>Ticket sales have closed</strong>
+                  </div>
+                  <p className="ck-closed-body">
+                    The organizer stopped sales for {event.title}
+                    {event.salesEndAt
+                      ? ` on ${new Date(event.salesEndAt).toLocaleString(undefined, {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}`
+                      : ""}
+                    . No more tickets can be bought — including at the gate.
+                  </p>
+                </div>
+              )}
+
               {/* Error */}
               {error && <div className="ck-error-banner">{error}</div>}
+              {fallbackNote && (
+                <div className="ck-note-banner" role="status">
+                  {fallbackNote}
+                </div>
+              )}
 
               {/* Pay Button */}
               <button
@@ -663,15 +957,20 @@ export default function Checkout() {
                 disabled={!canPay}
                 onClick={handlePayment}
               >
-                {ticket?.price > 0
-                  ? "Proceed to Secure Payment →"
-                  : "Confirm Free Ticket →"}
+                {salesClosed
+                  ? "Ticket sales have closed"
+                  : ticket?.price > 0
+                    ? payMethod === "transfer"
+                      ? "Get bank transfer details →"
+                      : "Proceed to Secure Payment →"
+                    : "Confirm Free Ticket →"}
               </button>
 
-              <p className="ck-trust">🔒 Secured by PAYSTACK</p>
+              {!salesClosed && <p className="ck-trust">🔒 Secured by PAYSTACK</p>}
             </div>
           </aside>
         </div>
+        )}
       </div>
     </div>
   );
@@ -782,17 +1081,67 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-input.is-invalid { border-color:rgba(224,92,92,.45); }
 .ck-field-err { font-size:11px; color:var(--danger); margin-top:6px; }
 
-/* ── In-app browser warning ── */
-.ck-iab { background:rgba(224,92,92,0.08); border:1px solid rgba(224,92,92,0.45); border-radius:16px; padding:18px 20px; margin-bottom:20px; }
+/* ── In-app browser notice — informational, not alarming: transfer
+      works right here, so this is guidance rather than a dead end ── */
+.ck-iab { background:var(--gold-dim); border:1px solid rgba(232,201,106,0.4); border-radius:16px; padding:18px 20px; margin-bottom:20px; }
 .ck-iab-head { display:flex; align-items:flex-start; gap:10px; color:var(--text); font-size:14px; line-height:1.45; }
 .ck-iab-icon { font-size:18px; line-height:1.2; }
-.ck-iab-body { font-size:13px; color:var(--muted); margin:10px 0 8px; line-height:1.55; }
-.ck-iab-steps { font-size:13px; color:var(--text); margin:0 0 14px; padding-left:20px; line-height:1.7; }
-.ck-iab-copy { width:100%; padding:12px 16px; border-radius:12px; border:1px solid var(--gold); background:var(--gold-dim); color:var(--gold); font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:background .18s ease; }
-.ck-iab-copy:hover { background:var(--gold-glo); }
+.ck-iab-body { font-size:13px; color:var(--muted); margin:10px 0 14px; line-height:1.55; }
+.ck-iab-body strong { color:var(--text); font-weight:600; }
+.ck-iab-copy { width:100%; padding:12px 16px; border-radius:12px; border:1px solid var(--border-h); background:transparent; color:var(--muted); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:border-color .18s ease, color .18s ease; }
+.ck-iab-copy:hover { border-color:var(--gold); color:var(--gold); }
 @media (max-width:480px) {
   .ck-iab { padding:15px 16px; border-radius:14px; }
 }
+
+/* ── Payment method selector ── */
+.ck-pm { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ck-pm-opt { display:flex; align-items:center; gap:10px; text-align:left; padding:13px 14px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--card); color:var(--text); cursor:pointer; transition:border-color .18s, background .18s; min-width:0; }
+.ck-pm-opt:hover { border-color:var(--border-h); }
+.ck-pm-opt.is-on { border-color:var(--gold); background:var(--gold-dim); }
+.ck-pm-icon { font-size:18px; line-height:1; flex-shrink:0; }
+.ck-pm-text { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.ck-pm-label { font-size:13.5px; font-weight:600; }
+.ck-pm-note { font-size:11px; color:var(--muted); line-height:1.35; }
+.ck-pm-tick { color:var(--gold); font-size:10px; flex-shrink:0; }
+@media (max-width:380px) {
+  .ck-pm { grid-template-columns:1fr; }
+}
+
+/* ── Bank transfer instructions ── */
+.ck-tr { max-width:560px; margin:0 auto; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--r); padding:clamp(20px,4vw,32px); animation:ckFadeUp .4s ease; }
+.ck-tr-title { font-family:var(--font-h); font-size:clamp(19px,3.4vw,26px); font-weight:800; line-height:1.2; letter-spacing:-.02em; margin-bottom:10px; text-wrap:balance; }
+.ck-tr-sub { font-size:13.5px; color:var(--muted); line-height:1.65; margin-bottom:20px; }
+.ck-tr-card { display:grid; gap:14px; padding:clamp(14px,3vw,20px); border-radius:var(--r-sm); background:var(--card); border:1px solid var(--border); margin-bottom:16px; }
+.ck-tr-row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.ck-tr-k { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.ck-tr-v { font-size:14px; font-weight:500; text-align:right; overflow-wrap:anywhere; }
+.ck-tr-vrow { display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ck-tr-acct { display:grid; gap:8px; padding:14px 0; border-top:1px dashed var(--border-h); border-bottom:1px dashed var(--border-h); }
+.ck-tr-acctrow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+/* BIG + selectable — guests read this straight into their bank app */
+.ck-tr-num { font-family:var(--font-h); font-weight:800; font-size:clamp(26px,7vw,36px); letter-spacing:.06em; color:var(--gold); font-variant-numeric:tabular-nums; user-select:all; -webkit-user-select:all; overflow-wrap:anywhere; }
+.ck-tr-amt { font-family:var(--font-h); font-weight:700; font-size:17px; color:var(--text); font-variant-numeric:tabular-nums; user-select:all; -webkit-user-select:all; }
+.ck-tr-copy { padding:8px 14px; border-radius:999px; border:1px solid var(--border-h); background:transparent; color:var(--text); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; transition:border-color .18s, color .18s; }
+.ck-tr-copy:hover { border-color:var(--gold); color:var(--gold); }
+.ck-tr-warn { font-size:12.5px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
+.ck-tr-warn strong { color:var(--text); }
+.ck-tr-exp { font-size:12.5px; color:var(--muted); margin-bottom:16px; font-variant-numeric:tabular-nums; }
+.ck-tr-exp strong { color:var(--gold); }
+.ck-tr-exp-done strong, .ck-tr-exp-done { color:var(--danger); }
+.ck-tr-wait { display:flex; align-items:center; justify-content:center; gap:9px; padding:14px 16px; border-radius:var(--r-sm); background:rgba(107,240,160,.07); border:1px solid rgba(107,240,160,.28); color:var(--live); font-size:13.5px; font-weight:600; margin-bottom:14px; text-align:center; }
+.ck-tr-pulse { width:8px; height:8px; border-radius:50%; background:var(--live); flex-shrink:0; animation:ckPulse 1.4s ease-in-out infinite; }
+@keyframes ckPulse { 0%,100% { opacity:.35; transform:scale(.85); } 50% { opacity:1; transform:scale(1.15); } }
+.ck-tr-alt { width:100%; padding:12px 16px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer; transition:border-color .18s, color .18s; }
+.ck-tr-alt:hover { border-color:var(--border-h); color:var(--text); }
+
+/* ── Sales closed ── */
+.ck-closed { padding:16px 18px; border-radius:var(--r-sm); background:rgba(255,255,255,0.04); border:1px solid var(--border-h); margin-bottom:16px; }
+.ck-closed-head { display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:8px; }
+.ck-closed-body { font-size:12.5px; color:var(--muted); line-height:1.6; }
+
+/* ── Neutral note (e.g. falling back to card) ── */
+.ck-note-banner { padding:12px 16px; border-radius:var(--r-sm); margin-bottom:16px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); color:var(--text); font-size:13px; line-height:1.5; }
 
 .ck-selectwrap { position:relative; }
 .ck-select { width:100%; padding:14px 40px 14px 16px; appearance:none; -webkit-appearance:none; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; cursor:pointer; transition:border-color .2s, box-shadow .2s; }

@@ -148,6 +148,21 @@ export default function CreateEvent() {
   injectStyles("tictify-cev-css", CSS);
   const navigate = useNavigate();
 
+  /* "Sat, 22 Aug 2026, 11:59 PM" */
+  const formatWhen = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   const [eventType, setEventType] = useState("PAID");
   const [form, setForm] = useState({
     title: "",
@@ -164,6 +179,10 @@ export default function CreateEvent() {
   const [banner, setBanner] = useState(null);
   const [preview, setPreview] = useState(null);
   const [bannerFit, setBannerFit] = useState("cover");
+  /* When ticket sales stop: "end" (default — door sales), "start", or
+     an explicit "custom" moment. Resolved against the live start/end. */
+  const [salesCloseMode, setSalesCloseMode] = useState("end");
+  const [salesCloseCustom, setSalesCloseCustom] = useState("");
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(null);
   const [affiliatesEnabled, setAffiliatesEnabled] = useState(false);
@@ -173,6 +192,28 @@ export default function CreateEvent() {
     50,
     Math.max(1, Number(affiliatePercent) || 15),
   );
+
+  /* The moment sales actually close, tracking the start/end fields as
+     the organizer edits them. Same naive-local format the API already
+     receives for date/endDate, so "when the event ends" lands EXACTLY
+     on endDate server-side rather than drifting by a timezone offset. */
+  const salesEndAt =
+    salesCloseMode === "start"
+      ? form.startTime
+      : salesCloseMode === "custom"
+        ? salesCloseCustom
+        : form.endTime;
+
+  const salesCloseError = (() => {
+    if (salesCloseMode !== "custom" || !salesCloseCustom) return "";
+    const when = new Date(salesCloseCustom);
+    if (isNaN(when.getTime())) return "Enter a valid date and time";
+    if (when <= new Date()) return "Ticket sales must close in the future";
+    if (form.endTime && when > new Date(form.endTime)) {
+      return "Ticket sales must close by the time the event ends";
+    }
+    return "";
+  })();
 
   /* ================= HELPERS ================= */
   const updateField = (e) =>
@@ -219,6 +260,11 @@ export default function CreateEvent() {
       return "Event end time must be after start time";
     }
 
+    if (salesCloseMode === "custom" && !salesCloseCustom) {
+      return "Choose when ticket sales should close";
+    }
+    if (salesCloseError) return salesCloseError;
+
     for (const t of form.ticketTypes) {
       if (!t.name || !t.quantity) {
         return "Ticket name and quantity are required";
@@ -249,6 +295,7 @@ export default function CreateEvent() {
         city: form.city,
         date: form.startTime,
         endDate: form.endTime,
+        salesEndAt,
         banner: bannerUrl,
         bannerFit,
         status,
@@ -585,6 +632,89 @@ export default function CreateEvent() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* SALES WINDOW */}
+          <div className="cev-block">
+            <p className="cev-label">When do ticket sales close?</p>
+            <div
+              className="cev-sw-row"
+              role="radiogroup"
+              aria-label="When do ticket sales close?"
+            >
+              {[
+                {
+                  id: "end",
+                  icon: "🚪",
+                  name: "When the event ends",
+                  desc: "sell right up to the last minute (recommended — lets you sell at the door)",
+                },
+                {
+                  id: "start",
+                  icon: "⏰",
+                  name: "When the event starts",
+                  desc: "no sales once the party begins",
+                },
+                {
+                  id: "custom",
+                  icon: "📅",
+                  name: "Custom date & time",
+                  desc: "pick your own cut-off",
+                },
+              ].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={salesCloseMode === o.id}
+                  className={`cev-sw-card ${salesCloseMode === o.id ? "is-selected" : ""}`}
+                  onClick={() => setSalesCloseMode(o.id)}
+                >
+                  <span className="cev-sw-ic" aria-hidden="true">
+                    {o.icon}
+                  </span>
+                  <span className="cev-sw-name">{o.name}</span>
+                  <span className="cev-sw-desc">{o.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {salesCloseMode === "custom" && (
+              <div className="cev-field cev-sw-custom">
+                <label className="cev-field-label" htmlFor="cev-salesend">
+                  Sales close at
+                </label>
+                <input
+                  id="cev-salesend"
+                  type="datetime-local"
+                  className="cev-input"
+                  max={form.endTime || undefined}
+                  value={salesCloseCustom}
+                  onChange={(e) => setSalesCloseCustom(e.target.value)}
+                />
+                {salesCloseError && (
+                  <p className="cev-sw-err">{salesCloseError}</p>
+                )}
+              </div>
+            )}
+
+            {/* Live preview — resolves to the real moment as the
+                organizer edits the start/end times above */}
+            {formatWhen(salesEndAt) && !salesCloseError ? (
+              <p className="cev-sw-preview">
+                Guests can buy tickets until{" "}
+                <strong>{formatWhen(salesEndAt)}</strong>.
+              </p>
+            ) : (
+              <p className="cev-sw-preview cev-sw-preview-empty">
+                Set the event start and end times above to see when sales
+                close.
+              </p>
+            )}
+            <p className="cev-sw-help">
+              After this time nobody can buy a ticket for this event —
+              including at the gate.
+            </p>
           </div>
 
           {/* TICKETS */}
@@ -1036,6 +1166,25 @@ input, textarea, select { font-family:var(--font-b); }
 }
 
 /* ── Banner display mode (cover / contain) ── */
+/* ── Sales window ── */
+.cev-sw-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.cev-sw-card { display:flex; flex-direction:column; gap:3px; text-align:left; padding:12px; background:rgba(255,255,255,.03); border:1.5px solid var(--border); border-radius:var(--r-sm); transition:border-color .2s, background .2s; }
+.cev-sw-card:hover { border-color:var(--border-h); }
+.cev-sw-card.is-selected { border-color:var(--gold); background:var(--gold-dim); }
+.cev-sw-ic { font-size:17px; line-height:1.2; margin-bottom:4px; }
+.cev-sw-name { font-family:var(--font-h); font-weight:700; font-size:13px; color:var(--text); }
+.cev-sw-card.is-selected .cev-sw-name { color:var(--gold); }
+.cev-sw-desc { font-size:11.5px; color:var(--muted); line-height:1.45; }
+.cev-sw-custom { margin-top:12px; }
+.cev-sw-err { font-size:11.5px; color:var(--danger); margin-top:6px; line-height:1.45; }
+.cev-sw-preview { margin-top:14px; font-size:13px; color:var(--text); line-height:1.55; }
+.cev-sw-preview strong { color:var(--gold); font-weight:700; }
+.cev-sw-preview-empty { color:var(--muted); }
+.cev-sw-help { margin-top:6px; font-size:11.5px; color:var(--muted); line-height:1.5; }
+@media (max-width:640px) {
+  .cev-sw-row { grid-template-columns:1fr; }
+}
+
 .cev-bfit { margin-top:14px; }
 .cev-bfit-title { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
 .cev-bfit-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }

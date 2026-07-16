@@ -664,10 +664,58 @@ function EditEventModal({ event, onClose, onSaved }) {
     Math.max(1, Number(affiliatePercent) || 15),
   );
 
+  /* Which preset the saved salesEndAt corresponds to. Unset means the
+     default — sales run until the event ends. */
+  const [salesCloseMode, setSalesCloseMode] = useState(() => {
+    if (!event.salesEndAt) return "end";
+    const s = toLocalInput(event.salesEndAt);
+    if (s === toLocalInput(event.endDate)) return "end";
+    if (s === toLocalInput(event.date)) return "start";
+    return "custom";
+  });
+  const [salesCloseCustom, setSalesCloseCustom] = useState(
+    event.salesEndAt ? toLocalInput(event.salesEndAt) : "",
+  );
+
+  const salesEndAt =
+    salesCloseMode === "start"
+      ? form.startTime
+      : salesCloseMode === "custom"
+        ? salesCloseCustom
+        : form.endTime;
+
+  const salesCloseError = (() => {
+    if (salesCloseMode !== "custom") return "";
+    if (!salesCloseCustom) return "Choose when ticket sales should close";
+    const when = new Date(salesCloseCustom);
+    if (isNaN(when.getTime())) return "Enter a valid date and time";
+    if (when <= new Date()) return "Ticket sales must close in the future";
+    if (form.endTime && when > new Date(form.endTime)) {
+      return "Ticket sales must close by the time the event ends";
+    }
+    return "";
+  })();
+
+  /* "Sat, 22 Aug 2026, 11:59 PM" */
+  const formatWhen = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   async function save() {
     if (saving) return;
+    if (salesCloseError) return setError(salesCloseError);
     setSaving(true);
     setError("");
     try {
@@ -688,6 +736,7 @@ function EditEventModal({ event, onClose, onSaved }) {
             bannerFit,
             ...(form.startTime ? { date: form.startTime } : {}),
             ...(form.endTime ? { endDate: form.endTime } : {}),
+            ...(salesEndAt ? { salesEndAt } : {}),
             ...(form.capacity !== "" && form.capacity != null
               ? { capacity: Number(form.capacity) }
               : {}),
@@ -814,6 +863,69 @@ function EditEventModal({ event, onClose, onSaved }) {
               value={form.endTime}
               onChange={update}
             />
+          </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <span className="mev-form-label">Ticket sales close</span>
+            <div
+              className="mev-bfit-row mev-sw-row"
+              role="radiogroup"
+              aria-label="When ticket sales close"
+            >
+              {[
+                {
+                  id: "end",
+                  name: "🚪 When the event ends",
+                  desc: "sell right up to the last minute (lets you sell at the door)",
+                },
+                {
+                  id: "start",
+                  name: "⏰ When the event starts",
+                  desc: "no sales once the party begins",
+                },
+                {
+                  id: "custom",
+                  name: "📅 Custom date & time",
+                  desc: "pick your own cut-off",
+                },
+              ].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={salesCloseMode === o.id}
+                  className={`mev-bfit-pill ${salesCloseMode === o.id ? "is-selected" : ""}`}
+                  onClick={() => setSalesCloseMode(o.id)}
+                >
+                  {o.name}
+                  <span className="mev-bfit-desc">{o.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {salesCloseMode === "custom" && (
+              <input
+                type="datetime-local"
+                className="mev-form-input mev-sw-input"
+                aria-label="Sales close at"
+                max={form.endTime || undefined}
+                value={salesCloseCustom}
+                onChange={(e) => setSalesCloseCustom(e.target.value)}
+              />
+            )}
+
+            {salesCloseError ? (
+              <p className="mev-sw-err">{salesCloseError}</p>
+            ) : formatWhen(salesEndAt) ? (
+              <p className="mev-sw-preview">
+                Guests can buy tickets until{" "}
+                <strong>{formatWhen(salesEndAt)}</strong>.
+              </p>
+            ) : null}
+            <p className="mev-sw-help">
+              After this time nobody can buy a ticket for this event —
+              including at the gate. Setting a future time reopens sales.
+            </p>
           </div>
 
           <div className="mev-form-field">
@@ -1302,6 +1414,17 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-bfit-pill:hover { border-color:var(--border-h); }
 .mev-bfit-pill.is-selected { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); }
 .mev-bfit-desc { font-family:var(--font-b); font-weight:400; font-size:11.5px; color:var(--muted); line-height:1.45; }
+
+/* ── Sales window (3 presets — one per row on narrow screens) ── */
+.mev-sw-row { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.mev-sw-input { margin-top:10px; }
+.mev-sw-preview { margin-top:10px; font-size:12.5px; color:var(--text); line-height:1.55; }
+.mev-sw-preview strong { color:var(--gold); font-weight:700; }
+.mev-sw-err { margin-top:10px; font-size:11.5px; color:var(--danger); line-height:1.45; }
+.mev-sw-help { margin-top:6px; font-size:11.5px; color:var(--muted); line-height:1.5; }
+@media (max-width:640px) {
+  .mev-sw-row { grid-template-columns:1fr; }
+}
 
 /* affiliate toggle (checkbox-pill) */
 .mev-aff-toggle { display:inline-flex; align-items:center; gap:10px; align-self:flex-start; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:999px; padding:8px 18px 8px 8px; color:var(--muted); font-weight:600; font-size:13.5px; transition:border-color .25s, color .25s, background .25s; }
