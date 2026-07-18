@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
+import ShareSheet from "../../components/ShareSheet";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -174,7 +175,7 @@ export default function MyEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
+  const [shareEvent, setShareEvent] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [promoEvent, setPromoEvent] = useState(null);
   const [exportingId, setExportingId] = useState(null);
@@ -257,13 +258,6 @@ export default function MyEvents() {
     }
   }
 
-  function copyEventLink(id) {
-    const link = `${window.location.origin}/events/${id}`;
-    navigator.clipboard.writeText(link);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
   /* ================= GUEST LIST CSV EXPORT ================= */
   async function exportGuestList(event) {
     if (exportingId) return;
@@ -321,6 +315,16 @@ export default function MyEvents() {
         <PromoterModal
           event={promoEvent}
           onClose={() => setPromoEvent(null)}
+        />
+      )}
+
+      {shareEvent && (
+        <ShareSheet
+          url={`${window.location.origin}/events/${shareEvent._id}`}
+          title={shareEvent.title}
+          dateText={new Date(shareEvent.date).toDateString()}
+          locationText={shareEvent.location}
+          onClose={() => setShareEvent(null)}
         />
       )}
 
@@ -456,9 +460,10 @@ export default function MyEvents() {
                 <div className="mev-actions">
                   <button
                     className="mev-abtn mev-abtn-share"
-                    onClick={() => copyEventLink(event._id)}
+                    onClick={() => setShareEvent(event)}
+                    aria-haspopup="dialog"
                   >
-                    {copiedId === event._id ? "Copied ✓" : "Share"}
+                    Share
                   </button>
 
                   <button
@@ -564,6 +569,7 @@ function ConfirmModal({ onCancel, onConfirm }) {
 function PromoterModal({ event, onClose }) {
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -624,6 +630,14 @@ function PromoterModal({ event, onClose }) {
             Close
           </button>
           <button
+            className="mev-btn mev-btn-ghost"
+            disabled={!valid}
+            onClick={() => setSharing(true)}
+            aria-haspopup="dialog"
+          >
+            Share
+          </button>
+          <button
             className="mev-btn mev-btn-gold"
             disabled={!valid}
             onClick={copyLink}
@@ -631,6 +645,17 @@ function PromoterModal({ event, onClose }) {
             {copied ? "Copied ✓" : "Copy link"}
           </button>
         </div>
+
+        {/* Shares from here carry ?ref=CODE so the promoter gets credited */}
+        {sharing && valid && (
+          <ShareSheet
+            url={link}
+            title={event.title}
+            dateText={new Date(event.date).toDateString()}
+            locationText={event.location}
+            onClose={() => setSharing(false)}
+          />
+        )}
       </div>
     </div>
   );
