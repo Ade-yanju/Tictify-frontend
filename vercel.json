@@ -1,6 +1,3 @@
 {
-  "rewrites": [
-    { "source": "/events/:id", "destination": "/api/event-preview?id=:id" },
-    { "source": "/(.*)", "destination": "/" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }
