@@ -133,9 +133,11 @@ export default function Checkout() {
   const [linkCopied, setLinkCopied] = useState(false);
   /* Card redirects break inside webviews — transfer always works, so
      that's the default in one. Elsewhere card stays the default. */
-  const [payMethod, setPayMethod] = useState(() =>
-    detectInAppBrowser() ? "transfer" : "card",
-  );
+  const [payMethod, setPayMethod] = useState("card");
+  /* null = still asking the server. Never offer a method the account
+     can't actually complete — doing so produces instantly-failed
+     payments and a guest who can't buy. */
+  const [transferOffered, setTransferOffered] = useState(false);
   const [transferInfo, setTransferInfo] = useState(null);
   const [fallbackNote, setFallbackNote] = useState("");
   const [copiedField, setCopiedField] = useState("");
@@ -206,6 +208,28 @@ export default function Checkout() {
       }
     })();
   }, [id, ticketParam]);
+
+  /* ── Which payment methods can actually complete right now ── */
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/methods`,
+        );
+        const data = await res.json();
+        if (!active || !data?.transfer) return;
+        setTransferOffered(true);
+        // Card redirects break inside webviews — transfer is the way out
+        if (detectInAppBrowser()) setPayMethod("transfer");
+      } catch {
+        /* stay on card-only — the safe default */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /* ── Transparent fee quote (single source of truth for total) ── */
   useEffect(() => {
@@ -469,18 +493,33 @@ export default function Checkout() {
         {inAppBrowser && !transferInfo && (
           <div className="ck-iab" role="status">
             <div className="ck-iab-head">
-              <span className="ck-iab-icon" aria-hidden="true">🏦</span>
+              <span className="ck-iab-icon" aria-hidden="true">
+                {transferOffered ? "🏦" : "⚠️"}
+              </span>
               <strong>
                 You&apos;re in {inAppBrowser}&apos;s browser — card payments
                 can fail here.
               </strong>
             </div>
-            <p className="ck-iab-body">
-              {inAppBrowser} blocks the secure bank verification step cards
-              need. <strong>Pay by bank transfer below and you&apos;re
-              done</strong> — it works right here, no app switching. Prefer
-              card? Open this page in your browser first.
-            </p>
+            {transferOffered ? (
+              <p className="ck-iab-body">
+                {inAppBrowser} blocks the secure bank verification step cards
+                need. <strong>Pay by bank transfer below and you&apos;re
+                done</strong> — it works right here, no app switching. Prefer
+                card? Open this page in your browser first.
+              </p>
+            ) : (
+              /* No transfer on this account — the guest MUST leave the
+                 webview, so say so plainly instead of offering a method
+                 that would fail. */
+              <p className="ck-iab-body">
+                {inAppBrowser} blocks the secure bank verification step cards
+                need, so payment may fail in here.{" "}
+                <strong>Open this page in Safari or Chrome</strong> — tap the
+                ⋯ menu and choose &ldquo;Open in browser&rdquo;, or copy the
+                link below.
+              </p>
+            )}
             <button
               type="button"
               className="ck-iab-copy"
@@ -689,8 +728,10 @@ export default function Checkout() {
                   )}
                 </div>
 
-                {/* Paid tickets only — free ones skip payment entirely */}
-                {ticket?.price > 0 && !salesClosed && (
+                {/* Paid tickets only, and only when there's a real choice
+                    to make — transfer is hidden when the account can't
+                    provision one. */}
+                {ticket?.price > 0 && !salesClosed && transferOffered && (
                   <div className="ck-field">
                     <label className="ck-label">How do you want to pay?</label>
                     <div
