@@ -177,8 +177,39 @@ export default function Checkout() {
   /* The server refuses any sale past salesEndAt — say so up front
      instead of rendering a button that's guaranteed to fail. */
   const salesClosed = Boolean(event?.salesClosed);
+
+  /* Server-computed stock for the selected tier, matched BY NAME — the
+     same key createPaymentSession matches on. It already folds in the
+     event-capacity guard, so `remaining` is exactly how many tickets
+     the server will actually sell from this tier. */
+  const tierAvail = useMemo(
+    () =>
+      (event?.availability?.tiers || []).find((t) => t.name === ticket?.name) ||
+      null,
+    [event, ticket],
+  );
+  const tierSoldOut = Boolean(tierAvail?.soldOut);
+  /* 10 stays the hard upper bound (the server clamps there too); stock
+     only ever lowers it. No availability data → old flat 10. */
+  const maxQty = Math.max(
+    1,
+    Math.min(10, tierAvail ? tierAvail.remaining : 10),
+  );
+
+  /* Switching tiers (or a refetch) can shrink the ceiling under the
+     current qty — pull it back so we never post a quantity the server
+     will bounce. */
+  useEffect(() => {
+    setQty((q) => Math.min(q, maxQty));
+  }, [maxQty]);
+
   const canPay =
-    emailValid && nameValid && ticket && !processing && !salesClosed;
+    emailValid &&
+    nameValid &&
+    ticket &&
+    !processing &&
+    !salesClosed &&
+    !tierSoldOut;
 
   useEffect(() => {
     if (!id) {
@@ -714,12 +745,33 @@ export default function Checkout() {
                       type="button"
                       className="ck-step-btn"
                       aria-label="Increase quantity"
-                      disabled={qty >= 10}
-                      onClick={() => setQty((q) => Math.min(10, q + 1))}
+                      disabled={qty >= maxQty}
+                      onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
                     >
                       +
                     </button>
                   </div>
+                  {/* Stock for the selected tier, straight from the server */}
+                  {tierAvail && !salesClosed && (
+                    <p
+                      className={`ck-stock ${
+                        tierSoldOut
+                          ? "is-out"
+                          : tierAvail.remaining <= 10
+                            ? "is-low"
+                            : ""
+                      }`}
+                      role="status"
+                    >
+                      {tierSoldOut
+                        ? `${ticket.name} is sold out`
+                        : tierAvail.remaining <= 10
+                          ? `Only ${tierAvail.remaining} ${ticket.name} ticket${
+                              tierAvail.remaining === 1 ? "" : "s"
+                            } left`
+                          : `${tierAvail.remaining} left`}
+                    </p>
+                  )}
                   {qty > 1 && ticket && (
                     <p className="ck-step-note">
                       One QR code admits all {qty * (ticket.groupSize || 1)} of
@@ -984,6 +1036,22 @@ export default function Checkout() {
                 </div>
               )}
 
+              {/* Tier exhausted — same treatment as a shut sales window,
+                  because the server refuses this purchase just as flatly */}
+              {!salesClosed && tierSoldOut && (
+                <div className="ck-closed" role="status">
+                  <div className="ck-closed-head">
+                    <span aria-hidden="true">🎟️</span>
+                    <strong>{ticket.name} is sold out</strong>
+                  </div>
+                  <p className="ck-closed-body">
+                    {event?.availability?.soldOut
+                      ? `${event.title} has sold out — no tickets are left in any category.`
+                      : "Every ticket in this category is gone. Pick another ticket type to keep going."}
+                  </p>
+                </div>
+              )}
+
               {/* Error */}
               {error && <div className="ck-error-banner">{error}</div>}
               {fallbackNote && (
@@ -1000,14 +1068,18 @@ export default function Checkout() {
               >
                 {salesClosed
                   ? "Ticket sales have closed"
-                  : ticket?.price > 0
+                  : tierSoldOut
+                    ? "Sold out"
+                    : ticket?.price > 0
                     ? payMethod === "transfer"
                       ? "Get bank transfer details →"
                       : "Proceed to Secure Payment →"
                     : "Confirm Free Ticket →"}
               </button>
 
-              {!salesClosed && <p className="ck-trust">🔒 Secured by PAYSTACK</p>}
+              {!salesClosed && !tierSoldOut && (
+                <p className="ck-trust">🔒 Secured by PAYSTACK</p>
+              )}
             </div>
           </aside>
         </div>
@@ -1196,6 +1268,10 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-step-btn { width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text); font-size:18px; line-height:1; display:grid; place-items:center; cursor:pointer; transition:border-color .2s, background .2s, color .2s; }
 .ck-step-btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }
 .ck-step-btn:disabled { opacity:.35; cursor:not-allowed; }
+/* stock line under the stepper */
+.ck-stock { margin-top:8px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+.ck-stock.is-low { color:var(--live); font-weight:600; }
+.ck-stock.is-out { color:var(--danger); font-weight:600; }
 .ck-step-num { min-width:36px; text-align:center; font-family:var(--font-h); font-weight:700; font-size:16px; color:var(--gold); font-variant-numeric:tabular-nums; }
 .ck-step-note { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.6; }
 

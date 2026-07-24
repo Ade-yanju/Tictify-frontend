@@ -299,15 +299,37 @@ export default function AdminEvents() {
                       <td className="aev-td">{event.organizerName || "—"}</td>
                       <td className="aev-td aev-nowrap">{new Date(event.date).toLocaleDateString()}</td>
                       <td className="aev-td">
-                        <div className="aev-tickets-cell">
-                          <span className="aev-tickets-num">{event.ticketsSold || 0}/{event.capacity || "—"}</span>
-                          <div className="aev-ticket-bar">
-                            <div
-                              className="aev-ticket-fill"
-                              style={{ width: `${Math.min((event.ticketsSold || 0) / (event.capacity || 1) * 100, 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                        {(() => {
+                          /* availability mirrors the checkout guards, so
+                             sold/remaining here is what the server honours.
+                             Falls back to ticketsSold on older payloads. */
+                          const av = event.availability;
+                          const sold = av?.totalSold ?? event.ticketsSold ?? 0;
+                          const cap = av?.capacity ?? event.capacity ?? null;
+                          const left =
+                            av?.remaining ??
+                            (cap != null ? Math.max(0, cap - sold) : null);
+                          return (
+                            <div className="aev-tickets-cell">
+                              <span className="aev-tickets-num">
+                                {sold}/{cap ?? "—"}
+                              </span>
+                              <div className="aev-ticket-bar">
+                                <div
+                                  className="aev-ticket-fill"
+                                  style={{ width: `${Math.min((sold / (cap || 1)) * 100, 100)}%` }}
+                                />
+                              </div>
+                              {left != null && (
+                                <span
+                                  className={`aev-tickets-left ${left === 0 ? "is-out" : ""}`}
+                                >
+                                  {left === 0 ? "Sold out" : `${left} remaining`}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="aev-td">
                         <StatusBadge status={event.status} />
@@ -637,6 +659,8 @@ button, input, select { font-family:var(--font-b); }
 .aev-tickets-num { font-variant-numeric:tabular-nums; font-size:13px; }
 .aev-ticket-bar { height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; min-width:100px; }
 .aev-ticket-fill { height:100%; background:var(--gold); border-radius:3px; transition:width .4s ease; }
+.aev-tickets-left { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.aev-tickets-left.is-out { color:var(--danger); font-weight:600; }
 .aev-badge { padding:5px 12px; border-radius:999px; font-weight:700; font-size:11px; letter-spacing:.06em; white-space:nowrap; display:inline-block; }
 .aev-badge.is-live { background:var(--live); color:#080910; }
 .aev-badge.is-ended { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }

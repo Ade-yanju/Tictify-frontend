@@ -118,13 +118,41 @@ function effectivePrice(t) {
   return isEarlyBird(t) ? Number(t.earlyBirdPrice) : t?.price;
 }
 
+/* ── Availability wording ────────────────────────────────
+   `avail` comes straight from the server's availability.tiers, which
+   mirrors the checkout guards — so what we print here is exactly what
+   the payment endpoint will honour. Missing tier → render nothing
+   rather than guess. */
+const LOW_STOCK_AT = 10;
+
+function TicketStock({ avail }) {
+  if (!avail) return null;
+  if (avail.soldOut) {
+    return (
+      <span className="ed-stock is-out" role="status">
+        Sold out
+      </span>
+    );
+  }
+  if (avail.remaining <= LOW_STOCK_AT) {
+    return (
+      <span className="ed-stock is-low" role="status">
+        Only {avail.remaining} left
+      </span>
+    );
+  }
+  return <span className="ed-stock">{avail.remaining} left</span>;
+}
+
 /* ── Ticket-type option card ─────────────────────────────── */
-function TicketOption({ ticket, selected, onSelect }) {
+function TicketOption({ ticket, selected, onSelect, avail }) {
   const eb = isEarlyBird(ticket) && ticket.price > 0;
+  const soldOut = Boolean(avail?.soldOut);
   return (
     <label
-      onClick={() => onSelect(ticket)}
-      className={`ed-ticket ${selected ? "is-selected" : ""}`}
+      onClick={() => !soldOut && onSelect(ticket)}
+      aria-disabled={soldOut || undefined}
+      className={`ed-ticket ${selected ? "is-selected" : ""} ${soldOut ? "is-soldout" : ""}`}
     >
       <div className="ed-ticket-main">
         <span className="ed-radio">
@@ -132,6 +160,7 @@ function TicketOption({ ticket, selected, onSelect }) {
         </span>
         <span className="ed-ticket-info">
           <span className="ed-ticket-name">{ticket.name}</span>
+          <TicketStock avail={avail} />
           {(ticket.groupSize || 1) > 1 && (
             <span className="ed-ticket-desc">
               🎟️ One QR code admits {ticket.groupSize} guests
@@ -215,6 +244,25 @@ export default function EventDetails() {
     () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
     [email],
   );
+
+  /* Server-computed availability, indexed BY TIER NAME (the same key the
+     checkout guard matches on). A tier absent from the payload simply
+     yields undefined and renders no stock line. */
+  const stockByTier = useMemo(() => {
+    const map = new Map();
+    for (const t of event?.availability?.tiers || []) {
+      if (t?.name) map.set(t.name, t);
+    }
+    return map;
+  }, [event]);
+
+  /* A tier can sell out between page load and a refetch — never leave a
+     sold-out tier selected, or the CTA would walk into a refusal. */
+  useEffect(() => {
+    if (selectedTicket && stockByTier.get(selectedTicket.name)?.soldOut) {
+      setSelectedTicket(null);
+    }
+  }, [selectedTicket, stockByTier]);
   /* Server refuses sales past salesEndAt — never offer a buy button
      that's guaranteed to bounce */
   const salesClosed = Boolean(event?.salesClosed);
@@ -334,11 +382,17 @@ export default function EventDetails() {
               <div className="ed-panel-head">
                 <h2 className="ed-panel-title">Get Tickets</h2>
                 <span className="ed-panel-sold">
-                  {(event.ticketTypes || []).reduce(
-                    (s, t) => s + (t.sold || 0),
-                    0,
-                  )}{" "}
+                  {event.availability?.totalSold ??
+                    (event.ticketTypes || []).reduce(
+                      (s, t) => s + (t.sold || 0),
+                      0,
+                    )}{" "}
                   sold
+                  {/* remaining only when the event declares a capacity —
+                      without one there is no honest number to quote */}
+                  {event.availability?.capacity != null && (
+                    <> · {event.availability.remaining} remaining</>
+                  )}
                 </span>
               </div>
 
@@ -354,6 +408,7 @@ export default function EventDetails() {
                     ticket={ticket}
                     selected={selectedTicket?.name === ticket.name}
                     onSelect={setSelectedTicket}
+                    avail={stockByTier.get(ticket.name)}
                   />
                 ))}
               </div>
@@ -548,7 +603,7 @@ img { display:block; }
 .ed-panel { background:rgba(255,255,255,0.035); border:1px solid var(--border); border-radius:var(--r); padding:clamp(20px,4vw,32px); animation:edFadeUp .4s ease .1s both; min-width:0; }
 .ed-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:22px; }
 .ed-panel-title { font-family:var(--font-h); font-size:18px; font-weight:700; color:var(--text); }
-.ed-panel-sold { font-family:var(--font-h); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+.ed-panel-sold { font-family:var(--font-h); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); text-align:right; }
 
 /* ticket options */
 .ed-tickets { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
@@ -565,6 +620,16 @@ img { display:block; }
 .ed-ticket-price { font-family:var(--font-h); font-weight:800; font-size:16px; color:var(--gold); white-space:nowrap; flex-shrink:0; }
 .ed-ticket-pricing { display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
 .ed-eb-strike { font-size:12px; color:var(--muted); text-decoration:line-through; white-space:nowrap; }
+/* per-tier stock line */
+.ed-stock { display:inline-flex; align-self:flex-start; align-items:center; font-size:12px; font-weight:500; color:var(--muted); }
+.ed-stock.is-low { font-family:var(--font-h); font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--live); background:rgba(107,240,160,.10); border:1px solid rgba(107,240,160,.32); border-radius:999px; padding:2px 8px; margin-top:2px; }
+.ed-stock.is-out { font-family:var(--font-h); font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--danger); background:rgba(224,92,92,.10); border:1px solid rgba(224,92,92,.32); border-radius:999px; padding:2px 8px; margin-top:2px; }
+
+/* a sold-out tier is not selectable — dim it and kill the hover affordance */
+.ed-ticket.is-soldout { opacity:.5; cursor:not-allowed; }
+.ed-ticket.is-soldout:hover { border-color:var(--border); }
+.ed-ticket.is-soldout .ed-ticket-price { color:var(--muted); }
+
 .ed-eb-caption { display:inline-flex; align-self:flex-start; margin-top:3px; font-family:var(--font-h); font-size:9.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); background:var(--gold-dim); border:1px solid rgba(232,201,106,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
 
 /* email field */

@@ -410,8 +410,17 @@ export default function MyEvents() {
       {!loading && events.length > 0 && (
         <section className="mev-grid">
           {events.map((event) => {
-            const capacity = Number(event.capacity) || 0;
-            const sold = Number(event.sold ?? event.ticketsSold ?? 0) || 0;
+            /* Server-computed availability mirrors the checkout guards
+               exactly, so these numbers are what will actually sell. */
+            const avail = event.availability;
+            const capacity = Number(avail?.capacity ?? event.capacity) || 0;
+            const sold =
+              Number(avail?.totalSold ?? event.sold ?? event.ticketsSold ?? 0) || 0;
+            const left =
+              avail?.remaining != null
+                ? avail.remaining
+                : Math.max(0, capacity - sold);
+            const tiers = avail?.tiers || [];
             const pct =
               capacity > 0
                 ? Math.min(100, Math.round((sold / capacity) * 100))
@@ -447,9 +456,32 @@ export default function MyEvents() {
                         />
                       </div>
                       <span className="mev-progress-label">
-                        {sold}/{capacity} tickets · {pct}% sold
+                        {sold} sold · {left} left of {capacity} · {pct}%
                       </span>
                     </div>
+                  )}
+
+                  {/* Per-tier breakdown — stacks to one row per tier on
+                      narrow screens (see .mev-tiers @media below) */}
+                  {tiers.length > 0 && (
+                    <ul className="mev-tiers">
+                      {tiers.map((t) => (
+                        <li
+                          className={`mev-tier ${t.soldOut ? "is-out" : ""}`}
+                          key={t.name}
+                        >
+                          <span className="mev-tier-name" title={t.name}>
+                            {t.name}
+                          </span>
+                          <span className="mev-tier-sold">
+                            {t.sold}/{t.quantity ?? "—"}
+                          </span>
+                          <span className="mev-tier-left">
+                            {t.soldOut ? "Sold out" : `${t.remaining} left`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
 
                   {event.revenue != null && (
@@ -1359,6 +1391,21 @@ button { font-family:var(--font-b); cursor:pointer; }
 .mev-progress { height:4px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden; }
 .mev-progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#E8C96A,#F5E196); transition:width .5s ease; }
 .mev-progress-label { display:block; margin-top:6px; font-size:11.5px; color:var(--muted); }
+
+/* ── Per-tier availability breakdown ── */
+.mev-tiers { list-style:none; margin:10px 0 0; padding:8px 10px; display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; }
+.mev-tier { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.mev-tier-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-weight:500; }
+.mev-tier-sold { white-space:nowrap; }
+.mev-tier-left { white-space:nowrap; color:var(--live); font-weight:600; }
+.mev-tier.is-out .mev-tier-left { color:var(--danger); }
+.mev-tier.is-out .mev-tier-name { opacity:.65; }
+/* narrow cards: name gets its own line so nothing is clipped or scrolls */
+@media (max-width:420px) {
+  .mev-tier { grid-template-columns:1fr auto; row-gap:2px; }
+  .mev-tier-name { grid-column:1 / -1; white-space:normal; }
+  .mev-tier-left { text-align:right; }
+}
 
 .mev-revenue { margin-top:10px; font-family:var(--font-h); font-weight:700; font-size:15px; color:var(--gold); font-variant-numeric:tabular-nums; }
 
