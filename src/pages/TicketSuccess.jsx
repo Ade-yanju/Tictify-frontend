@@ -367,7 +367,7 @@ export default function TicketSuccess() {
 
   const shareGroupInvite = () => {
     const groupMsg = `I got us ${ticket.groupSize} tickets to ${event.title}! One QR covers us all — see you there 🎟️`;
-    const eventId = event._id || event.id;
+    const eventId = event.slug || event._id || event.id;
     const text = eventId
       ? `${groupMsg} ${window.location.origin}/events/${eventId}`
       : groupMsg;

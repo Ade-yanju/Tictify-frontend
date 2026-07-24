@@ -170,14 +170,17 @@ export default function AffiliateDashboard() {
     return `${window.location.origin}/events/${id}?ref=${code}`;
   }
 
-  async function copyEventLink(id) {
-    await copyText(eventLink(id));
-    setCopiedEventId(id);
+  /* Takes the whole event: the LINK uses the pretty slug, but the
+     "Copied" flag still keys off _id so the feedback lands on the
+     right card even for a pre-slug event. */
+  async function copyEventLink(ev) {
+    await copyText(eventLink(ev.slug || ev._id));
+    setCopiedEventId(ev._id);
     setTimeout(() => setCopiedEventId(null), 2000);
   }
 
   function shareWhatsApp(ev) {
-    const text = `🎟 ${ev.title} — grab your ticket here: ${eventLink(ev._id)}`;
+    const text = `🎟 ${ev.title} — grab your ticket here: ${eventLink(ev.slug || ev._id)}`;
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
       "_blank",
@@ -415,7 +418,7 @@ export default function AffiliateDashboard() {
                         <div className="afd-event-actions">
                           <button
                             className="afd-btn afd-btn-gold afd-btn-sm"
-                            onClick={() => copyEventLink(ev._id)}
+                            onClick={() => copyEventLink(ev)}
                             disabled={!code}
                           >
                             {Ic.copy}

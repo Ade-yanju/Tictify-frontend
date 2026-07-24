@@ -300,7 +300,10 @@ export default function EventDetails() {
   }
 
   const eventDate = new Date(event.date);
-  const shareUrl = `${window.location.origin}/events/${id}`;
+  /* Share the pretty slug when the server sent one; `id` (whatever
+     the visitor arrived with) is the fallback for pre-slug events. */
+  const eventKey = event.slug || event._id || id;
+  const shareUrl = `${window.location.origin}/events/${eventKey}`;
   const ctaLabel = salesClosed
     ? "Ticket sales have closed"
     : !selectedTicket
@@ -309,7 +312,7 @@ export default function EventDetails() {
         ? "Enter your email"
         : "Proceed to Payment →";
   const goToCheckout = () =>
-    navigate(`/checkout/${event._id}`, {
+    navigate(`/checkout/${eventKey}`, {
       state: { ticket: selectedTicket, email },
     });
 

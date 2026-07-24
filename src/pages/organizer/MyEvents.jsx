@@ -320,7 +320,7 @@ export default function MyEvents() {
 
       {shareEvent && (
         <ShareSheet
-          url={`${window.location.origin}/events/${shareEvent._id}`}
+          url={`${window.location.origin}/events/${shareEvent.slug || shareEvent._id}`}
           title={shareEvent.title}
           dateText={new Date(shareEvent.date).toDateString()}
           locationText={shareEvent.location}
@@ -610,7 +610,7 @@ function PromoterModal({ event, onClose }) {
   }, [copied]);
 
   const valid = code.length >= 2 && code.length <= 30;
-  const link = `${window.location.origin}/events/${event._id}?ref=${
+  const link = `${window.location.origin}/events/${event.slug || event._id}?ref=${
     code || "CODE"
   }`;
 

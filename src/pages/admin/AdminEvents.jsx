@@ -134,6 +134,10 @@ export default function AdminEvents() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [notice, setNotice] = useState("");
+  /* Recount is per-row and inline: it never replaces the page with an
+     error screen, it just annotates the row it belongs to. */
+  const [recountBusyId, setRecountBusyId] = useState(null);
+  const [recountResult, setRecountResult] = useState({}); // _id → {ok, text}
 
   const itemsPerPage = 10;
 
@@ -192,6 +196,50 @@ export default function AdminEvents() {
       setCancelError(err.message || "Unable to cancel event");
     } finally {
       setCancelBusy(false);
+    }
+  }
+
+  /* Force an immediate Payment-derived recount of one event's tiers.
+     On success the row's own numbers are replaced from the response —
+     no full reload, so the admin keeps their place in the table. */
+  async function recount(event) {
+    if (recountBusyId) return;
+    setRecountBusyId(event._id);
+    setRecountResult((r) => ({ ...r, [event._id]: null }));
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/events/${event._id}/recount`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Recount failed");
+
+      setEvents((prev) =>
+        prev.map((e) =>
+          e._id === event._id
+            ? { ...e, availability: data.availability ?? e.availability }
+            : e,
+        ),
+      );
+      setRecountResult((r) => ({
+        ...r,
+        [event._id]: {
+          ok: true,
+          text: data.changed
+            ? `Corrected ${data.drifts.length} tier${data.drifts.length === 1 ? "" : "s"}`
+            : "Already accurate",
+        },
+      }));
+    } catch (err) {
+      setRecountResult((r) => ({
+        ...r,
+        [event._id]: { ok: false, text: err.message || "Recount failed" },
+      }));
+    } finally {
+      setRecountBusyId(null);
     }
   }
 
@@ -335,20 +383,39 @@ export default function AdminEvents() {
                         <StatusBadge status={event.status} />
                       </td>
                       <td className="aev-td">
-                        {["LIVE", "DRAFT"].includes(event.status) ? (
+                        <div className="aev-actions">
                           <button
-                            className="aev-cancel-btn"
-                            onClick={() => {
-                              setCancelReason("");
-                              setCancelError("");
-                              setCancelTarget(event);
-                            }}
+                            className="aev-recount-btn"
+                            disabled={recountBusyId === event._id}
+                            onClick={() => recount(event)}
                           >
-                            Cancel event
+                            {recountBusyId === event._id
+                              ? "Recounting…"
+                              : "Recount"}
                           </button>
-                        ) : (
-                          <span className="aev-no-action">—</span>
-                        )}
+                          {["LIVE", "DRAFT"].includes(event.status) && (
+                            <button
+                              className="aev-cancel-btn"
+                              onClick={() => {
+                                setCancelReason("");
+                                setCancelError("");
+                                setCancelTarget(event);
+                              }}
+                            >
+                              Cancel event
+                            </button>
+                          )}
+                          {recountResult[event._id] && (
+                            <span
+                              className={`aev-recount-note ${
+                                recountResult[event._id].ok ? "" : "is-err"
+                              }`}
+                              role="status"
+                            >
+                              {recountResult[event._id].text}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -671,6 +738,12 @@ button, input, select { font-family:var(--font-b); }
 .aev-cancel-btn { background:transparent; border:1px solid rgba(224,92,92,.4); color:var(--danger); font-size:12px; font-weight:600; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:background .2s, border-color .2s; }
 .aev-cancel-btn:hover { background:rgba(224,92,92,.1); border-color:var(--danger); }
 .aev-no-action { color:var(--muted); }
+.aev-actions { display:flex; flex-direction:column; align-items:flex-start; gap:7px; }
+.aev-recount-btn { background:transparent; border:1px solid var(--border-h); color:var(--text); font-size:12px; font-weight:600; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:background .2s, border-color .2s, color .2s; }
+.aev-recount-btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }
+.aev-recount-btn:disabled { opacity:.5; cursor:not-allowed; }
+.aev-recount-note { font-size:11px; color:var(--live); line-height:1.45; max-width:180px; }
+.aev-recount-note.is-err { color:var(--danger); }
 .aev-overlay { position:fixed; inset:0; z-index:3000; background:rgba(8,9,16,.8); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:grid; place-items:center; padding:20px; }
 .aev-modal { width:min(100%,420px); background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:clamp(24px,5vw,32px); animation:aev-fade .3s ease; }
 .aev-modal-title { font-family:var(--font-h); font-size:19px; font-weight:700; margin-bottom:8px; }

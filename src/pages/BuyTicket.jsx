@@ -58,7 +58,7 @@ export default function BuyTicket({ event }) {
     if (!canProceed) return;
     setProcessing(true);
     navigate(
-      `/checkout/${event._id}?email=${encodeURIComponent(email)}&ticket=${encodeURIComponent(ticket)}`,
+      `/checkout/${event.slug || event._id}?email=${encodeURIComponent(email)}&ticket=${encodeURIComponent(ticket)}`,
     );
   }
 

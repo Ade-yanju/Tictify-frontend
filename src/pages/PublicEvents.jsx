@@ -156,7 +156,7 @@ function EventCard({ event, onClick, index }) {
 
   return (
     <article
-      onClick={() => !disabled && onClick(event._id)}
+      onClick={() => !disabled && onClick(event.slug || event._id)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={`pe-card ${hovered && !disabled ? "is-hover" : ""} ${disabled ? "is-disabled" : ""}`}
