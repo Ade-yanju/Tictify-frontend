@@ -181,6 +181,8 @@ export default function AdminDashboard() {
 
   const stats = data?.stats || {};
   const monthlyData = analytics?.monthlyRevenue || [];
+  const salesByEvent = data?.salesByEvent || [];
+  const recentSales = data?.recentSales || [];
 
   // Prepare pie chart data
   const eventStatusData = [
@@ -248,6 +250,12 @@ export default function AdminDashboard() {
           )}
         </div>
       </section>
+
+      {/* Sales by event */}
+      <SalesByEvent rows={salesByEvent} />
+
+      {/* Recent activity */}
+      <RecentActivity rows={recentSales} />
 
       {/* Quick Actions */}
       <section className="adb-actions-section">
@@ -368,6 +376,107 @@ function ActionCard({ title, desc, icon, onClick }) {
       <h4 className="adb-action-title">{title}</h4>
       <p className="adb-action-desc">{desc}</p>
     </button>
+  );
+}
+
+/* Short, human relative time — "just now", "3m ago", "2d ago". */
+function relTime(value) {
+  const then = new Date(value).getTime();
+  if (!Number.isFinite(then)) return "";
+  const diff = Math.max(0, Date.now() - then);
+  const s = Math.round(diff / 1000);
+  if (s < 60) return "just now";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `${d}d ago`;
+  const mo = Math.round(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.round(mo / 12)}y ago`;
+}
+
+function StatusChip({ status }) {
+  const key = String(status || "").toUpperCase();
+  const cls = key ? key.toLowerCase() : "unknown";
+  return <span className={`adb-chip adb-chip-${cls}`}>{key || "—"}</span>;
+}
+
+function SalesByEvent({ rows }) {
+  return (
+    <section className="adb-sbe">
+      <h3 className="adb-section-title">Sales by event</h3>
+      {rows.length === 0 ? (
+        <div className="adb-empty">
+          <div className="adb-empty-icon">{Ic.ticket}</div>
+          <p>No sales yet — per-event revenue appears here once tickets start selling.</p>
+        </div>
+      ) : (
+        <div className="adb-table-wrap">
+          <table className="adb-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Organizer</th>
+                <th className="adb-num">Tickets sold</th>
+                <th className="adb-num">Remaining</th>
+                <th className="adb-num">Revenue (₦)</th>
+                <th className="adb-num">Platform fee (₦)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r._id}>
+                  <td data-label="Event"><strong className="adb-td-strong">{r.title}</strong></td>
+                  <td data-label="Organizer">{r.organizerName}</td>
+                  <td data-label="Tickets sold" className="adb-num">{(r.ticketsSold || 0).toLocaleString()}</td>
+                  <td data-label="Remaining" className="adb-num">{r.remaining == null ? "—" : r.remaining.toLocaleString()}</td>
+                  <td data-label="Revenue (₦)" className="adb-num adb-gold">₦{(r.revenue || 0).toLocaleString()}</td>
+                  <td data-label="Platform fee (₦)" className="adb-num">₦{(r.platformFees || 0).toLocaleString()}</td>
+                  <td data-label="Status"><StatusChip status={r.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentActivity({ rows }) {
+  return (
+    <section className="adb-activity">
+      <h3 className="adb-section-title">Recent activity</h3>
+      {rows.length === 0 ? (
+        <div className="adb-empty">
+          <div className="adb-empty-icon">{Ic.clock}</div>
+          <p>No recent sales — new ticket purchases will show up here.</p>
+        </div>
+      ) : (
+        <ul className="adb-feed">
+          {rows.map((r, i) => (
+            <li key={r.reference || i} className="adb-feed-row">
+              <span className="adb-feed-dot" />
+              <div className="adb-feed-main">
+                <p className="adb-feed-line">
+                  <strong className="adb-feed-qty">{(r.quantity || 1).toLocaleString()} × {r.ticketType || "Ticket"}</strong>
+                  <span className="adb-feed-sep">·</span>
+                  <span className="adb-feed-event">{r.eventTitle}</span>
+                  <span className="adb-feed-sep">·</span>
+                  <span className="adb-feed-amt">₦{(r.amount || 0).toLocaleString()}</span>
+                  <span className="adb-feed-sep">·</span>
+                  <span className="adb-feed-time">{relTime(r.createdAt)}</span>
+                </p>
+                <p className="adb-feed-email">{r.buyerEmailMasked}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -502,6 +611,48 @@ button, input, select { font-family:var(--font-b); }
 .adb-btn-gold { background:var(--gold); color:#080910; border:none; border-radius:999px; font-weight:700; font-size:14px; padding:13px 26px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
 .adb-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
 
+/* ── Sales by event (table) ── */
+.adb-sbe { display:flex; flex-direction:column; gap:16px; }
+.adb-table-wrap { width:100%; overflow-x:auto; border:1px solid var(--border); border-radius:var(--r); background:var(--card); -webkit-overflow-scrolling:touch; }
+.adb-table { width:100%; border-collapse:collapse; font-size:14px; min-width:640px; }
+.adb-table thead th { text-align:left; font-family:var(--font-h); font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:14px 16px; border-bottom:1px solid var(--border); white-space:nowrap; }
+.adb-table tbody td { padding:14px 16px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+.adb-table tbody tr:last-child td { border-bottom:none; }
+.adb-table tbody tr { transition:background .2s; }
+.adb-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+.adb-td-strong { font-weight:600; overflow-wrap:anywhere; }
+.adb-num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.adb-gold { color:var(--gold); font-weight:600; }
+.adb-table thead th.adb-num { text-align:right; }
+
+/* ── Status chip ── */
+.adb-chip { display:inline-block; font-family:var(--font-h); font-weight:700; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; padding:4px 10px; border-radius:999px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
+.adb-chip-live { color:var(--live); border-color:rgba(107,240,160,.4); background:rgba(107,240,160,.1); }
+.adb-chip-ended { color:var(--danger); border-color:rgba(224,92,92,.4); background:rgba(224,92,92,.1); }
+.adb-chip-draft { color:var(--gold); border-color:rgba(232,201,106,.4); background:var(--gold-dim); }
+.adb-chip-cancelled { color:var(--danger); border-color:rgba(224,92,92,.3); background:rgba(224,92,92,.06); text-decoration:line-through; }
+
+/* ── Recent activity feed ── */
+.adb-activity { display:flex; flex-direction:column; gap:16px; }
+.adb-feed { list-style:none; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.adb-feed-row { display:flex; gap:12px; align-items:flex-start; padding:14px 18px; border-bottom:1px solid var(--border); }
+.adb-feed-row:last-child { border-bottom:none; }
+.adb-feed-dot { flex:0 0 auto; width:8px; height:8px; border-radius:50%; background:var(--gold); margin-top:7px; box-shadow:0 0 0 4px var(--gold-dim); }
+.adb-feed-main { min-width:0; flex:1; }
+.adb-feed-line { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; font-size:14px; line-height:1.5; }
+.adb-feed-qty { font-weight:700; }
+.adb-feed-sep { color:var(--muted); }
+.adb-feed-event { overflow-wrap:anywhere; }
+.adb-feed-amt { font-family:var(--font-h); font-weight:700; color:var(--gold); font-variant-numeric:tabular-nums; }
+.adb-feed-time { color:var(--muted); font-size:12.5px; white-space:nowrap; }
+.adb-feed-email { color:var(--muted); font-size:12px; margin-top:3px; overflow-wrap:anywhere; }
+
+/* ── Empty state (sections) ── */
+.adb-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:clamp(28px,5vw,44px); border:1px dashed var(--border); border-radius:var(--r); background:var(--card); }
+.adb-empty-icon { width:44px; height:44px; border-radius:14px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; }
+.adb-empty-icon svg { width:22px; height:22px; }
+.adb-empty p { color:var(--muted); font-size:13.5px; max-width:340px; line-height:1.6; }
+
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width:1023px) {
   .adb-page { flex-direction:column; }
@@ -518,6 +669,19 @@ button, input, select { font-family:var(--font-b); }
   .adb-drawer .adb-nav-item { font-size:16px; padding:16px 14px; border-radius:var(--r-sm); }
   .adb-drawer .adb-nav-item.is-active::before { left:0; }
   .adb-drawer .adb-logout { margin-top:22px; }
+}
+@media (max-width:720px) {
+  /* Table collapses into stacked cards — no horizontal scroll needed */
+  .adb-table-wrap { overflow-x:visible; border:none; background:none; }
+  .adb-table { min-width:0; display:block; }
+  .adb-table thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+  .adb-table tbody { display:flex; flex-direction:column; gap:12px; }
+  .adb-table tbody tr { display:block; background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:6px 16px; }
+  .adb-table tbody tr:hover { background:var(--card); }
+  .adb-table tbody td { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:9px 0; border-bottom:1px solid var(--border); text-align:right; }
+  .adb-table tbody tr td:last-child { border-bottom:none; }
+  .adb-table tbody td::before { content:attr(data-label); font-family:var(--font-h); font-weight:700; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); text-align:left; flex:0 0 auto; }
+  .adb-num { text-align:right; }
 }
 @media (max-width:480px) {
   .adb-kpi { padding:14px; }
