@@ -551,6 +551,8 @@ function Footer() {
           <span aria-hidden="true">·</span>
           <button onClick={() => navigate("/refunds")}>Refunds</button>
           <span aria-hidden="true">·</span>
+          <a href="/blog">Blog</a>
+          <span aria-hidden="true">·</span>
           <a href="mailto:tictify@gmail.com">tictify@gmail.com</a>
         </div>
         <div className="tf-footer-bottom">
