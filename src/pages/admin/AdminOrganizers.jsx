@@ -106,6 +106,7 @@ export default function AdminOrganizers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   /* ================= LOAD ORGANIZERS ================= */
   useEffect(() => {
@@ -171,6 +172,16 @@ export default function AdminOrganizers() {
       navigate={navigate}
       onLogout={handleLogout}
     >
+      {/* ================= HEADER ACTIONS ================= */}
+      <div className="aor-actions">
+        <button
+          className="aor-btn-broadcast"
+          onClick={() => setBroadcastOpen(true)}
+        >
+          <span aria-hidden="true">✉️</span> Email all organizers
+        </button>
+      </div>
+
       {/* ================= LEADERBOARD ================= */}
       <section className="aor-card">
         <div className="aor-card-head">
@@ -265,7 +276,301 @@ export default function AdminOrganizers() {
           </div>
         </div>
       )}
+
+      {/* ================= BROADCAST COMPOSE MODAL ================= */}
+      {broadcastOpen && (
+        <BroadcastModal onClose={() => setBroadcastOpen(false)} />
+      )}
     </Shell>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   BROADCAST COMPOSE MODAL
+══════════════════════════════════════════════════════════ */
+const DEFAULT_SUBJECT = "New on Tictify: what's improved for you";
+const DEFAULT_BODY = `Hi [First Name],
+
+Thanks for being part of Tictify. We've shipped a lot lately to help you sell more and get paid faster, and I wanted to make sure you're getting the most out of it:
+
+- You keep the full ticket price — the platform and payment fees are added on top and paid by the guest.
+- Withdraw your earnings to your Nigerian bank account, protected by an email verification code so no one can move your funds without you.
+- Sell right up to the gate — fast, secure QR entry, including offline scanning when the venue network is weak.
+- Promoter and affiliate links, plus discount and early-bird codes, to push your sales harder.
+- A real-time sales dashboard so you always know exactly what's sold and what's left.
+
+If you've got an event coming up, now's a great time to set it up at tictify.ng. Just reply to this email if you'd like a hand — we're happy to help.
+
+Warm regards,
+[Your Name]
+Tictify · tictify.ng · tictify@gmail.com`;
+
+function BroadcastModal({ onClose }) {
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [body, setBody] = useState(DEFAULT_BODY);
+
+  const [recipients, setRecipients] = useState([]);
+  const [count, setCount] = useState(null);
+  const [loadingRecipients, setLoadingRecipients] = useState(true);
+  const [recipientsError, setRecipientsError] = useState("");
+
+  const [confirming, setConfirming] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [testMsg, setTestMsg] = useState("");
+  const [resultMsg, setResultMsg] = useState("");
+  const [failedList, setFailedList] = useState([]);
+  const [inlineError, setInlineError] = useState("");
+
+  const API = import.meta.env.VITE_API_URL;
+
+  /* ---- Escape to close ---- */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  /* ---- Load recipient count/preview on open ---- */
+  useEffect(() => {
+    async function load() {
+      try {
+        const token = getToken();
+        const res = await fetch(`${API}/api/admin/broadcast/recipients`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Could not load organizer list.");
+        const data = await res.json();
+        setCount(data.count ?? 0);
+        setRecipients(Array.isArray(data.recipients) ? data.recipients : []);
+      } catch (err) {
+        setRecipientsError(err.message || "Could not load organizer list.");
+      } finally {
+        setLoadingRecipients(false);
+      }
+    }
+    load();
+  }, [API]);
+
+  function resetMessages() {
+    setTestMsg("");
+    setResultMsg("");
+    setFailedList([]);
+    setInlineError("");
+  }
+
+  async function post(payload) {
+    const token = getToken();
+    const res = await fetch(`${API}/api/admin/broadcast/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || "Something went wrong. Please try again.");
+    }
+    return data;
+  }
+
+  async function handleTest() {
+    resetMessages();
+    setSending(true);
+    try {
+      const data = await post({ subject, body, test: true });
+      if (data.ok) {
+        setTestMsg(`Test sent to ${data.sentTo} — check it looks right.`);
+      } else {
+        setInlineError(
+          `Test could not be sent to ${data.sentTo}. Check the email provider setup and try again.`,
+        );
+      }
+    } catch (err) {
+      setInlineError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleSendAll() {
+    resetMessages();
+    setSending(true);
+    try {
+      const data = await post({ subject, body });
+      setConfirming(false);
+      setResultMsg(
+        `Sent to ${data.sent} of ${data.total}.` +
+          (data.failed ? ` (${data.failed} failed)` : ""),
+      );
+      setFailedList(Array.isArray(data.failedList) ? data.failedList : []);
+    } catch (err) {
+      setInlineError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const preview = recipients.slice(0, 8);
+
+  return (
+    <div
+      className="aor-modal-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="aor-bc-title"
+    >
+      <div
+        className="aor-bc-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="aor-modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+
+        <h3 className="aor-bc-title" id="aor-bc-title">
+          ✉️ Email all organizers
+        </h3>
+
+        {/* recipients summary */}
+        <div className="aor-bc-recipients">
+          {loadingRecipients ? (
+            <p className="aor-muted">Loading recipients…</p>
+          ) : recipientsError ? (
+            <p className="aor-bc-inline-error">{recipientsError}</p>
+          ) : (
+            <>
+              <p className="aor-bc-count">
+                This will send to <strong>{count}</strong> organizer
+                {count === 1 ? "" : "s"}.
+              </p>
+              {preview.length > 0 && (
+                <div className="aor-bc-preview">
+                  {preview.map((r, i) => (
+                    <div key={i} className="aor-bc-preview-row">
+                      <span className="aor-bc-preview-name">{r.name || "—"}</span>
+                      <span className="aor-bc-preview-email">{r.email}</span>
+                    </div>
+                  ))}
+                  {count > preview.length && (
+                    <p className="aor-muted aor-bc-more">
+                      + {count - preview.length} more
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* subject */}
+        <label className="aor-bc-label" htmlFor="aor-bc-subject">
+          Subject
+        </label>
+        <input
+          id="aor-bc-subject"
+          className="aor-bc-input"
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          disabled={sending}
+        />
+
+        {/* body */}
+        <label className="aor-bc-label" htmlFor="aor-bc-body">
+          Message
+        </label>
+        <textarea
+          id="aor-bc-body"
+          className="aor-bc-textarea"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          disabled={sending}
+          rows={16}
+        />
+        <p className="aor-bc-caption">
+          Tip: [First Name] is filled in automatically for each organizer.
+          Replace [Your Name] with your name before sending.
+        </p>
+
+        {/* messages */}
+        {testMsg && <p className="aor-bc-ok">{testMsg}</p>}
+        {resultMsg && (
+          <div className="aor-bc-ok">
+            <p>{resultMsg}</p>
+            {failedList.length > 0 && (
+              <ul className="aor-bc-failed">
+                {failedList.map((f, i) => (
+                  <li key={i}>
+                    {f.email} — {f.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {inlineError && <p className="aor-bc-inline-error">{inlineError}</p>}
+
+        {/* actions */}
+        {confirming ? (
+          <div className="aor-bc-confirm">
+            <p className="aor-bc-confirm-text">
+              This emails {count} organizer{count === 1 ? "" : "s"}. Send now?
+            </p>
+            <div className="aor-bc-btn-row">
+              <button
+                className="aor-btn-gold aor-bc-btn"
+                onClick={handleSendAll}
+                disabled={sending}
+              >
+                {sending ? <span className="aor-spinner aor-bc-spin" /> : null}
+                {sending ? "Sending…" : "Yes, send"}
+              </button>
+              <button
+                className="aor-bc-btn-ghost"
+                onClick={() => setConfirming(false)}
+                disabled={sending}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="aor-bc-btn-row">
+            <button
+              className="aor-bc-btn-ghost"
+              onClick={handleTest}
+              disabled={sending || loadingRecipients}
+            >
+              {sending ? "Working…" : "Send test to me"}
+            </button>
+            <button
+              className="aor-btn-gold aor-bc-btn"
+              onClick={() => {
+                resetMessages();
+                setConfirming(true);
+              }}
+              disabled={sending || loadingRecipients || !count}
+            >
+              Send to all {count ?? ""}
+            </button>
+          </div>
+        )}
+
+        <p className="aor-bc-note">
+          Free email tier sends a limited number per day — if you have many
+          organizers, some may queue for tomorrow.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -470,6 +775,43 @@ button, input, select { font-family:var(--font-b); }
 .aor-error-card p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:22px; }
 .aor-btn-gold { background:var(--gold); color:#080910; border:none; border-radius:999px; font-weight:700; font-size:14px; padding:13px 26px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
 .aor-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
+
+/* ── Header actions / broadcast button ── */
+.aor-actions { display:flex; justify-content:flex-end; }
+.aor-btn-broadcast { display:inline-flex; align-items:center; gap:8px; background:var(--gold); color:#080910; border:none; border-radius:999px; font-family:var(--font-b); font-weight:700; font-size:14px; padding:12px 20px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+.aor-btn-broadcast:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
+
+/* ── Broadcast compose modal ── */
+.aor-bc-modal { position:relative; width:min(100%,620px); max-height:90svh; overflow-y:auto; background:var(--surface); border:1px solid var(--border-h); border-radius:var(--r); padding:clamp(22px,4vw,34px); animation:aor-fade .3s ease; }
+.aor-bc-title { font-family:var(--font-h); font-weight:800; font-size:20px; margin-bottom:16px; padding-right:30px; }
+.aor-bc-recipients { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:14px 16px; margin-bottom:18px; }
+.aor-bc-count { font-size:14px; margin-bottom:10px; }
+.aor-bc-count strong { color:var(--gold); }
+.aor-bc-preview { max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--border); padding-top:10px; }
+.aor-bc-preview-row { display:flex; flex-direction:column; gap:1px; font-size:12.5px; }
+.aor-bc-preview-name { font-weight:600; overflow-wrap:anywhere; }
+.aor-bc-preview-email { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.aor-bc-more { margin-top:6px; }
+.aor-bc-label { display:block; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+.aor-bc-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-size:14px; padding:12px 14px; outline:none; transition:border-color .2s; }
+.aor-bc-input:focus { border-color:var(--gold); }
+.aor-bc-textarea { width:100%; min-height:260px; resize:vertical; background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace; font-size:13px; line-height:1.6; padding:14px; outline:none; transition:border-color .2s; }
+.aor-bc-textarea:focus { border-color:var(--gold); }
+.aor-bc-caption { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
+.aor-bc-ok { margin-top:14px; padding:12px 14px; border-radius:var(--r-sm); background:rgba(107,240,160,.1); border:1px solid rgba(107,240,160,.35); color:var(--live); font-size:13.5px; line-height:1.5; }
+.aor-bc-failed { margin:8px 0 0; padding-left:18px; font-size:12.5px; color:var(--text); }
+.aor-bc-failed li { margin-bottom:3px; overflow-wrap:anywhere; }
+.aor-bc-inline-error { margin-top:14px; padding:12px 14px; border-radius:var(--r-sm); background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.35); color:var(--danger); font-size:13.5px; line-height:1.5; }
+.aor-bc-btn-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:20px; }
+.aor-bc-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.aor-bc-btn-ghost { background:transparent; border:1px solid var(--border-h); color:var(--text); border-radius:999px; font-family:var(--font-b); font-weight:600; font-size:14px; padding:12px 22px; cursor:pointer; transition:background .2s, border-color .2s; }
+.aor-bc-btn-ghost:hover:not(:disabled) { background:var(--card); border-color:var(--gold); }
+.aor-bc-btn-ghost:disabled, .aor-bc-btn:disabled { opacity:.55; cursor:not-allowed; }
+.aor-bc-confirm { margin-top:20px; padding:16px; border-radius:var(--r-sm); background:var(--gold-dim); border:1px solid rgba(232,201,106,.35); }
+.aor-bc-confirm-text { font-size:14px; font-weight:600; margin-bottom:12px; }
+.aor-bc-confirm .aor-bc-btn-row { margin-top:0; }
+.aor-bc-spin { width:16px; height:16px; border-width:2px; }
+.aor-bc-note { font-size:12px; color:var(--muted); margin-top:16px; line-height:1.5; }
 
 /* ══════════ RESPONSIVE ══════════ */
 @media (min-width:768px) {
