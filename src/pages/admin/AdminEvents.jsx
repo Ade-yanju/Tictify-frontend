@@ -16,6 +16,22 @@ function injectStyles(id, content) {
   }
 }
 
+/* Relative "time ago" for the unattributed-sales queue. */
+function relativeTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24);
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString();
+}
+
 /* ── Icons (inline, dependency-free) ─────────────────────── */
 const Ic = {
   dash: (
@@ -138,6 +154,13 @@ export default function AdminEvents() {
      error screen, it just annotates the row it belongs to. */
   const [recountBusyId, setRecountBusyId] = useState(null);
   const [recountResult, setRecountResult] = useState({}); // _id → {ok, text}
+  /* Unattributed sales — SUCCESS payments whose event id no longer resolves.
+     This whole block is inline and self-healing: it never replaces the page
+     with an error screen and never logs the admin out on failure. */
+  const [unattributed, setUnattributed] = useState([]);
+  const [relinkChoice, setRelinkChoice] = useState({}); // paymentId → eventId
+  const [relinkBusyId, setRelinkBusyId] = useState(null);
+  const [relinkResult, setRelinkResult] = useState({}); // paymentId → {ok, text}
 
   const itemsPerPage = 10;
 
@@ -167,6 +190,86 @@ export default function AdminEvents() {
 
     load();
   }, [navigate, reloadKey]);
+
+  /* Fetch the unattributed-sales queue once on mount. It is deliberately NOT
+     tied to reloadKey: a relink already removes its own row locally and shows
+     an inline note, so we don't want a refetch to wipe that feedback. */
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/unattributed-sales`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return; // stay silent — this is a secondary panel
+        const data = await res.json().catch(() => ({}));
+        if (alive) setUnattributed(Array.isArray(data.sales) ? data.sales : []);
+      } catch {
+        /* network hiccup — leave the panel empty, never break the page */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /* Re-link one paid ticket to the correct live event. On success we show an
+     inline note, remove the row, and bump reloadKey so the events table's
+     sold counts refresh. On failure we annotate the row only. */
+  async function relink(sale) {
+    if (relinkBusyId) return;
+    const eventId =
+      relinkChoice[sale.paymentId] ??
+      sale.suggestedEvent?._id ??
+      sale.candidates?.[0]?._id ??
+      "";
+    if (!eventId) return;
+    setRelinkBusyId(sale.paymentId);
+    setRelinkResult((r) => ({ ...r, [sale.paymentId]: null }));
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/unattributed-sales/${sale.paymentId}/relink`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ eventId }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Unable to link this sale");
+
+      const repaired = data.ticketsRepaired ?? 1;
+      setRelinkResult((r) => ({
+        ...r,
+        [sale.paymentId]: {
+          ok: true,
+          text: `Linked to ${data.eventTitle || "event"} — ${repaired} ticket${
+            repaired === 1 ? "" : "s"
+          } repaired`,
+        },
+      }));
+      setReloadKey((k) => k + 1); // refresh the events table's sold counts
+      // Let the success note read for a moment, then drop the row.
+      setTimeout(() => {
+        setUnattributed((prev) =>
+          prev.filter((s) => s.paymentId !== sale.paymentId),
+        );
+      }, 1600);
+    } catch (err) {
+      setRelinkResult((r) => ({
+        ...r,
+        [sale.paymentId]: { ok: false, text: err.message || "Unable to link this sale" },
+      }));
+    } finally {
+      setRelinkBusyId(null);
+    }
+  }
 
   async function confirmCancel() {
     if (!cancelTarget || cancelBusy) return;
@@ -284,6 +387,129 @@ export default function AdminEvents() {
       navigate={navigate}
       onLogout={() => { logout(); navigate("/login"); }}
     >
+      {/* Needs attention: unattributed sales (renders nothing when empty) */}
+      {unattributed.length > 0 && (
+        <section
+          className="aev-attention"
+          role="region"
+          aria-label="Unattributed sales needing attention"
+        >
+          <div className="aev-attention-head">
+            <h2 className="aev-attention-title">
+              ⚠️ {unattributed.length}{" "}
+              {unattributed.length === 1 ? "sale needs" : "sales need"} attention
+            </h2>
+            <p className="aev-attention-sub">
+              These paid tickets point to an event id that no longer matches —
+              link each to the correct event so it counts and the guest&apos;s
+              QR works at the gate.
+            </p>
+          </div>
+
+          <div className="aev-attention-list">
+            {unattributed.map((sale) => {
+              const options = (() => {
+                const list = [...(sale.candidates || [])];
+                if (
+                  sale.suggestedEvent &&
+                  !list.some((c) => c._id === sale.suggestedEvent._id)
+                ) {
+                  list.unshift(sale.suggestedEvent);
+                }
+                return list;
+              })();
+              const hasOptions = options.length > 0;
+              const selected =
+                relinkChoice[sale.paymentId] ??
+                sale.suggestedEvent?._id ??
+                options[0]?._id ??
+                "";
+              const busy = relinkBusyId === sale.paymentId;
+              const result = relinkResult[sale.paymentId];
+              const selectId = `aev-target-${sale.paymentId}`;
+
+              return (
+                <div className="aev-att-row" key={sale.paymentId}>
+                  <div className="aev-att-info">
+                    <div className="aev-att-line1">
+                      <span className="aev-att-ref">
+                        {sale.reference?.slice(0, 12) || "—"}
+                      </span>
+                      <span className="aev-att-amount">
+                        ₦{(sale.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="aev-att-meta">
+                      <span>{sale.organizerName || "Unknown organizer"}</span>
+                      <span className="aev-att-dot">•</span>
+                      <span>
+                        {sale.ticketType || "Ticket"} × {sale.quantity || 1}
+                      </span>
+                      <span className="aev-att-dot">•</span>
+                      <span>{relativeTime(sale.createdAt)}</span>
+                    </div>
+                    {sale.snapshotTitle && (
+                      <div className="aev-att-snap">
+                        was: &ldquo;{sale.snapshotTitle}&rdquo;
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="aev-att-controls">
+                    {hasOptions ? (
+                      <>
+                        <label className="aev-sr-only" htmlFor={selectId}>
+                          Target event for sale {sale.reference}
+                        </label>
+                        <select
+                          id={selectId}
+                          className="aev-att-select"
+                          value={selected}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setRelinkChoice((c) => ({
+                              ...c,
+                              [sale.paymentId]: e.target.value,
+                            }))
+                          }
+                        >
+                          {options.map((o) => (
+                            <option key={o._id} value={o._id}>
+                              {o.title} — {o.status}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <span className="aev-att-none">
+                        No matching event found for this organizer
+                      </span>
+                    )}
+                    <button
+                      className="aev-att-link"
+                      disabled={busy || !hasOptions || !selected}
+                      aria-label={`Link sale ${sale.reference} to the selected event`}
+                      onClick={() => relink(sale)}
+                    >
+                      {busy ? "Linking…" : "Link"}
+                    </button>
+                  </div>
+
+                  {result && (
+                    <div
+                      className={`aev-att-note ${result.ok ? "is-ok" : "is-err"}`}
+                      role="status"
+                    >
+                      {result.text}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Filters Section */}
       <section className="aev-filters">
         <div className="aev-search">
@@ -801,6 +1027,32 @@ button, input, select { font-family:var(--font-b); }
 .aev-btn-gold { background:var(--gold); color:#080910; border:none; border-radius:999px; font-weight:700; font-size:14px; padding:13px 26px; cursor:pointer; transition:transform .2s, box-shadow .2s; }
 .aev-btn-gold:hover { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
 
+/* ── Needs attention: unattributed sales ── */
+.aev-attention { background:rgba(224,92,92,.06); border:1px solid rgba(224,92,92,.35); border-radius:var(--r); padding:clamp(16px,2.4vw,24px); display:flex; flex-direction:column; gap:16px; animation:aev-fade .4s ease both; }
+.aev-attention-title { font-family:var(--font-h); font-weight:800; font-size:clamp(17px,2.2vw,21px); letter-spacing:-.01em; line-height:1.15; color:var(--danger); }
+.aev-attention-sub { color:var(--muted); font-size:13.5px; line-height:1.6; margin-top:6px; max-width:70ch; }
+.aev-attention-list { display:flex; flex-direction:column; gap:10px; }
+.aev-att-row { display:flex; flex-wrap:wrap; align-items:center; gap:12px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:14px 16px; }
+.aev-att-info { flex:1 1 260px; min-width:0; display:flex; flex-direction:column; gap:5px; }
+.aev-att-line1 { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.aev-att-ref { font-family:var(--font-h); font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.aev-att-amount { font-weight:700; font-size:14px; color:var(--gold); font-variant-numeric:tabular-nums; }
+.aev-att-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); }
+.aev-att-dot { opacity:.5; }
+.aev-att-snap { font-size:12px; color:var(--muted); font-style:italic; overflow-wrap:anywhere; }
+.aev-att-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:0 1 auto; min-width:0; }
+.aev-att-select { max-width:100%; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 12px; color:var(--text); font-size:13px; cursor:pointer; outline:none; transition:border-color .2s; }
+.aev-att-select:hover:not(:disabled), .aev-att-select:focus { border-color:var(--border-h); }
+.aev-att-select:disabled { opacity:.5; cursor:not-allowed; }
+.aev-att-link { background:var(--gold); border:none; color:#080910; font-size:13px; font-weight:700; padding:10px 20px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:transform .2s, box-shadow .2s, opacity .2s; }
+.aev-att-link:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 24px var(--gold-glo); }
+.aev-att-link:disabled { opacity:.45; cursor:not-allowed; }
+.aev-att-none { font-size:12.5px; color:var(--muted); font-style:italic; }
+.aev-att-note { flex:1 1 100%; font-size:12.5px; line-height:1.5; }
+.aev-att-note.is-ok { color:var(--live); }
+.aev-att-note.is-err { color:var(--danger); }
+.aev-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width:1023px) {
   .aev-page { flex-direction:column; }
@@ -823,10 +1075,13 @@ button, input, select { font-family:var(--font-b); }
   .aev-th { padding:12px 14px; }
   .aev-filter-controls { width:100%; }
   .aev-select { flex:1; }
+  .aev-att-controls { width:100%; }
+  .aev-att-select { flex:1 1 auto; }
 }
 @media (max-width:480px) {
   .aev-pagination { gap:10px; }
   .aev-page-btn { padding:8px 14px; font-size:12px; }
+  .aev-att-link { flex:1 1 100%; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation:none !important; transition:none !important; }
