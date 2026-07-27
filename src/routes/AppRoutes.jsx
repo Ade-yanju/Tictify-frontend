@@ -12,6 +12,8 @@ import CampusAmbassadors from "../pages/CampusAmbassadors";
 import AmbassadorDashboard from "../pages/AmbassadorDashboard";
 import BecomeAffiliate from "../pages/BecomeAffiliate";
 import Legal from "../pages/Legal";
+import About from "../pages/About";
+import Contact from "../pages/Contact";
 import AffiliateDashboard from "../pages/AffiliateDashboard";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
@@ -61,6 +63,8 @@ export default function AppRoutes() {
         <Route path="/terms" element={<Legal />} />
         <Route path="/privacy" element={<Legal />} />
         <Route path="/refunds" element={<Legal />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
         <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 

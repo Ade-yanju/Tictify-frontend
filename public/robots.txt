@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+# Private / transactional areas — no public content to index
+Disallow: /admin
+Disallow: /organizer
+Disallow: /checkout
+Disallow: /success
+Disallow: /payment
+Disallow: /reset-password
+
+Sitemap: https://www.tictify.ng/sitemap.xml
