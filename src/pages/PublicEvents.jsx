@@ -134,8 +134,16 @@ function StatusBadge({ type, label }) {
 function EventCard({ event, onClick, index }) {
   const [hovered, setHovered] = useState(false);
 
+  /* Prefer the server's `remaining` (capped by both capacity AND the
+     tiers' real quantities). Only fall back to a local estimate for
+     older payloads that don't carry it. */
   const sold = (event.ticketTypes || []).reduce((s, t) => s + (t.sold || 0), 0);
-  const remaining = Math.max(event.capacity - sold, 0);
+  const remaining =
+    typeof event.remaining === "number"
+      ? event.remaining
+      : event.capacity != null
+        ? Math.max(event.capacity - sold, 0)
+        : null;
   const prices = (event.ticketTypes || [])
     .map((t) => Number(t.price) || 0)
     .filter((p) => p > 0);
@@ -205,8 +213,14 @@ function EventCard({ event, onClick, index }) {
         </p>
 
         <div className="pe-card-foot">
-          <span className={`pe-card-left ${remaining < 20 ? "is-low" : ""}`}>
-            {remaining > 0 ? `${remaining} left` : "Sold out"}
+          <span
+            className={`pe-card-left ${remaining != null && remaining > 0 && remaining < 20 ? "is-low" : ""}`}
+          >
+            {remaining == null
+              ? "Tickets available"
+              : remaining > 0
+                ? `${remaining.toLocaleString()} left`
+                : "Sold out"}
           </span>
           <span className={`pe-card-view ${disabled ? "is-off" : ""}`}>
             {disabled ? "Unavailable" : "View Event"} {!disabled && "→"}
@@ -233,19 +247,55 @@ export default function PublicEvents() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+
+    async function load(initial) {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events`);
         if (!res.ok) throw new Error();
         const data = await res.json();
-        if (active) setEvents(Array.isArray(data) ? data : []);
+        if (active) {
+          setEvents(Array.isArray(data) ? data : []);
+          setError("");
+        }
       } catch {
-        if (active) setError("Unable to load events at the moment.");
+        // Only surface an error on the FIRST load — a failed background
+        // refresh shouldn't blank out tickets the visitor is looking at.
+        if (active && initial) setError("Unable to load events at the moment.");
       } finally {
-        if (active) setLoading(false);
+        if (active && initial) setLoading(false);
       }
-    })();
-    return () => (active = false);
+    }
+
+    load(true);
+
+    /* Live "tickets left": re-fetch every 30s so counts update without a
+       reload. Paused while the tab is hidden to spare the free dyno. */
+    const POLL_MS = 30000;
+    let timer = null;
+    const start = () => {
+      if (!timer) timer = setInterval(() => load(false), POLL_MS);
+    };
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const onVisible = () => {
+      if (document.hidden) stop();
+      else {
+        load(false); // catch up immediately on return
+        start();
+      }
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      active = false;
+      stop();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const filteredEvents = useMemo(() => {

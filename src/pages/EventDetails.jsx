@@ -224,20 +224,54 @@ export default function EventDetails() {
       setLoading(false);
       return;
     }
-    (async () => {
+    let active = true;
+
+    async function load(initial) {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/events/view/${id}`,
         );
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setEvent(data);
+        if (active) setEvent(data);
       } catch {
-        setError("Unable to load this event.");
+        // don't wipe the page a buyer is reading on a failed refresh
+        if (active && initial) setError("Unable to load this event.");
       } finally {
-        setLoading(false);
+        if (active && initial) setLoading(false);
       }
-    })();
+    }
+
+    load(true);
+
+    /* Keep tickets-left live while the buyer decides — refresh every 25s,
+       paused when the tab is hidden. */
+    const POLL_MS = 25000;
+    let timer = null;
+    const start = () => {
+      if (!timer) timer = setInterval(() => load(false), POLL_MS);
+    };
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const onVisible = () => {
+      if (document.hidden) stop();
+      else {
+        load(false);
+        start();
+      }
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      active = false;
+      stop();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [id]);
 
   const emailValid = useMemo(
