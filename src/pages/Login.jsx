@@ -2,7 +2,7 @@
    Login.jsx  — Tictify 2026 Redesign
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   login,
   verifyEmail,
@@ -238,6 +238,7 @@ function PasswordInput({ value, onChange, placeholder = "Password" }) {
 export default function Login() {
   injectStyles("tictify-base", BASE_CSS);
   const navigate = useNavigate();
+  const location = useLocation();
   const touchStartX = useRef(0);
 
   const [email, setEmail] = useState("");
@@ -263,6 +264,12 @@ export default function Login() {
   }, [resendIn]);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const wantsAffiliateDashboard =
+    new URLSearchParams(location.search).get("welcome") === "affiliate";
+  const loginHome = (user) =>
+    wantsAffiliateDashboard && user?.affiliateCode
+      ? "/affiliate/dashboard"
+      : roleHome(user?.role);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -280,7 +287,7 @@ export default function Login() {
       const res = await login({ email, password });
       const { user } = res;
       if (!user?.role) throw new Error();
-      navigate(roleHome(user.role), { replace: true });
+      navigate(loginHome(user), { replace: true });
     } catch (err) {
       if (err?.requiresVerification) {
         // Correct password, unverified email — the server just emailed
@@ -316,7 +323,7 @@ export default function Login() {
     try {
       // Same response shape + persistence as a successful login
       const result = await verifyEmail({ email: verify.email, otp });
-      navigate(roleHome(result.user?.role), { replace: true });
+      navigate(loginHome(result.user), { replace: true });
     } catch (err) {
       setOtpError(err?.message || "Verification failed. Try again.");
     } finally {
