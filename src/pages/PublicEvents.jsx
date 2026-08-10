@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -30,32 +31,6 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  search: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-    </svg>
-  ),
-  pin: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 21s-7-5.6-7-11a7 7 0 0114 0c0 5.4-7 11-7 11z" />
-      <circle cx="12" cy="10" r="2.6" />
-    </svg>
-  ),
-  cal: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3.5" y="5" width="17" height="16" rx="2.5" />
-      <path d="M3.5 10h17M8 2.5V6M16 2.5V6" strokeLinecap="round" />
-    </svg>
-  ),
-  ticket: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
-      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
-    </svg>
-  ),
-};
 
 /* ── Slim public header ──────────────────────────────────── */
 function Header() {
@@ -205,10 +180,10 @@ function EventCard({ event, onClick, index }) {
         <h3 className="pe-card-title">{event.title}</h3>
         {event.city && <span className="pe-card-city">{event.city}</span>}
         <p className="pe-card-meta">
-          <span className="pe-card-ic">{Ic.pin}</span> {event.location}
+          <span className="pe-card-ic"><Icon name="pin" /></span> {event.location}
         </p>
         <p className="pe-card-meta">
-          <span className="pe-card-ic">{Ic.cal}</span>{" "}
+          <span className="pe-card-ic"><Icon name="calendar" /></span>{" "}
           {new Date(event.date).toDateString()}
         </p>
 
@@ -336,7 +311,7 @@ export default function PublicEvents() {
           {/* Search toolbar */}
           <div className="pe-toolbar">
             <div className={`pe-search ${searchFocused ? "is-focus" : ""}`}>
-              <span className="pe-search-ic">{Ic.search}</span>
+              <span className="pe-search-ic"><Icon name="search" /></span>
               <input
                 type="search"
                 placeholder="Search events or locations…"
@@ -403,7 +378,7 @@ export default function PublicEvents() {
 
           {!loading && filteredEvents.length === 0 && !error && (
             <div className="pe-empty">
-              <span className="pe-empty-ic">{Ic.ticket}</span>
+              <span className="pe-empty-ic"><Icon name="ticket" /></span>
               <p className="pe-empty-title">No events found</p>
               <p className="pe-empty-sub">
                 Try a different search term or check back soon.
@@ -422,7 +397,6 @@ export default function PublicEvents() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

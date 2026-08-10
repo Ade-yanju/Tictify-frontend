@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -18,33 +19,6 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  user: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.6" />
-      <path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4" strokeLinecap="round" />
-    </svg>
-  ),
-  link: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M10 14a5 5 0 007.07 0l2.12-2.12a5 5 0 00-7.07-7.07L11 5.93" strokeLinecap="round" />
-      <path d="M14 10a5 5 0 00-7.07 0L4.8 12.12a5 5 0 007.07 7.07L13 18.07" strokeLinecap="round" />
-    </svg>
-  ),
-  coins: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <ellipse cx="12" cy="6" rx="8" ry="3" />
-      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
-    </svg>
-  ),
-  check: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 12.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
 
 /* ── Slim public header ──────────────────────────────────── */
 function Header() {
@@ -90,17 +64,17 @@ function Footer() {
 
 const STEPS = [
   {
-    icon: Ic.user,
+    icon: <Icon name="user" />,
     title: "Create your free account",
     text: "Sign up in under a minute — no fees, no approval wait.",
   },
   {
-    icon: Ic.link,
+    icon: <Icon name="link" />,
     title: "Pick an event & copy your link",
     text: "Browse events open to affiliates and grab your unique link.",
   },
   {
-    icon: Ic.coins,
+    icon: <Icon name="coins" />,
     title: "Earn ₦ on every ticket sold through it",
     text: "Your commission lands in your balance the moment a sale clears.",
   },
@@ -260,7 +234,7 @@ export default function BecomeAffiliate() {
                           aria-label={showPw ? "Hide password" : "Show password"}
                           onClick={() => setShowPw((v) => !v)}
                         >
-                          {showPw ? "🙈" : "👁"}
+                          <Icon name={showPw ? "eyeOff" : "eye"} size={17} />
                         </button>
                       </div>
                       {password && password.length < 8 && (
@@ -297,7 +271,7 @@ export default function BecomeAffiliate() {
               ) : (
                 <div className="baf-success" role="status">
                   <div className="baf-success-icon" aria-hidden="true">
-                    {Ic.check}
+                    <Icon name="check" />
                   </div>
                   <h2 className="baf-card-title">You&rsquo;re in! 🎉</h2>
                   <p className="baf-success-label">Your promo code</p>
@@ -325,7 +299,6 @@ export default function BecomeAffiliate() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

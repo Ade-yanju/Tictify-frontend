@@ -6,6 +6,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ShareSheet from "../components/ShareSheet";
+import Icon from "../components/Icon";
+import { buyOnWhatsAppUrl } from "../utils/whatsapp";
 
 const logo = "/logo.png";
 
@@ -17,51 +19,6 @@ function injectStyles(id, content) {
     document.head.appendChild(el);
   }
 }
-
-/* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  pin: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 21s-7-5.6-7-11a7 7 0 0114 0c0 5.4-7 11-7 11z" />
-      <circle cx="12" cy="10" r="2.6" />
-    </svg>
-  ),
-  cal: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3.5" y="5" width="17" height="16" rx="2.5" />
-      <path d="M3.5 10h17M8 2.5V6M16 2.5V6" strokeLinecap="round" />
-    </svg>
-  ),
-  clock: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  back: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  lock: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
-      <path d="M8 10.5V8a4 4 0 018 0v2.5" />
-    </svg>
-  ),
-  warn: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 3.5l9.5 16.5H2.5L12 3.5z" strokeLinejoin="round" />
-      <path d="M12 10v4.5M12 17.6v.4" strokeLinecap="round" />
-    </svg>
-  ),
-  share: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 15.5V3.5M12 3.5L7.5 8M12 3.5L16.5 8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.5 13.5v5a2 2 0 002 2h11a2 2 0 002-2v-5" strokeLinecap="round" />
-    </svg>
-  ),
-};
 
 /* ── Slim public header ──────────────────────────────────── */
 function Header() {
@@ -163,7 +120,7 @@ function TicketOption({ ticket, selected, onSelect, avail }) {
           <TicketStock avail={avail} />
           {(ticket.groupSize || 1) > 1 && (
             <span className="ed-ticket-desc">
-              🎟️ One QR code admits {ticket.groupSize} guests
+              <Icon name="ticket" /> One QR code admits {ticket.groupSize} guests
             </span>
           )}
           {ticket.description && (
@@ -322,10 +279,10 @@ export default function EventDetails() {
       <div className="ed-page">
         <Header />
         <div className="ed-center">
-          <span className="ed-center-ic">{Ic.warn}</span>
+          <span className="ed-center-ic"><Icon name="alertTriangle" /></span>
           <p className="ed-center-title">{error}</p>
           <button className="ed-btn ed-btn-ghost ed-back-lg" onClick={() => navigate(-1)}>
-            ← Go Back
+            <Icon name="arrowLeft" /> Go Back
           </button>
         </div>
         <Footer />
@@ -338,13 +295,32 @@ export default function EventDetails() {
      the visitor arrived with) is the fallback for pre-slug events. */
   const eventKey = event.slug || event._id || id;
   const shareUrl = `${window.location.origin}/events/${eventKey}`;
+
+  /* Buy-on-WhatsApp deep link. Carries the promoter code captured
+     above so a guest who switches to chat still credits the affiliate
+     who sent them. Null when no bot number is configured — every
+     consumer below hides the option rather than linking to a dead
+     chat. Read from sessionStorage (not state) because the ref may
+     have been captured on an earlier page in this same visit. */
+  const waBuyUrl = buyOnWhatsAppUrl(
+    { slug: event.slug, _id: event._id },
+    typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("tictify_ref")
+      : null,
+  );
+  /* The arrow rides only on the branch that actually advances — the
+     three blocked states are statements, not invitations. */
   const ctaLabel = salesClosed
     ? "Ticket sales have closed"
     : !selectedTicket
       ? "Select a ticket type"
       : !emailValid
         ? "Enter your email"
-        : "Proceed to Payment →";
+        : (
+          <>
+            Proceed to Payment <Icon name="arrowRight" />
+          </>
+        );
   const goToCheckout = () =>
     navigate(`/checkout/${eventKey}`, {
       state: { ticket: selectedTicket, email },
@@ -358,45 +334,50 @@ export default function EventDetails() {
         <div className="ed-container">
           {/* ── Back ── */}
           <button className="ed-back" onClick={() => navigate(-1)}>
-            <span className="ed-back-ic">{Ic.back}</span> Back to Events
+            <span className="ed-back-ic"><Icon name="chevronLeft" /></span> Back to Events
           </button>
 
-          {/* ── Hero banner ── */}
-          <div className="ed-hero">
-            {event.bannerFit === "contain" ? (
-              <>
-                <img
-                  src={event.banner}
-                  alt=""
-                  aria-hidden="true"
-                  className="ed-bimg-back"
-                />
-                <img
-                  src={event.banner}
-                  alt={event.title}
-                  className="ed-bimg-front"
-                />
-              </>
-            ) : (
-              <img src={event.banner} alt={event.title} />
-            )}
-            <div className="ed-hero-shade" aria-hidden="true" />
-          </div>
-
-          {/* ── Content grid ── */}
+          {/* ── Content grid ──
+              The hero lives INSIDE the grid so it can share the top row
+              with the purchase panel. Previously it was a full-bleed
+              21:9 band above the grid, which pushed the panel — the
+              thing the page exists to do — below the fold on every
+              viewport, and left the left column empty beside it. */}
           <div className="ed-layout">
-            {/* LEFT — event info */}
-            <section className="ed-info">
+            {/* LEAD — image + identity */}
+            <section className="ed-lead">
+              <div className="ed-hero">
+                {event.bannerFit === "contain" ? (
+                  <>
+                    <img
+                      src={event.banner}
+                      alt=""
+                      aria-hidden="true"
+                      className="ed-bimg-back"
+                    />
+                    <img
+                      src={event.banner}
+                      alt={event.title}
+                      className="ed-bimg-front"
+                    />
+                  </>
+                ) : (
+                  <img src={event.banner} alt={event.title} />
+                )}
+                <div className="ed-hero-shade" aria-hidden="true" />
+              </div>
+
               <h1 className="ed-title">{event.title}</h1>
 
               <div className="ed-meta">
                 {[
-                  { icon: Ic.pin, text: event.location },
-                  { icon: Ic.cal, text: eventDate.toDateString() },
-                  ...(event.time ? [{ icon: Ic.clock, text: event.time }] : []),
+                  { icon: <Icon name="pin" />, text: event.location },
+                  { icon: <Icon name="calendar" />, text: eventDate.toDateString() },
+                  ...(event.time ? [{ icon: <Icon name="clock" />, text: event.time }] : []),
                 ].map((m, i) => (
                   <span className="ed-chip" key={i}>
-                    <span className="ed-chip-ic">{m.icon}</span> {m.text}
+                    <span className="ed-chip-ic">{m.icon}</span>{" "}
+                    <span className="ed-chip-tx">{m.text}</span>
                   </span>
                 ))}
                 <button
@@ -404,12 +385,18 @@ export default function EventDetails() {
                   onClick={() => setShareOpen(true)}
                   aria-haspopup="dialog"
                 >
-                  <span className="ed-share-ic">{Ic.share}</span> Share
+                  <span className="ed-share-ic"><Icon name="share" /></span> Share
                 </button>
               </div>
 
               <div className="ed-divider" />
+            </section>
 
+            {/* BODY — the long read. Deliberately AFTER the panel in
+                visual order on mobile: a guest who came to buy
+                shouldn't scroll past the full description to reach
+                the tickets. DOM order still leads with the title. */}
+            <section className="ed-body">
               <h2 className="ed-h2">About this Event</h2>
               <p className="ed-desc">{event.description}</p>
             </section>
@@ -433,9 +420,20 @@ export default function EventDetails() {
                 </span>
               </div>
 
-              <p className="ed-trustrow">
-                🔒 Secure checkout · 🎟️ Instant QR ticket · 📧 Email delivery
-              </p>
+              {/* Trust row. Emoji here rendered differently on every
+                  platform and sat off the text baseline; real icons
+                  inherit currentColor and align properly. */}
+              <ul className="ed-trustrow">
+                <li>
+                  <Icon name="lock" size={13} /> Secure checkout
+                </li>
+                <li>
+                  <Icon name="qr" size={13} /> Instant QR ticket
+                </li>
+                <li>
+                  <Icon name="mail" size={13} /> Email delivery
+                </li>
+              </ul>
 
               {/* Ticket options */}
               <div className="ed-tickets">
@@ -455,7 +453,7 @@ export default function EventDetails() {
                    lead to a refusal, so state it plainly instead */
                 <div className="ed-closed" role="status">
                   <div className="ed-closed-head">
-                    <span aria-hidden="true">🚪</span>
+                    <Icon name="alert" size={17} />
                     <strong>Ticket sales have closed</strong>
                   </div>
                   <p className="ed-closed-body">
@@ -504,8 +502,34 @@ export default function EventDetails() {
                     {ctaLabel}
                   </button>
 
+                  {/* Buy in chat — the guest arrived from a shared link
+                      and has no other way to learn the bot exists.
+                      Hidden entirely when no bot number is configured. */}
+                  {waBuyUrl && (
+                    <>
+                      <div className="ed-or">
+                        <span>or</span>
+                      </div>
+                      <a
+                        className="ed-wabuy"
+                        href={waBuyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span className="ed-wabuy-ic" aria-hidden="true">
+                          <Icon name="whatsapp" size={19} />
+                        </span>
+                        Buy on WhatsApp
+                      </a>
+                      <p className="ed-wabuy-note">
+                        Opens a chat with this event ready to go — pay and get
+                        your QR ticket without leaving WhatsApp.
+                      </p>
+                    </>
+                  )}
+
                   <p className="ed-secure">
-                    <span className="ed-secure-ic">{Ic.lock}</span> Secure
+                    <span className="ed-secure-ic"><Icon name="lock" /></span> Secure
                     checkout · No account required
                   </p>
                 </>
@@ -540,6 +564,7 @@ export default function EventDetails() {
           title={event.title}
           dateText={eventDate.toDateString()}
           locationText={event.location}
+          waBuyUrl={waBuyUrl}
           onClose={() => setShareOpen(false)}
         />
       )}
@@ -553,7 +578,6 @@ export default function EventDetails() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -618,16 +642,31 @@ img { display:block; }
 .ed-hero img.ed-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ed-hero .ed-hero-shade { z-index:2; }
 
-/* ── Layout ── */
-.ed-layout { display:grid; grid-template-columns:1fr; gap:clamp(24px,4vw,40px); align-items:start; }
+/* ── Layout ──
+   Named areas so the visual order can differ from the DOM order.
+   Mobile stacks lead → panel → body: the purchase sits directly under
+   the title, and the long description comes after it. */
+.ed-layout { display:grid; grid-template-columns:1fr; gap:clamp(20px,3.5vw,36px); align-items:start;
+  grid-template-areas:"lead" "panel" "body"; }
+.ed-lead { grid-area:lead; animation:edFadeUp .4s ease both; min-width:0; }
+.ed-panel { grid-area:panel; }
+.ed-body { grid-area:body; animation:edFadeUp .4s ease .05s both; min-width:0; }
 
 /* ── Info column ── */
 .ed-info { animation:edFadeUp .4s ease both; min-width:0; }
 .ed-share { display:inline-flex; align-items:center; gap:8px; font-size:13px; padding:8px 16px; }
 .ed-share-ic { display:inline-grid; place-items:center; color:var(--gold); flex-shrink:0; }
 .ed-share-ic svg { width:15px; height:15px; }
-.ed-trustrow { font-size:12px; color:var(--muted); text-align:center; line-height:1.6; margin:-8px 0 18px; }
-.ed-title { font-family:var(--font-h); font-size:clamp(26px,5vw,46px); font-weight:800; line-height:1.1; letter-spacing:-.02em; color:var(--text); margin-bottom:20px; text-wrap:balance; }
+/* No ::before separators: at 400px the row wraps to two lines, and a
+   dot drawn on every item but the first left an orphaned bullet
+   leading the wrapped line. The icons already delimit the items. */
+.ed-trustrow { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:7px 16px; list-style:none; padding:0; font-size:12px; color:var(--muted); margin:-6px 0 18px; }
+.ed-trustrow li { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.ed-trustrow svg { color:var(--gold-600,#C9A63F); }
+/* Upper bound lowered from 46px: at full size the title alone filled a
+   phone screen, pushing the meta and the buy panel out of view. The
+   floor is raised so it still reads as a headline on small screens. */
+.ed-title { font-family:var(--font-h); font-size:clamp(28px,3.6vw,40px); font-weight:800; line-height:1.08; letter-spacing:-.022em; color:var(--text); margin-bottom:18px; text-wrap:balance; }
 .ed-meta { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:clamp(24px,4vw,32px); }
 .ed-chip { display:inline-flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:8px 16px; font-size:13px; color:var(--muted); }
 .ed-chip-ic { display:inline-grid; place-items:center; color:var(--gold); flex-shrink:0; }
@@ -653,7 +692,8 @@ img { display:block; }
 .ed-radio-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); }
 .ed-ticket-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .ed-ticket-name { font-family:var(--font-h); font-weight:600; font-size:14px; color:var(--text); }
-.ed-ticket-desc { font-size:12px; color:var(--muted); }
+.ed-ticket-desc { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+.ed-ticket-desc .ds-icon { color:var(--gold); flex:none; }
 .ed-ticket-price { font-family:var(--font-h); font-weight:800; font-size:16px; color:var(--gold); white-space:nowrap; flex-shrink:0; }
 .ed-ticket-pricing { display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
 .ed-eb-strike { font-size:12px; color:var(--muted); text-decoration:line-through; white-space:nowrap; }
@@ -683,9 +723,21 @@ img { display:block; }
 .ed-cta:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
 .ed-cta:disabled { background:rgba(255,255,255,0.08); color:var(--muted); cursor:not-allowed; }
 
+/* ── Buy on WhatsApp ──
+   Secondary to the gold CTA: WhatsApp green reads as a real brand
+   affordance, but the outline weight keeps card checkout primary. */
+.ed-or { display:flex; align-items:center; gap:12px; margin:14px 0; color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; }
+.ed-or::before, .ed-or::after { content:''; flex:1; height:1px; background:var(--border); }
+.ed-wabuy { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:15px 24px; border-radius:999px; border:1px solid rgba(37,211,102,.45); background:rgba(37,211,102,.10); color:#4BE383; font-family:var(--font-h); font-weight:700; font-size:15px; text-decoration:none; transition:transform .2s, box-shadow .2s, background .2s, border-color .2s; }
+.ed-wabuy:hover { transform:translateY(-2px); background:rgba(37,211,102,.16); border-color:rgba(37,211,102,.7); box-shadow:0 10px 30px rgba(37,211,102,.18); }
+.ed-wabuy-ic { display:inline-grid; place-items:center; }
+.ed-wabuy-ic svg { width:19px; height:19px; }
+.ed-wabuy-note { margin-top:9px; text-align:center; font-size:11.5px; color:var(--muted); line-height:1.55; }
+
 /* sales closed */
 .ed-closed { padding:16px 18px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid var(--border-h); }
 .ed-closed-head { display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:8px; }
+.ed-closed-head .ds-icon { color:var(--gold); flex:none; }
 .ed-closed-body { font-size:12.5px; color:var(--muted); line-height:1.6; }
 .ed-secure { margin-top:14px; text-align:center; font-size:12px; color:var(--muted); display:flex; align-items:center; justify-content:center; gap:7px; }
 .ed-secure-ic { display:inline-grid; place-items:center; }
@@ -700,15 +752,45 @@ img { display:block; }
 
 /* ══════════ RESPONSIVE ══════════ */
 @media (min-width: 1024px) {
-  .ed-layout { grid-template-columns:1fr 400px; }
-  .ed-panel { position:sticky; top:84px; }
+  /* Two columns, and the panel spans BOTH rows — so it sits beside the
+     hero (visible immediately, no scroll) and stays pinned while the
+     description scrolls past it. The old single-row placement left the
+     left column empty below the description at wide viewports. */
+  .ed-layout { grid-template-columns:minmax(0,1fr) 400px;
+    grid-template-areas:"lead panel" "body panel"; column-gap:clamp(28px,3vw,44px); }
+  .ed-panel { position:sticky; top:84px; align-self:start; }
+  /* Shorter than 21:9 now that it shares the row — a very wide crop
+     would force the panel down to match its height. */
+  .ed-hero { aspect-ratio:16/10; margin-bottom:26px; }
+  /* Body copy sets its own comfortable measure instead of running the
+     full column width. */
+  .ed-desc { max-width:62ch; }
 }
 @media (max-width: 768px) {
   .ed-hide-sm { display:none; }
-  .ed-hero { aspect-ratio:16/10; }
+  .ed-hero { aspect-ratio:3/2; margin-bottom:18px; }
+  /* The divider separates lead from body on desktop. On mobile the
+     panel sits between them and its own card edge already does that
+     job, so the rule is just ~40px of dead space above the tickets. */
+  .ed-lead .ed-divider { display:none; }
+  .ed-layout { gap:18px; }
+  /* Long venue names forced each chip onto its own row, so location,
+     date and Share ate three lines. Smaller padding + a wrapping
+     label lets them share rows; the venue truncates rather than
+     monopolising the width (it's repeated in full at checkout). */
+  .ed-meta { gap:8px; margin-bottom:22px; }
+  .ed-chip { padding:7px 13px; font-size:12.5px; max-width:100%; min-width:0; }
+  .ed-chip-tx { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .ed-cta-panel { display:none; }
-  .ed-main { padding-bottom:120px; }
-  .ed-ctabar { display:flex; align-items:center; gap:14px; position:fixed; left:0; right:0; bottom:0; z-index:200; padding:12px clamp(16px,4.5vw,32px) calc(12px + env(safe-area-inset-bottom)); background:rgba(8,9,16,.92); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--border); }
+  /* Clear the fixed bar at the end of the scroll. Bar is ~72px plus
+     the home-indicator inset, so this leaves real breathing room
+     rather than ending flush against it. */
+  .ed-main { padding-bottom:calc(132px + env(safe-area-inset-bottom)); }
+  /* Near-opaque: at .92 the panel's own text showed THROUGH the bar
+     while scrolling, which read as two overlapping layers of copy
+     rather than a bar floating above the page. The top shadow does
+     the "this is above" work that transparency was failing to. */
+  .ed-ctabar { display:flex; align-items:center; gap:14px; position:fixed; left:0; right:0; bottom:0; z-index:200; padding:12px clamp(16px,4.5vw,32px) calc(12px + env(safe-area-inset-bottom)); background:rgba(9,11,19,.985); backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3); border-top:1px solid var(--border-h); box-shadow:0 -12px 32px rgba(0,0,0,.55); }
   .ed-ctabar-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
   .ed-ctabar-name { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
   .ed-ctabar-price { font-family:var(--font-h); font-weight:800; font-size:16px; color:var(--gold); white-space:nowrap; }

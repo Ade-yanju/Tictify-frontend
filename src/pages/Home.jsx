@@ -6,6 +6,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -62,51 +63,38 @@ function Stat({ value, suffix, label }) {
   );
 }
 
-/* ── Icons (inline, dependency-free) ─────────────────────── */
-const Ic = {
-  ticket: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
-      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
-    </svg>
-  ),
-  qr: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
-  ),
-  bolt: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" strokeLinejoin="round" />
-    </svg>
-  ),
-  chart: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
-  ),
-  shield: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3z" strokeLinejoin="round" />
-      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  wallet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
-  ),
-};
-
 /* ══════════════════════════════════════════════════════════
    PAGE
 ══════════════════════════════════════════════════════════ */
 export default function Home() {
   injectStyles("tictify-home-css", CSS);
+  const navigate = useNavigate();
+
+  /* Real events for the "Happening soon" rail. Failure is silent and
+     the section hides itself — a landing page must still render if
+     the API is down. */
+  const [events, setEvents] = useState([]);
+  const [evLoading, setEvLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${import.meta.env.VITE_API_URL}/api/events`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!active) return;
+        const list = Array.isArray(d) ? d : d.events || [];
+        setEvents(list.slice(0, 6));
+        setEvLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setEvents([]);
+        setEvLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="tf-page" id="home">
@@ -115,6 +103,11 @@ export default function Home() {
         <Hero />
         <Marquee />
         <TrustBar />
+        <LiveEvents
+          events={events}
+          loading={evLoading}
+          onOpen={(to) => navigate(to)}
+        />
         <Guests />
         <Organizers />
         <HowItWorks />
@@ -246,7 +239,7 @@ function Hero() {
             Create an Event
           </button>
           <button className="tf-btn tf-btn-ghost tf-btn-lg" onClick={() => navigate("/events")}>
-            Browse Events →
+            Browse Events <Icon name="arrowRight" />
           </button>
         </div>
 
@@ -300,13 +293,116 @@ function TrustBar() {
 }
 
 /* ── Feature card ────────────────────────────────────────── */
+/* `icon` is a name from the shared set, not a node — the card has no
+   say in how an icon is drawn, so Home and the rest of the app can't
+   drift apart. Decorative: the heading beside it carries the meaning. */
 function Feature({ icon, title, text }) {
   return (
     <div className="tf-card">
-      <div className="tf-card-icon">{icon}</div>
+      <div className="tf-card-icon">
+        <Icon name={icon} />
+      </div>
       <h3>{title}</h3>
       <p>{text}</p>
     </div>
+  );
+}
+
+/* ── Live events ──────────────────────────────────────────────
+   Replaces a 3-up grid of abstract claims ("Instant e-tickets",
+   "QR code entry", "Fraud-proof") with the actual product: events
+   you can buy into right now, with real prices and real remaining
+   counts.
+
+   A ticketing landing page that shows no tickets is the clearest
+   possible tell that its content was written before anyone asked
+   what the product does. Three interchangeable feature cards could
+   sit on any SaaS site; these can't.
+
+   Degrades honestly: if the fetch fails or nothing is live, the
+   section removes itself rather than rendering an empty shelf. */
+function LiveEvents({ events, loading, onOpen }) {
+  if (!loading && !events.length) return null;
+
+  return (
+    <section className="tf-section" id="events">
+      <div className="tf-container">
+        <div className="tf-sec-head">
+          <div>
+            <p className="tf-eyebrow">On sale now</p>
+            <h2 className="tf-h2 tf-h2-left">Happening soon</h2>
+          </div>
+          <button className="tf-seeall" onClick={() => onOpen("/events")}>
+            All events <Icon name="arrowRight" />
+          </button>
+        </div>
+
+        <div className="tf-ev-rail">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <div className="tf-ev tf-ev-skel" key={i}>
+                  <div className="ds-skel tf-ev-img" />
+                  <div className="tf-ev-body">
+                    <div className="ds-skel" style={{ height: 17, width: "82%" }} />
+                    <div className="ds-skel" style={{ height: 13, width: "58%" }} />
+                  </div>
+                </div>
+              ))
+            : events.map((ev) => {
+                const d = new Date(ev.date);
+                /* Cheapest tier — what a guest actually decides on. */
+                const from = (ev.ticketTypes || []).reduce(
+                  (min, t) =>
+                    typeof t.price === "number" && (min == null || t.price < min)
+                      ? t.price
+                      : min,
+                  null,
+                );
+                /* Only claim scarcity when the number is real and small. */
+                const low =
+                  typeof ev.remaining === "number" &&
+                  ev.remaining > 0 &&
+                  ev.remaining <= 25;
+
+                return (
+                  <button
+                    className="tf-ev"
+                    key={ev._id}
+                    onClick={() => onOpen(`/events/${ev.slug || ev._id}`)}
+                  >
+                    <div className="tf-ev-img">
+                      {ev.banner ? (
+                        <img src={ev.banner} alt="" loading="lazy" />
+                      ) : (
+                        <div className="tf-ev-noimg" aria-hidden="true" />
+                      )}
+                      <span className="tf-ev-date" aria-hidden="true">
+                        <b>{d.getDate()}</b>
+                        {d.toLocaleString("en-NG", { month: "short" })}
+                      </span>
+                      {low && (
+                        <span className="tf-ev-low">{ev.remaining} left</span>
+                      )}
+                    </div>
+                    <div className="tf-ev-body">
+                      <h3 className="tf-ev-title">{ev.title}</h3>
+                      <p className="tf-ev-meta">
+                        {ev.city || ev.location || "Nigeria"}
+                      </p>
+                      <p className="tf-ev-price t-num">
+                        {from == null
+                          ? "—"
+                          : from === 0
+                            ? "Free"
+                            : `From ₦${from.toLocaleString("en-NG")}`}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -318,17 +414,17 @@ function Guests() {
         <h2 className="tf-h2">Your ticket, ready in seconds</h2>
         <div className="tf-grid-3">
           <Feature
-            icon={Ic.ticket}
+            icon="ticket"
             title="Instant e-tickets"
             text="Pay and receive your ticket immediately — delivered to your inbox with everything you need."
           />
           <Feature
-            icon={Ic.qr}
+            icon="qr"
             title="QR code entry"
             text="One scan at the gate. No printing, no queues, no 'it's on my other phone'."
           />
           <Feature
-            icon={Ic.shield}
+            icon="shield"
             title="Fraud-proof"
             text="Every ticket is unique and single-use. Duplicates and screenshots don't get in."
           />
@@ -346,17 +442,17 @@ function Organizers() {
         <h2 className="tf-h2">Run the show, not the spreadsheet</h2>
         <div className="tf-grid-3">
           <Feature
-            icon={Ic.bolt}
+            icon="bolt"
             title="Launch in minutes"
             text="Create an event, set ticket tiers and pricing, and share your link. That's it."
           />
           <Feature
-            icon={Ic.chart}
+            icon="trend"
             title="Live analytics"
             text="Watch sales and revenue update in real time from your dashboard."
           />
           <Feature
-            icon={Ic.wallet}
+            icon="wallet"
             title="Fast payouts"
             text="Withdraw your revenue straight to your Nigerian bank account."
           />
@@ -482,7 +578,13 @@ function CTA() {
               onClick={enableAlerts}
               disabled={alertState === "busy"}
             >
-              {alertState === "busy" ? "Enabling…" : "🔔 Get event alerts"}
+              {alertState === "busy" ? (
+                "Enabling…"
+              ) : (
+                <>
+                  <Icon name="bell" /> Get event alerts
+                </>
+              )}
             </button>
           </div>
           {alertState && alertState !== "busy" && (
@@ -570,7 +672,6 @@ function Footer() {
    pure-CSS entrance that always ENDS visible (fill: both).
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -670,6 +771,55 @@ section { scroll-margin-top:88px; }
 
 /* ── Cards ── */
 .tf-grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); gap:clamp(14px,2.4vw,24px); }
+
+/* ── Live events rail ──
+   A left-aligned section head with its own "All events" action, so it
+   reads as a shelf of real inventory rather than another centered
+   marketing block. On mobile it scrolls horizontally with snap —
+   browsing events sideways is the familiar gesture; stacking six tall
+   cards vertically would bury the rest of the page. */
+.tf-sec-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:clamp(20px,3vw,30px); }
+.tf-h2-left { text-align:left !important; margin:0 !important; max-width:none !important; }
+.tf-sec-head .tf-eyebrow { text-align:left; margin-bottom:8px; }
+.tf-seeall { flex:none; display:inline-flex; align-items:center; gap:8px; background:none; border:none; color:var(--gold); font-family:var(--font-h); font-weight:700; font-size:14px; cursor:pointer; padding:8px 2px; transition:gap .2s ease; }
+.tf-seeall:hover { gap:12px; }
+
+/* Exactly 3 across, and the 4th+ event is hidden rather than wrapping
+   to a lonely second row. The rail is a teaser — "All events" is the
+   complete list, so slicing here costs nothing and keeps the shelf a
+   clean single row at every width. */
+.tf-ev-rail { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(14px,2vw,22px); }
+.tf-ev-rail > :nth-child(n+4) { display:none; }
+.tf-ev { display:flex; flex-direction:column; text-align:left; padding:0; background:var(--ink-700,#12141f); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; cursor:pointer; transition:transform .25s cubic-bezier(.22,1,.36,1), border-color .25s, box-shadow .25s; }
+.tf-ev:hover { transform:translateY(-4px); border-color:rgba(232,201,106,.42); box-shadow:0 16px 40px rgba(0,0,0,.5); }
+.tf-ev-img { position:relative; aspect-ratio:3/2; overflow:hidden; background:var(--ink-600,#1a1d2b); }
+.tf-ev-img img { width:100%; height:100%; object-fit:cover; transition:transform .5s cubic-bezier(.22,1,.36,1); }
+.tf-ev:hover .tf-ev-img img { transform:scale(1.05); }
+.tf-ev-noimg { width:100%; height:100%; background:linear-gradient(135deg,rgba(232,201,106,.14),transparent 70%); }
+
+/* Date chip — a physical ticket-stub cue, not decoration. */
+.tf-ev-date { position:absolute; top:10px; left:10px; display:grid; place-items:center; line-height:1; padding:7px 9px; border-radius:10px; background:rgba(9,11,19,.86); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid var(--border-h); font-size:9.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-2,#B9B5AC); }
+.tf-ev-date b { font-family:var(--font-h); font-size:16px; letter-spacing:0; color:var(--text); }
+.tf-ev-low { position:absolute; bottom:10px; right:10px; padding:5px 10px; border-radius:999px; background:rgba(242,104,94,.18); border:1px solid rgba(242,104,94,.5); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#F2685E; }
+
+.tf-ev-body { padding:15px 16px 17px; display:flex; flex-direction:column; gap:5px; flex:1; }
+.tf-ev-title { font-family:var(--font-h); font-size:15.5px; font-weight:700; line-height:1.3; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.tf-ev-meta { font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tf-ev-price { margin-top:auto; padding-top:8px; font-family:var(--font-h); font-size:14px; font-weight:700; color:var(--gold); }
+.tf-ev-skel { cursor:default; pointer-events:none; }
+.tf-ev-skel .tf-ev-body { gap:9px; }
+
+@media (max-width:860px) {
+  /* Horizontal snap rail — bleeds to the screen edge so a partially
+     visible third card signals "scroll me". */
+  .tf-ev-rail { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; margin-inline:calc(clamp(16px,5vw,28px) * -1); padding-inline:clamp(16px,5vw,28px); padding-bottom:6px; scrollbar-width:none; }
+  .tf-ev-rail::-webkit-scrollbar { display:none; }
+  /* All fetched events are reachable here — a horizontal rail has room
+     the 3-across desktop grid doesn't. */
+  .tf-ev-rail > :nth-child(n+4) { display:flex; }
+  .tf-ev { flex:0 0 74%; max-width:280px; scroll-snap-align:start; }
+  .tf-sec-head { align-items:center; }
+}
 .tf-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(22px,3vw,30px); height:100%; transition:transform .3s, border-color .3s; }
 .tf-card:hover { transform:translateY(-4px); border-color:var(--border-h); }
 .tf-card-icon { width:46px; height:46px; border-radius:14px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; margin-bottom:18px; }
@@ -678,10 +828,20 @@ section { scroll-margin-top:88px; }
 .tf-card p { color:var(--muted); font-size:14.5px; line-height:1.65; }
 
 /* ── Steps ── */
-.tf-steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:clamp(14px,2.4vw,24px); }
+/* The numbering stays because these steps ARE sequential (you can't
+   scan before you sell) — the anti-pattern is numbering content that
+   has no real order. What changes is that they now read as one
+   connected process: a rule runs between the markers so the eye
+   travels 1 → 2 → 3, instead of three identical dashed circles that
+   happen to contain different digits. Connector only on the wide
+   layout, where the cards actually sit in a row. */
+.tf-steps { position:relative; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:clamp(14px,2.4vw,24px); }
 .tf-step { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(22px,3vw,30px); height:100%; transition:transform .3s, border-color .3s; }
 .tf-step:hover { transform:translateY(-4px); border-color:var(--border-h); }
-.tf-step-num { font-family:var(--font-h); font-weight:800; font-size:15px; color:var(--gold); display:inline-grid; place-items:center; width:44px; height:44px; border-radius:50%; border:1px dashed rgba(232,201,106,.45); margin-bottom:18px; }
+.tf-step-num { position:relative; z-index:1; font-family:var(--font-h); font-weight:800; font-size:15px; color:var(--on-gold,#0A0B12); display:inline-grid; place-items:center; width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--gold-300,#F0DA96),var(--gold)); box-shadow:0 4px 14px var(--gold-glo); margin-bottom:18px; }
+@media (min-width:781px) {
+  .tf-step:not(:last-child)::after { content:''; position:absolute; top:calc(clamp(22px,3vw,30px) + 20px); left:calc(clamp(22px,3vw,30px) + 40px); right:calc(clamp(14px,2.4vw,24px) * -1); height:1px; background:linear-gradient(90deg,rgba(232,201,106,.45),rgba(232,201,106,.06)); }
+}
 .tf-step h3 { font-family:var(--font-h); font-size:17px; font-weight:700; margin-bottom:10px; }
 .tf-step p { color:var(--muted); font-size:14.5px; line-height:1.65; }
 

@@ -5,8 +5,10 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState, useRef, useCallback } from "react";
 import { fetchOrganizerDashboard } from "../../services/dashboardService";
-import { getToken, logout } from "../../services/authService";
+import { getToken, getUser, logout, updateProfile } from "../../services/authService";
+import { normalizeWhatsApp, formatWhatsApp } from "../../utils/phone";
 import { useNavigate } from "react-router-dom";
+import Icon from "../../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -41,80 +43,34 @@ function fmtMoney(n) {
 
 /* ── Eye Icons ───────────────────────────────────────────────── */
 const EyeIcon = () => (
-  <svg
-    width="15"
-    height="15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
+  <Icon name="eye" />
 );
 const EyeOffIcon = () => (
-  <svg
-    width="15"
-    height="15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" />
-  </svg>
+  <Icon name="eyeOff" />
 );
 
 /* ── Shell nav icons (inline, dependency-free) ───────────────── */
 const NavIc = {
   dashboard: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="8" rx="2" />
-      <rect x="3" y="13" width="8" height="8" rx="2" />
-      <rect x="13" y="13" width="8" height="8" rx="2" />
-    </svg>
+    <Icon name="grid" />
   ),
   create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
+    <Icon name="plusCircle" />
   ),
   events: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
+    <Icon name="calendar" />
   ),
   sales: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
+    <Icon name="bars" />
   ),
   scan: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
+    <Icon name="qr" />
   ),
   withdraw: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
+    <Icon name="wallet" />
   ),
   logout: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path
-        d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <Icon name="signOut" />
   ),
 };
 
@@ -150,7 +106,7 @@ function Shell({ active, onLogout, children }) {
       className={`odb-nav-item ${active === item.path ? "is-active" : ""}`}
       onClick={() => go(item.path)}
     >
-      {item.icon}
+      <Icon name={item.icon} />
       <span>{item.label}</span>
     </button>
   ));
@@ -251,6 +207,13 @@ export default function OrganizerDashboard() {
     isAuth: false,
   });
 
+  /* Whether the stored session already has a WhatsApp number. Seeded
+     from localStorage (login/verify persist it) so the banner decides
+     on first paint instead of flashing in after a round trip.
+     `?? null` keeps a genuinely absent number distinguishable from an
+     old session persisted before the field existed. */
+  const [whatsapp, setWhatsapp] = useState(() => getUser()?.whatsapp ?? null);
+
   const loadDashboard = useCallback(async () => {
     try {
       // ✅ Service handles token internally — no need to pass it
@@ -274,6 +237,15 @@ export default function OrganizerDashboard() {
           events: Array.isArray(res?.events) ? res.events : [],
         };
       });
+
+      /* The server is the authority on whether a number is on file —
+         the stored session predates this field for anyone who was
+         already logged in. `undefined` means an older backend that
+         doesn't send it yet; leave the seeded value alone there
+         rather than showing the banner to everyone. */
+      if (res?.organizer?.whatsapp !== undefined) {
+        setWhatsapp(res.organizer.whatsapp);
+      }
     } catch (err) {
       // ✅ Only stop polling + show modal for AUTH errors
       // For network blips, silently retry on next poll interval
@@ -353,6 +325,13 @@ export default function OrganizerDashboard() {
             </button>
           </header>
 
+          {/* Gates event creation and withdrawals — shown until resolved */}
+          {!whatsapp && (
+            <WhatsAppBanner
+              onSaved={(user) => setWhatsapp(user?.whatsapp || null)}
+            />
+          )}
+
           {/* ── WALLET HERO ── */}
           <WalletCard
             balance={stats.walletBalance}
@@ -419,7 +398,8 @@ export default function OrganizerDashboard() {
                 />
               ))}
               <ActionCard
-                title="🔔 Sale Alerts"
+                icon="bell"
+                title="Sale Alerts"
                 desc="Push alert per ticket sold"
                 onClick={async () => {
                   const [{ subscribeToPush }, { getToken }] = await Promise.all([
@@ -445,7 +425,7 @@ export default function OrganizerDashboard() {
 
             {events.length === 0 ? (
               <div className="odb-empty">
-                <p className="odb-empty-icon">🎪</p>
+                <p className="odb-empty-icon"><Icon name="calendar" /></p>
                 <p className="odb-empty-text">No events created yet.</p>
                 <button
                   className="odb-btn odb-btn-gold"
@@ -538,15 +518,18 @@ function StatCard({ label, value, accent }) {
   );
 }
 
-function ActionCard({ title, desc, onClick }) {
+function ActionCard({ title, desc, icon, onClick }) {
   return (
     <button className="odb-action" onClick={onClick}>
       <span className="odb-action-body">
-        <h3>{title}</h3>
+        <h3>
+          {icon && <Icon name={icon} />}
+          {title}
+        </h3>
         <p>{desc}</p>
       </span>
       <span className="odb-action-arrow" aria-hidden="true">
-        →
+        <Icon name="arrowRight" />
       </span>
     </button>
   );
@@ -624,10 +607,105 @@ function Modal({ message, onConfirm, isAuth }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   WHATSAPP BACKFILL BANNER
+
+   Every organizer created before the WhatsApp number became
+   mandatory has no number on file. The API answers `POST /events`
+   and `POST /withdrawals/request` with 403 WHATSAPP_REQUIRED for
+   them, so without this banner their next "Create Event" click is
+   an unexplained failure.
+
+   Deliberately NOT dismissible: it gates the two actions the
+   dashboard exists for, and a dismissed banner just relocates the
+   confusion to the 403. It disappears the moment a number saves.
+
+   Validation mirrors backend utils/phone.js so the form rejects
+   what the API would reject, instead of round-tripping for a 400.
+══════════════════════════════════════════════════════════════ */
+function WhatsAppBanner({ onSaved }) {
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const normalized = normalizeWhatsApp(value);
+  const valid = Boolean(normalized);
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (saving || !valid) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await updateProfile({ whatsapp: normalized });
+      onSaved(res.user);
+    } catch (err) {
+      setError(err?.message || "Could not save that number. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="odb-wa" aria-labelledby="odb-wa-title">
+      <div className="odb-wa-ic" aria-hidden="true">
+        <Icon name="chat" />
+      </div>
+      <div className="odb-wa-body">
+        <h2 className="odb-wa-title" id="odb-wa-title">
+          Add your WhatsApp number
+        </h2>
+        <p className="odb-wa-copy">
+          You&apos;ll need it to create events and withdraw. It&apos;s how we
+          link your events to the WhatsApp bot and alert you the moment a
+          ticket sells.
+        </p>
+
+        <form className="odb-wa-form" onSubmit={handleSave}>
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            className={`odb-wa-input${value && !valid ? " is-invalid" : ""}`}
+            placeholder="0801 234 5678"
+            value={value}
+            onChange={(ev) => {
+              setValue(ev.target.value);
+              setError("");
+            }}
+            aria-label="Your WhatsApp number"
+            aria-invalid={Boolean(value && !valid)}
+          />
+          <button
+            type="submit"
+            className="odb-btn odb-btn-gold"
+            disabled={!valid || saving}
+          >
+            {saving ? "Saving…" : "Save number"}
+          </button>
+        </form>
+
+        {error ? (
+          <p className="odb-wa-hint is-err" role="alert">
+            {error}
+          </p>
+        ) : value && !valid ? (
+          <p className="odb-wa-hint is-err">
+            That doesn&apos;t look like a valid number yet.
+          </p>
+        ) : valid ? (
+          <p className="odb-wa-hint is-ok">
+            <Icon name="check" /> We&apos;ll save it as {formatWhatsApp(value)}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -698,6 +776,30 @@ button { font-family:var(--font-b); cursor:pointer; }
 .odb-title strong { font-weight:800; }
 .odb-sub { color:var(--muted); font-size:13px; margin-top:3px; overflow-wrap:anywhere; }
 
+/* ── WhatsApp backfill banner ──
+   Sits above the wallet so it can't be scrolled past. Amber, not red:
+   nothing is broken yet — but two actions will fail until it's done. */
+.odb-wa { display:flex; gap:14px; align-items:flex-start; background:linear-gradient(135deg, rgba(232,201,106,.14), var(--card)); border:1px solid rgba(232,201,106,.34); border-radius:var(--r); padding:clamp(16px,2.6vw,22px); margin-bottom:24px; }
+.odb-wa-ic { flex-shrink:0; width:40px; height:40px; display:grid; place-items:center; font-size:20px; border-radius:12px; background:var(--gold-dim); border:1px solid rgba(232,201,106,.3); }
+.odb-wa-body { flex:1; min-width:0; }
+.odb-wa-title { font-family:var(--font-h); font-weight:700; font-size:15.5px; color:var(--text); margin-bottom:6px; }
+.odb-wa-copy { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px; max-width:56ch; }
+.odb-wa-form { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.odb-wa-input { flex:1; min-width:180px; padding:12px 15px; background:rgba(8,9,16,.5); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--text); font-family:var(--font-b); font-size:14px; transition:border-color .2s, box-shadow .2s; }
+.odb-wa-input::placeholder { color:var(--muted); opacity:.7; }
+.odb-wa-input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
+.odb-wa-input.is-invalid { border-color:rgba(224,92,92,.55); }
+.odb-wa-form .odb-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+.odb-wa-hint { font-size:11.5px; margin-top:9px; line-height:1.5; }
+.odb-wa-hint.is-ok { color:var(--live); }
+.odb-wa-hint.is-err { color:var(--danger); }
+@media (max-width:520px) {
+  .odb-wa { gap:12px; padding:16px 14px; }
+  .odb-wa-ic { width:34px; height:34px; font-size:17px; }
+  .odb-wa-input { font-size:16px; }   /* prevents iOS focus zoom */
+  .odb-wa-form .odb-btn { width:100%; }
+}
+
 /* ── Wallet hero ── */
 .odb-wallet { position:relative; overflow:hidden; background:linear-gradient(135deg, rgba(232,201,106,.16), rgba(232,201,106,.05) 50%, var(--card)); border:1px solid rgba(232,201,106,.32); border-radius:var(--r); padding:clamp(20px,3.4vw,30px); margin-bottom:24px; }
 .odb-wallet::after { content:''; position:absolute; top:-80%; left:-40%; width:45%; height:260%; background:linear-gradient(105deg, transparent, rgba(255,255,255,.07), transparent); transform:translateX(-140%) rotate(10deg); animation:odbShine 6.5s ease-in-out infinite; pointer-events:none; }
@@ -757,7 +859,8 @@ button { font-family:var(--font-b); cursor:pointer; }
 
 /* ── Empty state ── */
 .odb-empty { text-align:center; padding:clamp(36px,6vw,56px) 24px; background:var(--card); border:1px dashed var(--border-h); border-radius:var(--r); }
-.odb-empty-icon { font-size:40px; }
+.odb-empty-icon { font-size:40px; color:var(--muted); }
+.odb-action h3 { display:flex; align-items:center; gap:8px; }
 .odb-empty-text { color:var(--muted); margin:10px 0 18px; }
 
 /* ── Skeleton shimmer ── */

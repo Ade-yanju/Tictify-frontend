@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 import { getToken, logout } from "../services/authService";
 
 const logo = "/logo.png";
@@ -19,51 +20,11 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  users: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M17 14.5c2.4.5 4 2.7 4 5.5" strokeLinecap="round" />
-    </svg>
-  ),
-  ticket: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
-      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
-    </svg>
-  ),
-  coins: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <ellipse cx="12" cy="6" rx="8" ry="3" />
-      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
-    </svg>
-  ),
-  copy: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <rect x="9" y="9" width="12" height="12" rx="2.5" />
-      <path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" strokeLinecap="round" />
-    </svg>
-  ),
-  link: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M10 14a5 5 0 007.07 0l2.12-2.12a5 5 0 00-7.07-7.07L11 5.93" strokeLinecap="round" />
-      <path d="M14 10a5 5 0 00-7.07 0L4.8 12.12a5 5 0 007.07 7.07L13 18.07" strokeLinecap="round" />
-    </svg>
-  ),
-  out: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M10 17l-5-5 5-5M5 12h11" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
 
 function KpiCard({ icon, label, value, tone }) {
   return (
     <div className="amb-kpi">
-      <div className={`amb-kpi-icon is-${tone}`}>{icon}</div>
+      <div className={`amb-kpi-icon is-${tone}`}><Icon name={icon} /></div>
       <div className="amb-kpi-content">
         <p className="amb-kpi-label">{label}</p>
         <h3 className="amb-kpi-value">{value}</h3>
@@ -155,7 +116,7 @@ export default function AmbassadorDashboard() {
               Events
             </button>
             <button className="amb-btn-logout" onClick={() => logout()}>
-              {Ic.out}
+              <Icon name="signOut" />
               <span>Logout</span>
             </button>
           </nav>
@@ -203,7 +164,7 @@ export default function AmbassadorDashboard() {
                     onClick={() => copyText(code, "code")}
                     disabled={!code}
                   >
-                    {Ic.copy}
+                    <Icon name="copy" />
                     <span>{copied === "code" ? "Copied!" : "Copy code"}</span>
                   </button>
                   <button
@@ -211,7 +172,7 @@ export default function AmbassadorDashboard() {
                     onClick={() => copyText(inviteLink, "link")}
                     disabled={!code}
                   >
-                    {Ic.link}
+                    <Icon name="link" />
                     <span>{copied === "link" ? "Copied!" : "Copy invite link"}</span>
                   </button>
                 </div>
@@ -224,25 +185,25 @@ export default function AmbassadorDashboard() {
               {/* KPIs */}
               <section className="amb-kpis">
                 <KpiCard
-                  icon={Ic.users}
+                  icon=<Icon name="users" />
                   label="Organizers onboarded"
                   value={(stats.organizersOnboarded ?? 0).toLocaleString()}
                   tone="gold"
                 />
                 <KpiCard
-                  icon={Ic.ticket}
+                  icon=<Icon name="ticket" />
                   label="Tickets sold via your links"
                   value={(stats.ticketsSold ?? 0).toLocaleString()}
                   tone="live"
                 />
                 <KpiCard
-                  icon={Ic.coins}
+                  icon=<Icon name="coins" />
                   label="Sales revenue driven"
                   value={`₦${(stats.salesRevenue ?? 0).toLocaleString()}`}
                   tone="gold"
                 />
                 <div className="amb-kpi">
-                  <div className="amb-kpi-icon is-gold">{Ic.coins}</div>
+                  <div className="amb-kpi-icon is-gold"><Icon name="coins" /></div>
                   <div className="amb-kpi-content">
                     <p className="amb-kpi-label">Commission balance</p>
                     <h3 className="amb-kpi-value amb-kpi-value-gold">
@@ -292,7 +253,6 @@ export default function AmbassadorDashboard() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

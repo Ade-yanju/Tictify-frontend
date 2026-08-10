@@ -98,6 +98,36 @@ export function getUser() {
   return user ? JSON.parse(user) : null;
 }
 
+/* ================= UPDATE PROFILE =================
+   Currently only the WhatsApp number (dashboard backfill banner).
+   The stored user is patched in place on success so the banner —
+   which reads getUser() — disappears without a reload. */
+export async function updateProfile(data) {
+  const res = await fetch(`${API}/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = new Error(body.message || "Could not update your profile");
+    error.status = res.status;
+    throw error;
+  }
+
+  if (body.user) {
+    localStorage.setItem(
+      "user",
+      JSON.stringify({ ...(getUser() || {}), ...body.user }),
+    );
+  }
+  return body;
+}
+
 export function isAuthenticated() {
   return !!getToken();
 }

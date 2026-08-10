@@ -5,11 +5,13 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 import {
   register,
   verifyEmail,
   resendVerification,
 } from "../services/authService";
+import { normalizeWhatsApp, formatWhatsApp } from "../utils/phone";
 
 const logo = "/logo.png";
 
@@ -86,7 +88,7 @@ function PasswordField({ label, value, onChange, placeholder }) {
           aria-label={show ? "Hide password" : "Show password"}
           onClick={() => setShow(!show)}
         >
-          {show ? "🙈" : "👁"}
+          <Icon name={show ? "eyeOff" : "eye"} size={17} />
         </button>
       </div>
     </div>
@@ -99,7 +101,11 @@ function AuthModal({ type, message, onClose }) {
     <div className="rg-ov">
       <div className="rg-modal">
         <div className="rg-modal-ic" aria-hidden="true">
-          {type === "error" ? "⚠️" : "🎉"}
+          {type === "error" ? (
+            <Icon name="alertTriangle" />
+          ) : (
+            <Icon name="check" />
+          )}
         </div>
         <h3
           className={`rg-modal-title ${type === "error" ? "is-err" : "is-ok"}`}
@@ -127,6 +133,7 @@ export default function Register() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    whatsapp: "",
     password: "",
     confirmPassword: "",
   });
@@ -160,6 +167,8 @@ export default function Register() {
   }, []);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+  const whatsappNormalized = normalizeWhatsApp(form.whatsapp);
+  const whatsappValid = Boolean(whatsappNormalized);
   const passwordsMatch =
     form.password &&
     form.confirmPassword &&
@@ -173,6 +182,12 @@ export default function Register() {
         type: "error",
         message: "Please enter a valid email address.",
       });
+    if (!whatsappValid)
+      return setModal({
+        type: "error",
+        message:
+          "Please enter a valid WhatsApp number, e.g. 0801 234 5678.",
+      });
     if (form.password !== form.confirmPassword)
       return setModal({ type: "error", message: "Passwords do not match." });
 
@@ -181,6 +196,9 @@ export default function Register() {
       const result = await register({
         name: form.name,
         email: form.email,
+        /* Send the canonical form — the server normalises again, but
+           this keeps what we validated and what we send identical. */
+        whatsapp: whatsappNormalized,
         password: form.password,
         role: "organizer",
         ...(inviteCode ? { referredBy: inviteCode } : {}),
@@ -415,7 +433,42 @@ export default function Register() {
             />
             {form.email && (
               <p className={`rg-hint ${emailValid ? "is-ok" : "is-err"}`}>
-                {emailValid ? "✓ Valid address" : "Enter a valid email"}
+                {emailValid ? (
+                  <>
+                    <Icon name="check" size={11} /> Valid address
+                  </>
+                ) : (
+                  "Enter a valid email"
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* WhatsApp — required: it links the account to the bot */}
+          <div>
+            <label className="rg-label">WhatsApp Number</label>
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              className={`rg-input${focused.whatsapp ? " is-f" : ""}`}
+              placeholder="0801 234 5678"
+              value={form.whatsapp}
+              onChange={set("whatsapp")}
+              onFocus={() => setFocused((f) => ({ ...f, whatsapp: true }))}
+              onBlur={() => setFocused((f) => ({ ...f, whatsapp: false }))}
+              required
+            />
+            {form.whatsapp ? (
+              <p className={`rg-hint ${whatsappValid ? "is-ok" : "is-err"}`}>
+                {whatsappValid
+                  ? <><Icon name="check" size={11} /> {formatWhatsApp(form.whatsapp)}</>
+                  : "Enter a valid WhatsApp number"}
+              </p>
+            ) : (
+              <p className="rg-hint rg-hint-note">
+                We use this to manage your events on WhatsApp and alert you
+                about sales.
               </p>
             )}
           </div>
@@ -445,7 +498,13 @@ export default function Register() {
             />
             {form.confirmPassword && (
               <p className={`rg-hint ${passwordsMatch ? "is-ok" : "is-err"}`}>
-                {passwordsMatch ? "✓ Passwords match" : "Passwords don't match"}
+                {passwordsMatch ? (
+                  <>
+                    <Icon name="check" size={11} /> Passwords match
+                  </>
+                ) : (
+                  "Passwords don't match"
+                )}
               </p>
             )}
           </div>
@@ -480,7 +539,6 @@ export default function Register() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -573,6 +631,8 @@ input, button { font-family:var(--font-b); outline:none; }
 .rg-hint { font-size:11px; margin-top:6px; }
 .rg-hint.is-ok { color:var(--live); }
 .rg-hint.is-err { color:var(--danger); }
+/* Neutral helper copy — explains why we ask, without reading as an error. */
+.rg-hint.rg-hint-note { color:var(--muted); line-height:1.5; }
 
 /* ── Strength bar ── */
 .rg-sb-wrap { margin-top:10px; }

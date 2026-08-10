@@ -7,7 +7,9 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
+import Icon from "../../components/Icon";
 import ShareSheet from "../../components/ShareSheet";
+import { buyOnWhatsAppUrl } from "../../utils/whatsapp";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -21,43 +23,22 @@ function injectStyles(id, content) {
 /* ── Shell nav icons (inline, dependency-free) ───────────────── */
 const NavIc = {
   dashboard: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="8" rx="2" />
-      <rect x="3" y="13" width="8" height="8" rx="2" />
-      <rect x="13" y="13" width="8" height="8" rx="2" />
-    </svg>
+    <Icon name="grid" />
   ),
   create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
+    <Icon name="plusCircle" />
   ),
   events: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
+    <Icon name="calendar" />
   ),
   sales: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
+    <Icon name="bars" />
   ),
   scan: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
+    <Icon name="qr" />
   ),
   withdraw: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
+    <Icon name="wallet" />
   ),
 };
 
@@ -93,7 +74,7 @@ function Shell({ active, children }) {
       className={`mev-nav-item ${active === item.path ? "is-active" : ""}`}
       onClick={() => go(item.path)}
     >
-      {item.icon}
+      <Icon name={item.icon} />
       <span>{item.label}</span>
     </button>
   ));
@@ -324,6 +305,7 @@ export default function MyEvents() {
           title={shareEvent.title}
           dateText={new Date(shareEvent.date).toDateString()}
           locationText={shareEvent.location}
+          waBuyUrl={buyOnWhatsAppUrl(shareEvent)}
           onClose={() => setShareEvent(null)}
         />
       )}
@@ -392,7 +374,7 @@ export default function MyEvents() {
       {/* EMPTY */}
       {!loading && events.length === 0 && (
         <section className="mev-empty">
-          <p className="mev-empty-icon">🎪</p>
+          <p className="mev-empty-icon"><Icon name="calendar" /></p>
           <h3 className="mev-empty-title">No events yet</h3>
           <p className="mev-empty-text">
             Create your first event and start selling tickets.
@@ -674,17 +656,26 @@ function PromoterModal({ event, onClose }) {
             disabled={!valid}
             onClick={copyLink}
           >
-            {copied ? "Copied ✓" : "Copy link"}
+            {copied ? (
+              <>
+                Copied <Icon name="check" />
+              </>
+            ) : (
+              "Copy link"
+            )}
           </button>
         </div>
 
-        {/* Shares from here carry ?ref=CODE so the promoter gets credited */}
+        {/* Shares from here carry ?ref=CODE so the promoter gets credited —
+            including the WhatsApp deep link, which passes the same code
+            through to the bot as "ref CODE". */}
         {sharing && valid && (
           <ShareSheet
             url={link}
             title={event.title}
             dateText={new Date(event.date).toDateString()}
             locationText={event.location}
+            waBuyUrl={buyOnWhatsAppUrl(event, code)}
             onClose={() => setSharing(false)}
           />
         )}
@@ -932,17 +923,20 @@ function EditEventModal({ event, onClose, onSaved }) {
               {[
                 {
                   id: "end",
-                  name: "🚪 When the event ends",
+                  icon: "flag",
+                  name: "When the event ends",
                   desc: "sell right up to the last minute (lets you sell at the door)",
                 },
                 {
                   id: "start",
-                  name: "⏰ When the event starts",
+                  icon: "clock",
+                  name: "When the event starts",
                   desc: "no sales once the party begins",
                 },
                 {
                   id: "custom",
-                  name: "📅 Custom date & time",
+                  icon: "calendar",
+                  name: "Custom date & time",
                   desc: "pick your own cut-off",
                 },
               ].map((o) => (
@@ -954,7 +948,7 @@ function EditEventModal({ event, onClose, onSaved }) {
                   className={`mev-bfit-pill ${salesCloseMode === o.id ? "is-selected" : ""}`}
                   onClick={() => setSalesCloseMode(o.id)}
                 >
-                  {o.name}
+                  {o.icon && <Icon name={o.icon} />} {o.name}
                   <span className="mev-bfit-desc">{o.desc}</span>
                 </button>
               ))}
@@ -1308,7 +1302,6 @@ function ErrorModal({ message, onClose }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

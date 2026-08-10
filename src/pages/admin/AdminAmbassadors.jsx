@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../../components/Icon";
 import { getToken, logout } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -17,89 +18,19 @@ function injectStyles(id, content) {
 }
 
 /* ── Icons (inline, dependency-free) ─────────────────────── */
-const Ic = {
-  dash: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="5" rx="2" />
-      <rect x="13" y="12" width="8" height="9" rx="2" />
-      <rect x="3" y="15" width="8" height="6" rx="2" />
-    </svg>
-  ),
-  cal: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
-  ),
-  users: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M17 14.5c2.4.5 4 2.7 4 5.5" strokeLinecap="round" />
-    </svg>
-  ),
-  wallet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
-  ),
-  chart: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
-  ),
-  grad: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M12 4L2 9l10 5 10-5-10-5z" strokeLinejoin="round" />
-      <path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5" strokeLinecap="round" />
-      <path d="M22 9v5" strokeLinecap="round" />
-    </svg>
-  ),
-  clock: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3.5 2" strokeLinecap="round" />
-    </svg>
-  ),
-  check: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 12.5l2.5 2.5 5-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  cross: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" />
-    </svg>
-  ),
-  out: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M10 17l-5-5 5-5M5 12h11" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
 
 const NAV = [
-  { label: "Dashboard", path: "/admin/dashboard", icon: Ic.dash },
-  { label: "Events", path: "/admin/events", icon: Ic.cal },
-  { label: "Organizers", path: "/admin/organizers", icon: Ic.users },
-  { label: "Withdrawals", path: "/admin/withdrawals", icon: Ic.wallet },
-  { label: "Analytics", path: "/admin/sales", icon: Ic.chart },
-  { label: "Ambassadors", path: "/admin/ambassadors", icon: Ic.grad },
+  { label: "Dashboard", path: "/admin/dashboard", icon: "grid" },
+  { label: "Events", path: "/admin/events", icon: "calendar" },
+  { label: "Organizers", path: "/admin/organizers", icon: "users" },
+  { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
+  { label: "Analytics", path: "/admin/sales", icon: "bars" },
+  { label: "Ambassadors", path: "/admin/ambassadors", icon: "graduation" },
   {
     label: "Affiliates",
     path: "/admin/affiliates",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M9 15l6-6" strokeLinecap="round" />
-        <circle cx="9" cy="9" r="1.4" />
-        <circle cx="15" cy="15" r="1.4" />
-      </svg>
+      <Icon name="percent" />
     ),
   },
 ];
@@ -230,10 +161,10 @@ export default function AdminAmbassadors() {
       >
         {/* Stats Cards */}
         <section className="aam-kpis">
-          <StatCard label="Applied" value={stats.applied} tone="gold" icon={Ic.clock} />
-          <StatCard label="Approved" value={stats.approved} tone="live" icon={Ic.check} />
-          <StatCard label="Rejected" value={stats.rejected} tone="danger" icon={Ic.cross} />
-          <StatCard label="Total" value={ambassadors.length} tone="gold" icon={Ic.grad} />
+          <StatCard label="Applied" value={stats.applied} tone="gold" icon={"clock"} />
+          <StatCard label="Approved" value={stats.approved} tone="live" icon={"checkCircle"} />
+          <StatCard label="Rejected" value={stats.rejected} tone="danger" icon={"closeCircle"} />
+          <StatCard label="Total" value={ambassadors.length} tone="gold" icon={"graduation"} />
         </section>
 
         {/* Success Message */}
@@ -353,7 +284,7 @@ export default function AdminAmbassadors() {
         <section className="aam-list">
           {filtered.length === 0 ? (
             <div className="aam-empty">
-              <div className="aam-empty-icon">{Ic.grad}</div>
+              <div className="aam-empty-icon">{"graduation"}</div>
               <p className="aam-empty-text">No ambassador applications</p>
             </div>
           ) : (
@@ -483,7 +414,7 @@ function Shell({ active, title, subtitle, navigate, onLogout, children }) {
       className={`aam-nav-item ${active === n.path ? "is-active" : ""}`}
       onClick={() => go(n.path)}
     >
-      {n.icon}
+      <Icon name={n.icon} />
       <span>{n.label}</span>
     </button>
   ));
@@ -494,7 +425,7 @@ function Shell({ active, title, subtitle, navigate, onLogout, children }) {
         <div className="aam-mark">Tic<em>tify</em></div>
         <nav className="aam-nav">{navButtons}</nav>
         <button className="aam-logout" onClick={onLogout}>
-          {Ic.out}
+          {"signOut"}
           <span>Logout</span>
         </button>
       </aside>
@@ -517,7 +448,7 @@ function Shell({ active, title, subtitle, navigate, onLogout, children }) {
         <div className={`aam-drawer ${menuOpen ? "is-open" : ""}`}>
           {navButtons}
           <button className="aam-logout" onClick={onLogout}>
-            {Ic.out}
+            {"signOut"}
             <span>Logout</span>
           </button>
         </div>
@@ -539,7 +470,7 @@ function Shell({ active, title, subtitle, navigate, onLogout, children }) {
 function StatCard({ label, value, tone, icon }) {
   return (
     <div className="aam-kpi">
-      <div className={`aam-kpi-icon is-${tone}`}>{icon}</div>
+      <div className={`aam-kpi-icon is-${tone}`}><Icon name={icon} /></div>
       <div className="aam-kpi-content">
         <p className="aam-kpi-label">{label}</p>
         <h3 className="aam-kpi-value">{value}</h3>
@@ -712,7 +643,6 @@ function ErrorScreen({ error, onLogout }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

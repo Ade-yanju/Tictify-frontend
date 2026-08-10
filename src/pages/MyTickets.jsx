@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -18,48 +19,6 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  ticket: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
-      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
-    </svg>
-  ),
-  check: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path
-        d="M8.5 12.5l2.5 2.5 4.5-5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-  lock: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
-      <path d="M8 10.5V8a4 4 0 018 0v2.5" />
-    </svg>
-  ),
-};
 
 /* ── Slim public header ──────────────────────────────────── */
 function Header() {
@@ -179,7 +138,7 @@ export default function MyTickets() {
           {!sent ? (
             <>
               <div className="mtw-card-icon" aria-hidden="true">
-                {Ic.ticket}
+                <Icon name="ticket" />
               </div>
               <h1 className="mtw-title">Your ticket wallet</h1>
               <p className="mtw-sub">
@@ -220,14 +179,14 @@ export default function MyTickets() {
               </form>
 
               <p className="mtw-trust">
-                <span className="mtw-trust-ic">{Ic.lock}</span> Private &amp;
+                <span className="mtw-trust-ic"><Icon name="lock" /></span> Private &amp;
                 secure — we only email the address you enter
               </p>
             </>
           ) : (
             <div className="mtw-success" role="status">
               <div className="mtw-success-icon" aria-hidden="true">
-                {Ic.check}
+                <Icon name="check" />
               </div>
               <h2 className="mtw-title">Check your inbox</h2>
               <p className="mtw-success-msg">{message}</p>
@@ -251,7 +210,6 @@ export default function MyTickets() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

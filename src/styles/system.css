@@ -1,0 +1,499 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TICTIFY DESIGN SYSTEM
+   Imported ONCE from main.jsx. Every page inherits these tokens.
+
+   WHY THIS FILE EXISTS
+   36 page files each injected their own <style> block that re-declared
+   the same :root tokens, and 27 of them opened a separate Google Fonts
+   @import — four different font requests racing on first paint. The
+   tokens happened to agree today, but nothing enforced that, and any
+   change meant editing 36 files.
+
+   Page-level injectStyles() blocks still work and still win on
+   specificity; they just no longer need to redeclare tokens. Migrate a
+   page by deleting its :root block and its @import, not by rewriting
+   all of its rules at once.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Ink: the dark ground ──────────────────────────────────────
+     Four steps, not one. Depth used to be flat #080910 everywhere
+     with cards separated only by a 1px border, which is why every
+     surface read as the same plane. */
+  --ink-900: #060710; /* page ground, deepest */
+  --ink-800: #0b0d16; /* raised: sections, sticky bars */
+  --ink-700: #12141f; /* cards */
+  --ink-600: #1a1d2b; /* inputs, wells, hover on cards */
+  --ink-500: #262a3b; /* borders on raised surfaces */
+
+  /* Legacy alias — pages still reference --bg/--surface/--card. */
+  --bg: var(--ink-900);
+  --surface: var(--ink-800);
+  --card: rgba(255, 255, 255, 0.04);
+
+  /* ── Gold: the brand accent ────────────────────────────────────
+     A ramp, so gold can mean "primary action", "live/urgent" and
+     "decorative wash" without all three looking identical. */
+  --gold-100: #F7ECC4;
+  --gold-300: #F0DA96;
+  --gold: #E8C96A; /* the brand value — unchanged */
+  --gold-600: #C9A63F;
+  --gold-800: #7A6320;
+  --gold-dim: rgba(232, 201, 106, 0.12);
+  --gold-glo: rgba(232, 201, 106, 0.22);
+
+  /* ── Text ──────────────────────────────────────────────────────
+     Four levels. Two (--text/--muted) could not express
+     "secondary heading" vs "caption" vs "disabled". */
+  --text: #F2EFE9;
+  --text-2: #B9B5AC; /* secondary: subheads, meta */
+  --muted: #8B887E; /* tertiary: captions, placeholders */
+  --text-dim: #5C5A54; /* disabled */
+  --on-gold: #0A0B12; /* text on a gold fill */
+
+  /* ── Status ────────────────────────────────────────────────────
+     Distinct hues, each with a dim companion for backgrounds. */
+  --live: #5BE39A;
+  --live-dim: rgba(91, 227, 154, 0.13);
+  --danger: #F2685E;
+  --danger-dim: rgba(242, 104, 94, 0.13);
+  --warn: #F0A94C;
+  --warn-dim: rgba(240, 169, 76, 0.13);
+  --info: #6BA8F5;
+  --info-dim: rgba(107, 168, 245, 0.13);
+
+  /* WhatsApp green — a real brand colour, not ours to restyle. */
+  --wa: #4BE383;
+  --wa-dim: rgba(37, 211, 102, 0.11);
+  --wa-line: rgba(37, 211, 102, 0.42);
+
+  /* ── Borders ───────────────────────────────────────────────────*/
+  --border: rgba(255, 255, 255, 0.07);
+  --border-h: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.22);
+
+  /* ── Type ──────────────────────────────────────────────────────
+     Syne for display, DM Sans for text. A real modular scale:
+     the old UI ran one huge headline and one body size, so every
+     intermediate level had to be faked with weight alone. */
+  --font-h: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-b: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --t-display: clamp(2.6rem, 6.5vw, 4.75rem); /* hero only */
+  --t-h1: clamp(2rem, 4.2vw, 3rem);
+  --t-h2: clamp(1.5rem, 2.6vw, 2rem);
+  --t-h3: 1.25rem;
+  --t-h4: 1.0625rem;
+  --t-body-lg: 1.0625rem;
+  --t-body: 0.9375rem;
+  --t-sm: 0.8125rem;
+  --t-xs: 0.6875rem; /* eyebrows, chips */
+
+  --lh-tight: 1.05; /* display */
+  --lh-snug: 1.25; /* headings */
+  --lh-body: 1.65; /* paragraphs */
+
+  --ls-display: -0.03em;
+  --ls-head: -0.015em;
+  --ls-eyebrow: 0.14em;
+
+  /* ── Space: 4px base ───────────────────────────────────────────*/
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+
+  /* Section rhythm — fluid so mobile isn't padded like desktop. */
+  --gutter: clamp(16px, 4vw, 40px);
+  --section-y: clamp(56px, 9vw, 112px);
+  --maxw: 1200px;
+  --maxw-prose: 68ch;
+
+  /* ── Radii ─────────────────────────────────────────────────────*/
+  --r-sm: 10px;
+  --r: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* ── Elevation ─────────────────────────────────────────────────
+     On a dark UI a drop shadow alone is nearly invisible, so each
+     level pairs a shadow with a top inner highlight — the way light
+     actually catches a raised edge. Replaces "same heavy shadow on
+     every card" as the only depth cue. */
+  --e-1: 0 1px 2px rgba(0, 0, 0, 0.4),
+         inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --e-2: 0 4px 16px rgba(0, 0, 0, 0.45),
+         inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --e-3: 0 12px 32px rgba(0, 0, 0, 0.5),
+         inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --e-4: 0 24px 64px rgba(0, 0, 0, 0.6),
+         inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --e-gold: 0 8px 28px rgba(232, 201, 106, 0.24);
+
+  /* ── Motion ────────────────────────────────────────────────────
+     Durations short enough to feel instant. --ease-out for things
+     entering, --ease-spring for direct manipulation. */
+  --d-1: 120ms;
+  --d-2: 200ms;
+  --d-3: 320ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --z-sticky: 900;
+  --z-drawer: 940;
+  --z-overlay: 2000;
+  --z-toast: 3000;
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════ */
+
+body {
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings default to the display face so a page that forgets to set
+   it still reads as Tictify rather than falling back to the body font. */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-h);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-head);
+  font-weight: 700;
+}
+
+/* ── Focus ──────────────────────────────────────────────────────
+   `outline: none` with nothing to replace it makes a UI unusable by
+   keyboard. :focus-visible keeps the ring off mouse clicks. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--on-gold);
+}
+
+/* Dark, slim scrollbars — the default light track is jarring here. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-500) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--ink-500);
+  border-radius: var(--r-pill);
+  border: 2px solid var(--ink-900);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ═══ Type utilities ═════════════════════════════════════════════ */
+
+.t-display {
+  font-family: var(--font-h);
+  font-weight: 800;
+  font-size: var(--t-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+}
+.t-h1 { font-size: var(--t-h1); font-weight: 800; }
+.t-h2 { font-size: var(--t-h2); }
+.t-h3 { font-size: var(--t-h3); }
+
+/* Eyebrow: small, spaced, uppercase. Used above section headings. */
+.t-eyebrow {
+  font-family: var(--font-b);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+.t-muted { color: var(--muted); }
+.t-2 { color: var(--text-2); }
+
+/* Tabular figures — prices and counts must not jitter as they poll.
+   Applied to any live-updating number. */
+.t-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ═══ Layout ═════════════════════════════════════════════════════ */
+
+.ds-wrap {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+.ds-section { padding-block: var(--section-y); }
+.ds-prose { max-width: var(--maxw-prose); }
+
+/* ═══ Buttons ════════════════════════════════════════════════════
+   Four ranks that look different, so hierarchy survives when two
+   buttons sit side by side. Previously every button was the same
+   gold pill regardless of importance. */
+
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: 13px 24px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font-family: var(--font-h);
+  font-weight: 700;
+  font-size: var(--t-body);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--d-2) var(--ease-out),
+              box-shadow var(--d-2) var(--ease-out),
+              background var(--d-2) var(--ease-out),
+              border-color var(--d-2) var(--ease-out),
+              color var(--d-2) var(--ease-out);
+}
+/* 44px min touch target (WCAG 2.5.5) — the old 12px-padded pills
+   fell short of this on mobile. */
+@media (pointer: coarse) {
+  .ds-btn { min-height: 44px; }
+}
+
+.ds-btn:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
+.ds-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ds-btn--primary {
+  background: linear-gradient(135deg, var(--gold-300), var(--gold));
+  color: var(--on-gold);
+  box-shadow: var(--e-gold);
+}
+.ds-btn--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px var(--gold-glo);
+}
+
+.ds-btn--secondary {
+  background: var(--ink-600);
+  border-color: var(--border-h);
+  color: var(--text);
+}
+.ds-btn--secondary:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--ink-500);
+}
+
+.ds-btn--ghost { background: transparent; color: var(--text-2); }
+.ds-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.ds-btn--danger {
+  background: var(--danger-dim);
+  border-color: rgba(242, 104, 94, 0.4);
+  color: var(--danger);
+}
+.ds-btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* WhatsApp: its own brand colour, deliberately not gold. */
+.ds-btn--wa {
+  background: var(--wa-dim);
+  border-color: var(--wa-line);
+  color: var(--wa);
+}
+.ds-btn--wa:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(37, 211, 102, 0.18);
+  border-color: var(--wa);
+  box-shadow: 0 10px 30px rgba(37, 211, 102, 0.18);
+}
+
+.ds-btn--lg { padding: 16px 30px; font-size: var(--t-body-lg); }
+.ds-btn--sm { padding: 9px 16px; font-size: var(--t-sm); }
+.ds-btn--block { width: 100%; }
+
+/* ═══ Surfaces ═══════════════════════════════════════════════════ */
+
+.ds-card {
+  background: var(--ink-700);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--e-1);
+}
+.ds-card--raised { box-shadow: var(--e-2); }
+.ds-card--interactive {
+  transition: transform var(--d-2) var(--ease-out),
+              border-color var(--d-2) var(--ease-out),
+              box-shadow var(--d-2) var(--ease-out);
+}
+.ds-card--interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-h);
+  box-shadow: var(--e-3);
+}
+
+/* ═══ Chips ══════════════════════════════════════════════════════ */
+
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--ink-600);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.ds-chip--live { background: var(--live-dim); border-color: rgba(91,227,154,.34); color: var(--live); }
+.ds-chip--gold { background: var(--gold-dim); border-color: rgba(232,201,106,.34); color: var(--gold); }
+.ds-chip--danger { background: var(--danger-dim); border-color: rgba(242,104,94,.34); color: var(--danger); }
+.ds-chip--warn { background: var(--warn-dim); border-color: rgba(240,169,76,.34); color: var(--warn); }
+
+/* A live event's pulsing dot. Communicates state — not decoration. */
+.ds-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: dsPulse 2.4s var(--ease-out) infinite;
+}
+@keyframes dsPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
+/* ═══ Inputs ═════════════════════════════════════════════════════ */
+
+.ds-input {
+  width: 100%;
+  padding: 13px 15px;
+  background: var(--ink-600);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: var(--t-body);
+  transition: border-color var(--d-2) var(--ease-out),
+              box-shadow var(--d-2) var(--ease-out);
+}
+.ds-input::placeholder { color: var(--text-dim); }
+.ds-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+.ds-input[aria-invalid="true"] { border-color: rgba(242, 104, 94, 0.6); }
+
+/* 16px on mobile prevents iOS from zooming the viewport on focus. */
+@media (max-width: 520px) {
+  .ds-input { font-size: 16px; }
+}
+
+.ds-label {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--s-2);
+}
+
+/* ═══ Skeletons ══════════════════════════════════════════════════
+   A designed loading state. Shimmer travels left→right so it reads
+   as "loading", not as a broken gradient. */
+.ds-skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink-700);
+  border-radius: var(--r-sm);
+}
+.ds-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.055),
+    transparent
+  );
+  animation: dsShimmer 1.5s infinite;
+}
+@keyframes dsShimmer { to { transform: translateX(100%); } }
+
+/* ═══ Icons ══════════════════════════════════════════════════════
+   Default to scaling with the surrounding font-size and sitting on
+   the text baseline, so an icon beside a label never rides high or
+   forces a wrapper with its own line-height. */
+.ds-icon {
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex: none;
+}
+
+/* ═══ Utility ════════════════════════════════════════════════════ */
+
+/* Visually hidden but read by screen readers — for icon-only
+   controls and live-region announcements. */
+.ds-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Wide content (tables, code) scrolls inside itself so the page body
+   never scrolls horizontally. */
+.ds-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ═══ Reduced motion ═════════════════════════════════════════════
+   Global honour of the OS setting. Individual pages don't need to
+   repeat this. Kept as near-zero rather than 0 so transitionend
+   listeners still fire. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -41,7 +42,7 @@ function PasswordField({ id, label, value, onChange, placeholder }) {
           aria-label={show ? "Hide password" : "Show password"}
           onClick={() => setShow(!show)}
         >
-          {show ? "🙈" : "👁"}
+          <Icon name={show ? "eyeOff" : "eye"} size={17} />
         </button>
       </div>
     </div>
@@ -147,7 +148,7 @@ export default function ResetPassword() {
                 {confirm && (
                   <p className={`rp-hint ${passwordsMatch ? "is-ok" : "is-err"}`}>
                     {passwordsMatch
-                      ? "✓ Passwords match"
+                      ? <><Icon name="check" size={11} /> Passwords match</>
                       : "Passwords don't match"}
                   </p>
                 )}
@@ -179,10 +180,7 @@ export default function ResetPassword() {
         ) : (
           <div className="rp-success" role="status">
             <div className="rp-success-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M8.5 12.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Icon name="checkCircle" />
             </div>
             <h2 className="rp-title">Password updated</h2>
             <p className="rp-success-msg">{successMsg}</p>
@@ -200,7 +198,6 @@ export default function ResetPassword() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

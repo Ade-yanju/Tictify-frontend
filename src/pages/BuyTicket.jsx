@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -28,7 +29,7 @@ function Progress() {
           </span>
           {i < steps.length - 1 && (
             <span className="bt-progress-arrow" aria-hidden="true">
-              →
+              <Icon name="arrowRight" />
             </span>
           )}
         </span>
@@ -80,7 +81,7 @@ export default function BuyTicket({ event }) {
       <div className="bt-page bt-fallback">
         <div className="bt-fallback-card">
           <div className="bt-fallback-icon" aria-hidden="true">
-            ⚠️
+            <Icon name="alertTriangle" />
           </div>
           <p className="bt-fallback-text">Unable to load event.</p>
         </div>
@@ -104,7 +105,7 @@ export default function BuyTicket({ event }) {
 
       {/* Back */}
       <button className="bt-back" onClick={() => navigate(-1)}>
-        ← Back
+        <Icon name="arrowLeft" /> Back
       </button>
 
       <div className="bt-wrap">
@@ -118,7 +119,7 @@ export default function BuyTicket({ event }) {
               <h2 className="bt-title">{event.title}</h2>
               {event.location && (
                 <p className="bt-loc">
-                  <span aria-hidden="true">📍</span> {event.location}
+                  <Icon name="pin" /> {event.location}
                 </p>
               )}
             </div>
@@ -177,15 +178,19 @@ export default function BuyTicket({ event }) {
                 disabled={!canProceed}
                 onClick={proceedToCheckout}
               >
-                {canProceed
-                  ? "Continue to Checkout →"
-                  : !emailValid
-                    ? "Enter your email"
-                    : "Select a ticket"}
+                {canProceed ? (
+                  <>
+                    Continue to Checkout <Icon name="arrowRight" />
+                  </>
+                ) : !emailValid ? (
+                  "Enter your email"
+                ) : (
+                  "Select a ticket"
+                )}
               </button>
 
               <p className="bt-trust">
-                🔒 Secure checkout · No account required
+                <Icon name="lock" /> Secure checkout · No account required
               </p>
             </div>
           </section>
@@ -248,7 +253,6 @@ export default function BuyTicket({ event }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

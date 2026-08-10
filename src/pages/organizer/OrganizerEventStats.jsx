@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
+import Icon from "../../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -16,55 +17,14 @@ function injectStyles(id, content) {
 }
 
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
-const Ic = {
-  dashboard: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="5" rx="2" />
-      <rect x="13" y="12" width="8" height="9" rx="2" />
-      <rect x="3" y="15" width="8" height="6" rx="2" />
-    </svg>
-  ),
-  create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
-  ),
-  events: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
-  ),
-  sales: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
-  ),
-  scan: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
-  ),
-  wallet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
-  ),
-};
 
 const NAV = [
-  { key: "dashboard", label: "Dashboard", to: "/organizer/dashboard", icon: Ic.dashboard },
-  { key: "create", label: "Create Event", to: "/organizer/create-event", icon: Ic.create },
-  { key: "events", label: "My Events", to: "/organizer/events", icon: Ic.events },
-  { key: "sales", label: "Sales", to: "/organizer/sales", icon: Ic.sales },
-  { key: "scan", label: "Scan Tickets", to: "/organizer/scan/select", icon: Ic.scan },
-  { key: "withdraw", label: "Withdraw", to: "/organizer/withdraw", icon: Ic.wallet },
+  { key: "dashboard", label: "Dashboard", to: "/organizer/dashboard", icon: "grid" },
+  { key: "create", label: "Create Event", to: "/organizer/create-event", icon: "plusCircle" },
+  { key: "events", label: "My Events", to: "/organizer/events", icon: "calendar" },
+  { key: "sales", label: "Sales", to: "/organizer/sales", icon: "bars" },
+  { key: "scan", label: "Scan Tickets", to: "/organizer/scan/select", icon: "qr" },
+  { key: "withdraw", label: "Withdraw", to: "/organizer/withdraw", icon: "wallet" },
 ];
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
@@ -91,7 +51,7 @@ function Shell({ active, title, subtitle, children }) {
         className={`${cls} ${active === item.key ? "is-active" : ""}`}
         onClick={() => go(item.to)}
       >
-        {item.icon}
+        <Icon name={item.icon} />
         <span>{item.label}</span>
       </button>
     ));
@@ -246,9 +206,7 @@ export default function OrganizerEventStats() {
           {events.length === 0 ? (
             <div className="oes-empty">
               <div className="oes-empty-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-                  <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-                </svg>
+                <Icon name="bars" />
               </div>
               <p>You haven’t hosted any events yet.</p>
               <button
@@ -385,7 +343,6 @@ function Stat({ label, value, accent }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

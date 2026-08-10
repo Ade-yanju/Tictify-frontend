@@ -4,6 +4,7 @@
    All responsive behavior lives in real CSS (@media) below.
 ═══════════════════════════════════════════════════════════ */
 import { useState } from "react";
+import Icon from "../components/Icon";
 import { useNavigate } from "react-router-dom";
 
 const logo = "/logo.png";
@@ -111,19 +112,7 @@ export default function ForgotPassword() {
         ) : (
           <div className="fp-success" role="status">
             <div className="fp-success-icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path
-                  d="M8.5 12.5l2.5 2.5 4.5-5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <Icon name="checkCircle" />
             </div>
             <h2 className="fp-title">Check your inbox</h2>
             <p className="fp-success-msg">{sentMessage}</p>
@@ -152,7 +141,6 @@ export default function ForgotPassword() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

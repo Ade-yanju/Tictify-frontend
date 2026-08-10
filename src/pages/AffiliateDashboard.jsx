@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 import { getToken, logout } from "../services/authService";
 
 const logo = "/logo.png";
@@ -19,43 +20,6 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  wallet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
-  ),
-  coins: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <ellipse cx="12" cy="6" rx="8" ry="3" />
-      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
-    </svg>
-  ),
-  ticket: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M3 9V7a2 2 0 012-2h14a2 2 0 012 2v2a3 3 0 000 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a3 3 0 000-6z" />
-      <path d="M13 5v2M13 11v2M13 17v2" strokeDasharray="1 3" />
-    </svg>
-  ),
-  chart: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
-  ),
-  copy: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <rect x="9" y="9" width="12" height="12" rx="2.5" />
-      <path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" strokeLinecap="round" />
-    </svg>
-  ),
-  out: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-      <path d="M15 4h4a1 1 0 011 1v14a1 1 0 01-1 1h-4M10 17l-5-5 5-5M5 12h11" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
 
 function fmtNaira(n) {
   const v = Number(n);
@@ -65,7 +29,7 @@ function fmtNaira(n) {
 function KpiCard({ icon, label, value, tone, gold }) {
   return (
     <div className="afd-kpi">
-      <div className={`afd-kpi-icon is-${tone}`}>{icon}</div>
+      <div className={`afd-kpi-icon is-${tone}`}><Icon name={icon} /></div>
       <div className="afd-kpi-content">
         <p className="afd-kpi-label">{label}</p>
         <h3 className={`afd-kpi-value ${gold ? "afd-kpi-value-gold" : ""}`}>
@@ -227,7 +191,7 @@ export default function AffiliateDashboard() {
               Events
             </button>
             <button className="afd-btn-logout" onClick={() => logout()}>
-              {Ic.out}
+              <Icon name="signOut" />
               <span>Logout</span>
             </button>
           </nav>
@@ -275,7 +239,7 @@ export default function AffiliateDashboard() {
                     onClick={copyCode}
                     disabled={!code}
                   >
-                    {Ic.copy}
+                    <Icon name="copy" />
                     <span>{copiedCode ? "Copied!" : "Copy code"}</span>
                   </button>
                   {waBotNumber && (
@@ -284,7 +248,7 @@ export default function AffiliateDashboard() {
                       onClick={copyWaBotLink}
                       disabled={!code}
                     >
-                      {Ic.copy}
+                      <Icon name="copy" />
                       <span>
                         {copiedWaLink ? "Copied!" : "Share on WhatsApp"}
                       </span>
@@ -300,26 +264,26 @@ export default function AffiliateDashboard() {
               {/* KPIs */}
               <section className="afd-kpis">
                 <KpiCard
-                  icon={Ic.wallet}
+                  icon=<Icon name="wallet" />
                   label="Balance"
                   value={fmtNaira(me?.balance)}
                   tone="gold"
                   gold
                 />
                 <KpiCard
-                  icon={Ic.coins}
+                  icon=<Icon name="coins" />
                   label="Total earned"
                   value={fmtNaira(me?.totalEarned)}
                   tone="gold"
                 />
                 <KpiCard
-                  icon={Ic.ticket}
+                  icon=<Icon name="ticket" />
                   label="Tickets sold"
                   value={(Number(me?.ticketsSold) || 0).toLocaleString()}
                   tone="live"
                 />
                 <KpiCard
-                  icon={Ic.chart}
+                  icon=<Icon name="bars" />
                   label="Sales volume"
                   value={fmtNaira(me?.salesVolume)}
                   tone="live"
@@ -354,7 +318,7 @@ export default function AffiliateDashboard() {
                 ) : events.length === 0 ? (
                   <div className="afd-empty">
                     <p className="afd-empty-icon" aria-hidden="true">
-                      🎪
+                      <Icon name="calendar" />
                     </p>
                     <p>
                       No events are open to affiliates yet — check back soon.
@@ -421,10 +385,10 @@ export default function AffiliateDashboard() {
                             onClick={() => copyEventLink(ev)}
                             disabled={!code}
                           >
-                            {Ic.copy}
+                            <Icon name="copy" />
                             <span>
                               {copiedEventId === ev._id
-                                ? "Copied ✓"
+                                ? <><Icon name="check" size={12} /> Copied</>
                                 : "Copy my link"}
                             </span>
                           </button>
@@ -459,7 +423,6 @@ export default function AffiliateDashboard() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

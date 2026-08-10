@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
+import Icon from "../../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -20,43 +21,22 @@ function injectStyles(id, content) {
 /* ── Shell nav icons (inline, dependency-free) ───────────────── */
 const NavIc = {
   dashboard: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="8" rx="2" />
-      <rect x="3" y="13" width="8" height="8" rx="2" />
-      <rect x="13" y="13" width="8" height="8" rx="2" />
-    </svg>
+    <Icon name="grid" />
   ),
   create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
+    <Icon name="plusCircle" />
   ),
   events: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
+    <Icon name="calendar" />
   ),
   sales: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
+    <Icon name="bars" />
   ),
   scan: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
+    <Icon name="qr" />
   ),
   withdraw: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
+    <Icon name="wallet" />
   ),
 };
 
@@ -92,7 +72,7 @@ function Shell({ active, children }) {
       className={`tks-nav-item ${active === item.path ? "is-active" : ""}`}
       onClick={() => go(item.path)}
     >
-      {item.icon}
+      <Icon name={item.icon} />
       <span>{item.label}</span>
     </button>
   ));
@@ -283,7 +263,7 @@ export default function TicketSales() {
 
             {data.events.length === 0 ? (
               <div className="tks-empty">
-                <p className="tks-empty-icon">🎟</p>
+                <p className="tks-empty-icon"><Icon name="ticket" /></p>
                 <p className="tks-empty-text">No ticket sales yet.</p>
               </div>
             ) : (
@@ -401,7 +381,6 @@ function Modal({ type, message, onClose }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

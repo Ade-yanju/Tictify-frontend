@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -30,7 +31,7 @@ function Progress() {
           </span>
           {i < steps.length - 1 && (
             <span className="ck-progress-arrow" aria-hidden="true">
-              →
+              <Icon name="arrowRight" />
             </span>
           )}
         </span>
@@ -50,6 +51,33 @@ function isEarlyBird(t) {
 }
 function effectivePrice(t) {
   return isEarlyBird(t) ? Number(t.earlyBirdPrice) : t?.price;
+}
+
+/* ── Per-tier stock, read straight off the server's availability record.
+   Mirrors computeAvailability's contract exactly:
+     • no record            → null (render nothing; never guess)
+     • soldOut              → { soldOut:true }
+     • remaining 0 + !soldOut → genuinely UNBOUNDED (both the tier
+       quantity and the event capacity are undeclared). The server
+       reports 0 there only to keep JSON valid, so showing "0 left"
+       would be a phantom sell-out. Render nothing instead.
+     • pct is only meaningful when a quantity was declared; it stays
+       null otherwise so the meter is skipped rather than faked.
+   `low` uses the same <=10 threshold the page already used. ── */
+function tierStock(avail) {
+  if (!avail) return null;
+  if (avail.soldOut) return { soldOut: true, remaining: 0, pct: 0, low: false };
+
+  const remaining = Number(avail.remaining);
+  if (!Number.isFinite(remaining) || remaining <= 0) return null; // unbounded
+
+  const quantity = Number(avail.quantity);
+  const pct =
+    Number.isFinite(quantity) && quantity > 0
+      ? Math.min(1, remaining / quantity)
+      : null;
+
+  return { soldOut: false, remaining, pct, low: remaining <= 10 };
 }
 
 /* In-app browsers (TikTok, Instagram, Facebook…) block the bank
@@ -190,11 +218,17 @@ export default function Checkout() {
   );
   const tierSoldOut = Boolean(tierAvail?.soldOut);
   /* 10 stays the hard upper bound (the server clamps there too); stock
-     only ever lowers it. No availability data → old flat 10. */
-  const maxQty = Math.max(
-    1,
-    Math.min(10, tierAvail ? tierAvail.remaining : 10),
-  );
+     only ever lowers it. No availability data → old flat 10.
+
+     `remaining: 0` with `soldOut: false` does NOT mean empty — it's how
+     computeAvailability reports a genuinely UNBOUNDED tier (neither a
+     tier quantity nor an event capacity was declared) while keeping the
+     JSON a valid number. Treating it as a real count clamped maxQty to
+     1, silently capping buyers at a single ticket on every event with
+     no declared limits. Only a positive remaining lowers the ceiling. */
+  const maxQty = tierSoldOut
+    ? 1
+    : Math.max(1, Math.min(10, tierAvail?.remaining > 0 ? tierAvail.remaining : 10));
 
   /* Switching tiers (or a refetch) can shrink the ceiling under the
      current qty — pull it back so we never post a quantity the server
@@ -226,10 +260,30 @@ export default function Checkout() {
         const data = await res.json();
         if (!Array.isArray(data.ticketTypes) || data.ticketTypes.length === 0)
           throw new Error("No tickets available for this event.");
+
+        /* Land on a tier the buyer can actually buy.
+           Defaulting to ticketTypes[0] meant an event whose first tier
+           had sold out (the normal end-state of early-bird pricing)
+           opened checkout pre-loaded with a sold-out selection: three
+           red errors and a dead "Sold out" button on first paint, with
+           nothing saying "just pick another one".
+           An explicit ?ticket= param still wins — a guest who followed
+           a link to a specific tier should see that tier's real state,
+           including that it's gone. */
+        const soldOutNames = new Set(
+          (data.availability?.tiers || [])
+            .filter((t) => t.soldOut)
+            .map((t) => t.name),
+        );
+        const requested = data.ticketTypes.find(
+          (t) => t.name.toLowerCase() === ticketParam?.toLowerCase(),
+        );
         const resolved =
-          data.ticketTypes.find(
-            (t) => t.name.toLowerCase() === ticketParam?.toLowerCase(),
-          ) || data.ticketTypes[0];
+          requested ||
+          data.ticketTypes.find((t) => !soldOutNames.has(t.name)) ||
+          /* Every tier gone — fall back to the first so the page still
+             renders the event and explains the sell-out. */
+          data.ticketTypes[0];
         setEvent(data);
         setTicket(resolved);
       } catch (err) {
@@ -466,12 +520,12 @@ export default function Checkout() {
       <div className="ck-page ck-center">
         <div className="ck-error-card">
           <div className="ck-error-icon" aria-hidden="true">
-            ⚠️
+            <Icon name="alert" />
           </div>
           <h2 className="ck-error-title">Error</h2>
           <p className="ck-error-msg">{error}</p>
           <button className="ck-btn-ghost" onClick={() => navigate(-1)}>
-            ← Go Back
+            <Icon name="arrowLeft" /> Go Back
           </button>
         </div>
       </div>
@@ -515,7 +569,7 @@ export default function Checkout() {
           </>
         )}
         <button className="ck-back" onClick={() => navigate(-1)}>
-          ← Back
+          <Icon name="arrowLeft" /> Back
         </button>
       </div>
 
@@ -525,7 +579,7 @@ export default function Checkout() {
           <div className="ck-iab" role="status">
             <div className="ck-iab-head">
               <span className="ck-iab-icon" aria-hidden="true">
-                {transferOffered ? "🏦" : "⚠️"}
+                <Icon name={transferOffered ? "bank" : "alert"} />
               </span>
               <strong>
                 You&apos;re in {inAppBrowser}&apos;s browser — card payments
@@ -556,9 +610,13 @@ export default function Checkout() {
               className="ck-iab-copy"
               onClick={copyCheckoutLink}
             >
-              {linkCopied
-                ? "✓ Link copied — paste it in your browser"
-                : "Copy link for card payment"}
+              {linkCopied ? (
+                <>
+                  <Icon name="check" /> Link copied — paste it in your browser
+                </>
+              ) : (
+                "Copy link for card payment"
+              )}
             </button>
           </div>
         )}
@@ -588,7 +646,13 @@ export default function Checkout() {
                     className="ck-tr-copy"
                     onClick={() => copyField("acct", transferInfo.accountNumber)}
                   >
-                    {copiedField === "acct" ? "✓ Copied" : "Copy"}
+                    {copiedField === "acct" ? (
+                      <>
+                        <Icon name="check" /> Copied
+                      </>
+                    ) : (
+                      "Copy"
+                    )}
                   </button>
                 </div>
               </div>
@@ -611,14 +675,20 @@ export default function Checkout() {
                     className="ck-tr-copy"
                     onClick={() => copyField("amt", transferInfo.total)}
                   >
-                    {copiedField === "amt" ? "✓ Copied" : "Copy"}
+                    {copiedField === "amt" ? (
+                      <>
+                        <Icon name="check" /> Copied
+                      </>
+                    ) : (
+                      "Copy"
+                    )}
                   </button>
                 </span>
               </div>
             </div>
 
             <p className="ck-tr-warn">
-              ⚠️ Transfer the <strong>exact amount</strong> — a different
+              <Icon name="alert" /> Transfer the <strong>exact amount</strong> — a different
               figure won&apos;t match your ticket automatically.
             </p>
 
@@ -650,11 +720,11 @@ export default function Checkout() {
               <h1 className="ck-title">{event.title}</h1>
               <div className="ck-meta">
                 {[
-                  { icon: "📍", t: event.location || "TBA" },
-                  { icon: "📅", t: new Date(event.date).toDateString() },
+                  { icon: "pin", t: event.location || "TBA" },
+                  { icon: "calendar", t: new Date(event.date).toDateString() },
                 ].map((m, i) => (
                   <span className="ck-chip" key={i}>
-                    {m.icon} {m.t}
+                    <Icon name={m.icon} /> {m.t}
                   </span>
                 ))}
               </div>
@@ -687,39 +757,101 @@ export default function Checkout() {
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
                 />
 
-                {event.ticketTypes.length > 1 && (
+                {event.ticketTypes.length > 0 && (
                   <div className="ck-field">
-                    <label className="ck-label">Ticket Type</label>
-                    <div className="ck-selectwrap">
-                      <select
-                        className="ck-select"
-                        value={ticket.name}
-                        onChange={(e) =>
-                          setTicket(
-                            event.ticketTypes.find(
-                              (t) => t.name === e.target.value,
-                            ),
-                          )
-                        }
-                      >
-                        {event.ticketTypes.map((t) => (
-                          <option key={t.name} value={t.name}>
-                            {t.name}
-                            {(t.groupSize || 1) > 1
-                              ? ` (admits ${t.groupSize})`
-                              : ""}{" "}
-                            —{" "}
-                            {t.price > 0
-                              ? `₦${Number(effectivePrice(t)).toLocaleString()}${
-                                  isEarlyBird(t) ? " · Early bird" : ""
-                                }`
-                              : "Free"}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="ck-caret" aria-hidden="true">
-                        ▾
-                      </span>
+                    <label className="ck-label">
+                      {event.ticketTypes.length > 1
+                        ? "Ticket Type"
+                        : "Your Ticket"}
+                    </label>
+                    <div
+                      className="ck-tiers"
+                      role="radiogroup"
+                      aria-label="Ticket type"
+                    >
+                      {event.ticketTypes.map((t) => {
+                        const stock = tierStock(
+                          (event.availability?.tiers || []).find(
+                            (a) => a.name === t.name,
+                          ),
+                        );
+                        const out = Boolean(stock?.soldOut);
+                        const selected = ticket?.name === t.name;
+                        const admits = t.groupSize || 1;
+                        const eb = isEarlyBird(t);
+
+                        return (
+                          <button
+                            key={t.name}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            disabled={out}
+                            className={`ck-tier${selected ? " is-selected" : ""}${
+                              out ? " is-out" : ""
+                            }`}
+                            onClick={() => setTicket(t)}
+                          >
+                            <span className="ck-tier-body">
+                              <span className="ck-tier-head">
+                                <span className="ck-tier-name">{t.name}</span>
+                                {eb && (
+                                  <span className="ck-tier-tag">Early bird</span>
+                                )}
+                                {admits > 1 && (
+                                  <span className="ck-tier-tag is-group">
+                                    Admits {admits}
+                                  </span>
+                                )}
+                              </span>
+
+                              {out ? (
+                                <span className="ck-tier-stock is-out">
+                                  Sold out
+                                </span>
+                              ) : (
+                                stock && (
+                                  <span className="ck-tier-stockwrap">
+                                    {stock.pct != null && (
+                                      <span
+                                        className="ck-tier-track"
+                                        aria-hidden="true"
+                                      >
+                                        <span
+                                          className={`ck-tier-fill${stock.low ? " is-low" : ""}`}
+                                          style={{
+                                            width: `${Math.max(4, Math.round(stock.pct * 100))}%`,
+                                          }}
+                                        />
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`ck-tier-stock${stock.low ? " is-low" : ""}`}
+                                    >
+                                      {stock.low
+                                        ? `Only ${stock.remaining} left`
+                                        : `${stock.remaining} left`}
+                                    </span>
+                                  </span>
+                                )
+                              )}
+                            </span>
+
+                            <span className="ck-tier-stub">
+                              <span className="ck-tier-price">
+                                {t.price > 0
+                                  ? `₦${Number(effectivePrice(t)).toLocaleString()}`
+                                  : "Free"}
+                              </span>
+                              {eb && t.price > 0 && (
+                                <span className="ck-tier-was">
+                                  ₦{Number(t.price).toLocaleString()}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -751,25 +883,13 @@ export default function Checkout() {
                       +
                     </button>
                   </div>
-                  {/* Stock for the selected tier, straight from the server */}
-                  {tierAvail && !salesClosed && (
-                    <p
-                      className={`ck-stock ${
-                        tierSoldOut
-                          ? "is-out"
-                          : tierAvail.remaining <= 10
-                            ? "is-low"
-                            : ""
-                      }`}
-                      role="status"
-                    >
-                      {tierSoldOut
-                        ? `${ticket.name} is sold out`
-                        : tierAvail.remaining <= 10
-                          ? `Only ${tierAvail.remaining} ${ticket.name} ticket${
-                              tierAvail.remaining === 1 ? "" : "s"
-                            } left`
-                          : `${tierAvail.remaining} left`}
+                  {/* Stock lives on each ticket stub above (per tier), so it
+                     isn't repeated here. The sold-out case still needs a
+                     line, because a stub can only say "Sold out" for the
+                     tier the guest arrived on. */}
+                  {tierSoldOut && !salesClosed && (
+                    <p className="ck-stock is-out" role="status">
+                      {ticket.name} is sold out — pick another ticket type.
                     </p>
                   )}
                   {qty > 1 && ticket && (
@@ -794,13 +914,13 @@ export default function Checkout() {
                       {[
                         {
                           id: "card",
-                          icon: "💳",
+                          icon: "card",
                           label: "Card",
                           note: "Visa, Mastercard, Verve",
                         },
                         {
                           id: "transfer",
-                          icon: "🏦",
+                          icon: "bank",
                           label: "Bank transfer",
                           note: "Works in any app",
                         },
@@ -814,7 +934,7 @@ export default function Checkout() {
                           onClick={() => setPayMethod(m.id)}
                         >
                           <span className="ck-pm-icon" aria-hidden="true">
-                            {m.icon}
+                            <Icon name={m.icon} />
                           </span>
                           <span className="ck-pm-text">
                             <span className="ck-pm-label">{m.label}</span>
@@ -943,7 +1063,7 @@ export default function Checkout() {
                           setCodeError("");
                         }}
                       >
-                        ✕
+                        <Icon name="close" />
                       </button>
                     </div>
                   ) : (
@@ -955,7 +1075,7 @@ export default function Checkout() {
                         onClick={() => setCodeOpen((v) => !v)}
                       >
                         Have a discount code?{" "}
-                        <span aria-hidden="true">{codeOpen ? "▴" : "▾"}</span>
+                        <Icon name="chevronDown" className={codeOpen ? "ck-chev-up" : ""} />
                       </button>
                       {codeOpen && (
                         <div className="ck-disc-row">
@@ -999,16 +1119,7 @@ export default function Checkout() {
               </div>
 
               <p className="ck-assure">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  aria-hidden="true"
-                >
-                  <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
-                  <path d="M8 10.5V8a4 4 0 018 0v2.5" />
-                </svg>
+                <Icon name="lock" />
                 You&rsquo;re covered — valid QR ticket or your money back
               </p>
 
@@ -1017,7 +1128,9 @@ export default function Checkout() {
               {salesClosed && (
                 <div className="ck-closed" role="status">
                   <div className="ck-closed-head">
-                    <span aria-hidden="true">🚪</span>
+                    <span aria-hidden="true">
+                      <Icon name="lock" />
+                    </span>
                     <strong>Ticket sales have closed</strong>
                   </div>
                   <p className="ck-closed-body">
@@ -1041,7 +1154,9 @@ export default function Checkout() {
               {!salesClosed && tierSoldOut && (
                 <div className="ck-closed" role="status">
                   <div className="ck-closed-head">
-                    <span aria-hidden="true">🎟️</span>
+                    <span aria-hidden="true">
+                      <Icon name="ticket" />
+                    </span>
                     <strong>{ticket.name} is sold out</strong>
                   </div>
                   <p className="ck-closed-body">
@@ -1066,19 +1181,30 @@ export default function Checkout() {
                 disabled={!canPay}
                 onClick={handlePayment}
               >
-                {salesClosed
-                  ? "Ticket sales have closed"
-                  : tierSoldOut
-                    ? "Sold out"
-                    : ticket?.price > 0
-                    ? payMethod === "transfer"
-                      ? "Get bank transfer details →"
-                      : "Proceed to Secure Payment →"
-                    : "Confirm Free Ticket →"}
+                {(() => {
+                  /* The arrow belongs only on the branches that actually
+                     advance the flow — a dead "Sold out" button shouldn't
+                     promise a next step. */
+                  if (salesClosed) return "Ticket sales have closed";
+                  if (tierSoldOut) return "Sold out";
+                  const label =
+                    ticket?.price > 0
+                      ? payMethod === "transfer"
+                        ? "Get bank transfer details"
+                        : "Proceed to Secure Payment"
+                      : "Confirm Free Ticket";
+                  return (
+                    <>
+                      {label} <Icon name="arrowRight" />
+                    </>
+                  );
+                })()}
               </button>
 
               {!salesClosed && !tierSoldOut && (
-                <p className="ck-trust">🔒 Secured by PAYSTACK</p>
+                <p className="ck-trust">
+                  <Icon name="lock" /> Secured by PAYSTACK
+                </p>
               )}
             </div>
           </aside>
@@ -1093,7 +1219,6 @@ export default function Checkout() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
@@ -1124,7 +1249,7 @@ img { display:block; }
 
 /* ── Error screen ── */
 .ck-error-card { width:min(100%,380px); text-align:center; background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(24px,5vw,40px); animation:ckFadeUp .4s ease; }
-.ck-error-icon { font-size:40px; margin-bottom:16px; }
+.ck-error-icon { font-size:40px; margin-bottom:16px; color:var(--warn, #E8C96A); display:flex; justify-content:center; }
 .ck-error-title { font-family:var(--font-h); font-weight:700; font-size:20px; margin-bottom:10px; }
 .ck-error-msg { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:24px; }
 .ck-btn-ghost { padding:12px 28px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; font-size:14px; transition:border-color .2s, transform .2s; }
@@ -1150,7 +1275,11 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-banner .ck-back { z-index:3; }
 
 /* ── Body wrap ── */
-.ck-wrap { max-width:1100px; margin:-24px auto 0; position:relative; z-index:1; padding:0 clamp(16px,5vw,48px) 80px; }
+/* z-index must clear the banner's fade overlay (z-index:2). The -24px
+   margin pulls this content up over the banner, and at z-index:1 the
+   fade painted ON TOP of the progress nav — which is why the
+   Details/Payment/Ticket steps were unreadable against the photo. */
+.ck-wrap { max-width:1100px; margin:-24px auto 0; position:relative; z-index:4; padding:0 clamp(16px,5vw,48px) 80px; }
 
 /* ── Progress ── */
 .ck-progress { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px 10px; margin-bottom:clamp(20px,4vw,32px); }
@@ -1198,7 +1327,10 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
       works right here, so this is guidance rather than a dead end ── */
 .ck-iab { background:var(--gold-dim); border:1px solid rgba(232,201,106,0.4); border-radius:16px; padding:18px 20px; margin-bottom:20px; }
 .ck-iab-head { display:flex; align-items:flex-start; gap:10px; color:var(--text); font-size:14px; line-height:1.45; }
-.ck-iab-icon { font-size:18px; line-height:1.2; }
+.ck-iab-icon { font-size:18px; line-height:1.2; display:inline-flex; }
+/* The chevron rotates rather than swapping glyph — one icon, two states */
+.ck-chev-up { transform:rotate(180deg); }
+.ck-disc-toggle .ds-icon { transition:transform .2s; }
 .ck-iab-body { font-size:13px; color:var(--muted); margin:10px 0 14px; line-height:1.55; }
 .ck-iab-body strong { color:var(--text); font-weight:600; }
 .ck-iab-copy { width:100%; padding:12px 16px; border-radius:12px; border:1px solid var(--border-h); background:transparent; color:var(--muted); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:border-color .18s ease, color .18s ease; }
@@ -1212,7 +1344,7 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-pm-opt { display:flex; align-items:center; gap:10px; text-align:left; padding:13px 14px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--card); color:var(--text); cursor:pointer; transition:border-color .18s, background .18s; min-width:0; }
 .ck-pm-opt:hover { border-color:var(--border-h); }
 .ck-pm-opt.is-on { border-color:var(--gold); background:var(--gold-dim); }
-.ck-pm-icon { font-size:18px; line-height:1; flex-shrink:0; }
+.ck-pm-icon { font-size:18px; line-height:1; flex-shrink:0; display:inline-flex; }
 .ck-pm-text { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
 .ck-pm-label { font-size:13.5px; font-weight:600; }
 .ck-pm-note { font-size:11px; color:var(--muted); line-height:1.35; }
@@ -1238,6 +1370,7 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-tr-copy { padding:8px 14px; border-radius:999px; border:1px solid var(--border-h); background:transparent; color:var(--text); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; transition:border-color .18s, color .18s; }
 .ck-tr-copy:hover { border-color:var(--gold); color:var(--gold); }
 .ck-tr-warn { font-size:12.5px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
+.ck-tr-warn .ds-icon { color:var(--gold); vertical-align:-0.15em; margin-right:2px; }
 .ck-tr-warn strong { color:var(--text); }
 .ck-tr-exp { font-size:12.5px; color:var(--muted); margin-bottom:16px; font-variant-numeric:tabular-nums; }
 .ck-tr-exp strong { color:var(--gold); }
@@ -1251,6 +1384,7 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 /* ── Sales closed ── */
 .ck-closed { padding:16px 18px; border-radius:var(--r-sm); background:rgba(255,255,255,0.04); border:1px solid var(--border-h); margin-bottom:16px; }
 .ck-closed-head { display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:8px; }
+.ck-closed-head .ds-icon { font-size:17px; color:var(--gold); }
 .ck-closed-body { font-size:12.5px; color:var(--muted); line-height:1.6; }
 
 /* ── Neutral note (e.g. falling back to card) ── */
@@ -1264,6 +1398,68 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-caret { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; font-size:12px; }
 
 /* ── Quantity stepper ── */
+/* ── Ticket stubs (tier selection) ──
+   Replaces the old native <select>: every tier's price, perks and
+   remaining stock are readable WITHOUT opening anything, which is the
+   whole point when someone is buying against a queue. Perforation +
+   notches are pure CSS; the notch circles are clipped in half by the
+   card's overflow:hidden, which is what sells the ticket-stub read. */
+.ck-tiers { display:grid; gap:10px; }
+.ck-tier {
+  position:relative; display:flex; align-items:stretch; gap:0;
+  width:100%; padding:0; overflow:hidden; cursor:pointer; text-align:left;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--text);
+  transition:border-color .2s, background .2s, transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s;
+}
+.ck-tier:hover:not(:disabled) { border-color:var(--border-h); background:rgba(255,255,255,.06); }
+.ck-tier:focus-visible { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
+.ck-tier.is-selected {
+  border-color:var(--gold); background:var(--gold-dim);
+  transform:translateY(-2px); box-shadow:0 10px 30px rgba(232,201,106,.13);
+}
+.ck-tier.is-out { opacity:.5; cursor:not-allowed; }
+
+.ck-tier-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:9px; padding:15px 16px; }
+.ck-tier-head { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+.ck-tier-name { font-family:var(--font-h); font-weight:700; font-size:14.5px; color:var(--text); }
+.ck-tier-tag {
+  font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--gold); background:rgba(232,201,106,.13);
+  border:1px solid rgba(232,201,106,.3); padding:2px 7px; border-radius:999px;
+}
+.ck-tier-tag.is-group { color:var(--text); background:rgba(255,255,255,.07); border-color:var(--border-h); }
+
+.ck-tier-stockwrap { display:flex; flex-direction:column; gap:5px; }
+.ck-tier-track { height:3px; border-radius:999px; background:rgba(255,255,255,.09); overflow:hidden; }
+.ck-tier-fill { display:block; height:100%; border-radius:999px; background:var(--gold); transition:width .4s ease; }
+.ck-tier-fill.is-low { background:var(--danger); }
+.ck-tier-stock { font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.ck-tier-stock.is-low { color:var(--danger); font-weight:600; }
+.ck-tier-stock.is-out { color:var(--danger); font-weight:600; font-size:11.5px; }
+
+/* Right-hand stub: dashed perforation + punched notches */
+.ck-tier-stub {
+  position:relative; flex-shrink:0; width:104px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  padding:15px 10px; border-left:1px dashed var(--border-h);
+}
+.ck-tier.is-selected .ck-tier-stub { border-left-color:rgba(232,201,106,.45); }
+.ck-tier-stub::before, .ck-tier-stub::after {
+  content:''; position:absolute; left:0; width:13px; height:13px;
+  border-radius:50%; background:var(--bg); transform:translate(-50%,-50%);
+}
+.ck-tier-stub::before { top:0; }
+.ck-tier-stub::after { top:100%; }
+.ck-tier-price { font-family:var(--font-h); font-weight:800; font-size:15px; color:var(--gold); font-variant-numeric:tabular-nums; }
+.ck-tier.is-out .ck-tier-price { color:var(--muted); text-decoration:line-through; }
+.ck-tier-was { font-size:11px; color:var(--muted); text-decoration:line-through; }
+
+@media (prefers-reduced-motion:reduce) {
+  .ck-tier, .ck-tier-fill { transition:none; }
+  .ck-tier.is-selected { transform:none; }
+}
+
 .ck-stepper { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:5px; }
 .ck-step-btn { width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text); font-size:18px; line-height:1; display:grid; place-items:center; cursor:pointer; transition:border-color .2s, background .2s, color .2s; }
 .ck-step-btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:var(--gold-dim); }

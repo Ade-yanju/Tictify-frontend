@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 const logo = "/logo.png";
 
@@ -18,141 +19,35 @@ function injectStyles(id, content) {
 }
 
 /* ── Inline icons (dependency-free) ─────────────────────── */
-const Ic = {
-  coins: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <ellipse cx="12" cy="6" rx="8" ry="3" />
-      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
-    </svg>
-  ),
-  book: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5v-15z"
-        strokeLinejoin="round"
-      />
-      <path d="M4 20.5A2.5 2.5 0 016.5 18H20v3H6.5" strokeLinejoin="round" />
-      <path d="M9 8h7M9 11.5h5" strokeLinecap="round" />
-    </svg>
-  ),
-  trophy: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path d="M8 4h8v5a4 4 0 01-8 0V4z" strokeLinejoin="round" />
-      <path d="M8 5H5a3 3 0 003 4M16 5h3a3 3 0 01-3 4" strokeLinecap="round" />
-      <path d="M12 13v4M8.5 20h7M10 17h4" strokeLinecap="round" />
-    </svg>
-  ),
-  network: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M17 14.5c2.4.5 4 2.7 4 5.5" strokeLinecap="round" />
-    </svg>
-  ),
-  badge: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="9" r="5.5" />
-      <path d="M9.5 13.5L8 21l4-2.2L16 21l-1.5-7.5" strokeLinejoin="round" />
-      <path
-        d="M10 9l1.5 1.5L14.5 7.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-  case: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <rect x="3" y="7" width="18" height="13" rx="2.5" />
-      <path
-        d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7M3 12h18"
-        strokeLinecap="round"
-      />
-    </svg>
-  ),
-  check: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path
-        d="M8.5 12.5l2.5 2.5 4.5-5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-};
 
 const BENEFITS = [
   {
-    icon: Ic.coins,
+    icon: <Icon name="coins" />,
     title: "Earn commissions",
     text: "Get paid for every event organizer you onboard to Tictify.",
   },
   {
-    icon: Ic.book,
+    icon: <Icon name="book" />,
     title: "Exclusive training",
     text: "Hands-on training in sales, marketing and event management.",
   },
   {
-    icon: Ic.trophy,
+    icon: <Icon name="trophy" />,
     title: "Bonuses & rewards",
     text: "Bonuses, rewards and recognition for top-performing partners.",
   },
   {
-    icon: Ic.network,
+    icon: <Icon name="users" />,
     title: "Build your network",
     text: "Grow your network and gain real-world professional experience.",
   },
   {
-    icon: Ic.badge,
+    icon: <Icon name="badge" />,
     title: "Certificate & merch",
     text: "Official Tictify certificate and branded merch for partners.",
   },
   {
-    icon: Ic.case,
+    icon: <Icon name="briefcase" />,
     title: "Career opportunities",
     text: "Chances at internships and paid opportunities with Tictify.",
   },
@@ -292,7 +187,7 @@ function ApplicationForm() {
     return (
       <div className="ca-form-card ca-success" role="status">
         <div className="ca-success-icon" aria-hidden="true">
-          {Ic.check}
+          <Icon name="check" />
         </div>
         <h3 className="ca-form-title">Application received!</h3>
         <p className="ca-success-msg">{successMsg}</p>
@@ -582,7 +477,6 @@ export default function CampusAmbassadors() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

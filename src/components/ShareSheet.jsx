@@ -5,6 +5,7 @@
    All responsive behavior lives in real CSS (@media) below.
 ═══════════════════════════════════════════════════════════ */
 import { useCallback, useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -16,66 +17,6 @@ function injectStyles(id, content) {
 }
 
 /* ── Brand icons (inline, dependency-free, currentColor) ──── */
-const Ic = {
-  native: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <path d="M12 15.5V3.5M12 3.5L7.5 8M12 3.5L16.5 8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.5 13.5v5a2 2 0 002 2h11a2 2 0 002-2v-5" strokeLinecap="round" />
-    </svg>
-  ),
-  whatsapp: (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-    </svg>
-  ),
-  x: (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z" />
-    </svg>
-  ),
-  facebook: (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-    </svg>
-  ),
-  telegram: (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-    </svg>
-  ),
-  linkedin: (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-    </svg>
-  ),
-  email: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
-      <path d="M3.5 7l8.5 6 8.5-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  sms: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M21 11.5a8 8 0 01-8.5 8 9 9 0 01-3.2-.5L4 21l1.2-4a8 8 0 01-1.2-4.2 8 8 0 018.5-8 8 8 0 018.5 7.7z" strokeLinejoin="round" />
-    </svg>
-  ),
-  link: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M10 13.5a3.5 3.5 0 005 0l3.5-3.5a3.5 3.5 0 00-5-5L12 6.5" strokeLinecap="round" />
-      <path d="M14 10.5a3.5 3.5 0 00-5 0L5.5 14a3.5 3.5 0 005 5L12 17.5" strokeLinecap="round" />
-    </svg>
-  ),
-  check: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path d="M4.5 12.5l5 5 10-10.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  close: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-    </svg>
-  ),
-};
 
 /* Clipboard with a hidden-textarea fallback for old webviews */
 async function copyText(text) {
@@ -113,7 +54,14 @@ function openTarget(href) {
 /* ══════════════════════════════════════════════════════════
    ShareSheet — modal. Render only when open.
 ══════════════════════════════════════════════════════════ */
-export default function ShareSheet({ url, title, dateText, locationText, onClose }) {
+export default function ShareSheet({
+  url,
+  title,
+  dateText,
+  locationText,
+  waBuyUrl,
+  onClose,
+}) {
   injectStyles("tictify-sharesheet-css", CSS);
 
   const shareUrl =
@@ -124,6 +72,15 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
     ? `🎟️ ${name} — ${where}. Get your ticket:`
     : `🎟️ ${name}. Get your ticket:`;
   const textAndUrl = `${shareText} ${shareUrl}`;
+
+  /* Person-to-person channels also carry the buy-on-WhatsApp deep
+     link — otherwise a guest who receives a forwarded link has no way
+     to discover that buying in chat is even possible. Deliberately
+     kept off Twitter/LinkedIn, where a second URL costs characters
+     and reads as spam in a public post. */
+  const personalText = waBuyUrl
+    ? `${textAndUrl}\n\nPrefer WhatsApp? Buy in chat — no app, no signup: ${waBuyUrl}`
+    : textAndUrl;
 
   const [copied, setCopied] = useState(false);
   const dialogRef = useRef(null);
@@ -178,7 +135,16 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
 
   async function handleNative() {
     try {
-      await navigator.share({ title: name, text: shareText, url: shareUrl });
+      /* With both `text` and `url`, the OS appends the url LAST — which
+         would strand the event link after the WhatsApp line. So when
+         there's a buy link, share one pre-composed text (it already
+         contains the event URL, and receivers still build a preview
+         from it) and keep the classic text+url split otherwise. */
+      await navigator.share(
+        waBuyUrl
+          ? { title: name, text: personalText }
+          : { title: name, text: shareText, url: shareUrl },
+      );
     } catch (err) {
       /* User dismissed the OS sheet — not an error worth surfacing */
       if (err?.name === "AbortError") return;
@@ -195,44 +161,44 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
     {
       key: "whatsapp",
       label: "WhatsApp",
-      icon: Ic.whatsapp,
+      icon: "whatsapp",
       tone: "wa",
-      href: `https://wa.me/?text=${e(textAndUrl)}`,
+      href: `https://wa.me/?text=${e(personalText)}`,
     },
     {
       key: "x",
       label: "X",
-      icon: Ic.x,
+      icon: "x",
       tone: "x",
       href: `https://twitter.com/intent/tweet?text=${e(shareText)}&url=${e(shareUrl)}`,
     },
     {
       key: "facebook",
       label: "Facebook",
-      icon: Ic.facebook,
+      icon: "facebook",
       tone: "fb",
       href: `https://www.facebook.com/sharer/sharer.php?u=${e(shareUrl)}`,
     },
     {
       key: "telegram",
       label: "Telegram",
-      icon: Ic.telegram,
+      icon: "telegram",
       tone: "tg",
       href: `https://t.me/share/url?url=${e(shareUrl)}&text=${e(shareText)}`,
     },
     {
       key: "linkedin",
       label: "LinkedIn",
-      icon: Ic.linkedin,
+      icon: "linkedin",
       tone: "li",
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${e(shareUrl)}`,
     },
     {
       key: "email",
       label: "Email",
-      icon: Ic.email,
+      icon: "mail",
       tone: "gold",
-      href: `mailto:?subject=${e(name)}&body=${e(textAndUrl)}`,
+      href: `mailto:?subject=${e(name)}&body=${e(personalText)}`,
     },
     /* SMS only makes sense where there's a messaging app to hand off to */
     ...(canNative
@@ -240,9 +206,9 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
           {
             key: "sms",
             label: "SMS",
-            icon: Ic.sms,
+            icon: "chat",
             tone: "gold",
-            href: `sms:?&body=${e(textAndUrl)}`,
+            href: `sms:?&body=${e(personalText)}`,
           },
         ]
       : []),
@@ -270,7 +236,7 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
             onClick={onClose}
             aria-label="Close share dialog"
           >
-            {Ic.close}
+            <Icon name="close" />
           </button>
         </div>
 
@@ -281,7 +247,7 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
             ref={primaryRef}
             aria-label="Share to any app using your device's share sheet"
           >
-            <span className="shr-native-ic">{Ic.native}</span> Share to any app
+            <span className="shr-native-ic"><Icon name="share" /></span> Share to any app
           </button>
         )}
 
@@ -294,7 +260,9 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
               aria-label={`Share on ${t.label}`}
               ref={!canNative && t.key === "whatsapp" ? primaryRef : null}
             >
-              <span className="shr-tile-ic">{t.icon}</span>
+              <span className="shr-tile-ic">
+                <Icon name={t.icon} />
+              </span>
               <span className="shr-tile-label">{t.label}</span>
             </button>
           ))}
@@ -304,7 +272,7 @@ export default function ShareSheet({ url, title, dateText, locationText, onClose
             onClick={handleCopy}
             aria-label={copied ? "Link copied to clipboard" : "Copy event link"}
           >
-            <span className="shr-tile-ic">{copied ? Ic.check : Ic.link}</span>
+            <span className="shr-tile-ic"><Icon name={copied ? "check" : "link"} /></span>
             <span className="shr-tile-label">
               {copied ? "Copied!" : "Copy link"}
             </span>

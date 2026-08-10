@@ -3,6 +3,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 import {
   login,
   verifyEmail,
@@ -32,7 +33,6 @@ function injectStyles(id, content) {
 }
 
 const BASE_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.16);
@@ -142,7 +142,11 @@ function AuthModal({ type, message, onClose }) {
         }}
       >
         <div style={{ fontSize: 36, marginBottom: 14 }}>
-          {type === "error" ? "⚠️" : "🎉"}
+          {type === "error" ? (
+            <Icon name="alertTriangle" />
+          ) : (
+            <Icon name="check" />
+          )}
         </div>
         <h3
           style={{
@@ -229,7 +233,7 @@ function PasswordInput({ value, onChange, placeholder = "Password" }) {
           transition: "color .2s",
         }}
       >
-        {show ? "🙈" : "👁"}
+        <Icon name={show ? "eyeOff" : "eye"} size={17} />
       </button>
     </div>
   );
@@ -480,7 +484,7 @@ export default function Login() {
             boxShadow: "0 8px 24px rgba(232,201,106,.3)",
           }}
         >
-          🎟
+          <Icon name="ticket" size={24} />
         </div>
 
         {verify ? (
@@ -683,7 +687,13 @@ export default function Login() {
                   color: emailValid ? "var(--live)" : "var(--danger)",
                 }}
               >
-                {emailValid ? "✓ Valid address" : "Enter a valid email"}
+                {emailValid ? (
+                  <>
+                    <Icon name="check" size={11} /> Valid address
+                  </>
+                ) : (
+                  "Enter a valid email"
+                )}
               </p>
             )}
           </div>

@@ -23,6 +23,7 @@ import {
 } from "../../services/gateOffline";
 import { getToken } from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Icon from "../../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -34,55 +35,14 @@ function injectStyles(id, content) {
 }
 
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
-const Ic = {
-  dashboard: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="3" width="8" height="8" rx="2" />
-      <rect x="13" y="3" width="8" height="5" rx="2" />
-      <rect x="13" y="12" width="8" height="9" rx="2" />
-      <rect x="3" y="15" width="8" height="6" rx="2" />
-    </svg>
-  ),
-  create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
-  ),
-  events: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
-  ),
-  sales: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" strokeLinecap="round" />
-    </svg>
-  ),
-  scan: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-    </svg>
-  ),
-  wallet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="6" width="18" height="13" rx="2.5" />
-      <path d="M3 10h18M16 15h2" strokeLinecap="round" />
-    </svg>
-  ),
-};
 
 const NAV = [
-  { key: "dashboard", label: "Dashboard", to: "/organizer/dashboard", icon: Ic.dashboard },
-  { key: "create", label: "Create Event", to: "/organizer/create-event", icon: Ic.create },
-  { key: "events", label: "My Events", to: "/organizer/events", icon: Ic.events },
-  { key: "sales", label: "Sales", to: "/organizer/sales", icon: Ic.sales },
-  { key: "scan", label: "Scan Tickets", to: "/organizer/scan/select", icon: Ic.scan },
-  { key: "withdraw", label: "Withdraw", to: "/organizer/withdraw", icon: Ic.wallet },
+  { key: "dashboard", label: "Dashboard", to: "/organizer/dashboard", icon: "grid" },
+  { key: "create", label: "Create Event", to: "/organizer/create-event", icon: "plusCircle" },
+  { key: "events", label: "My Events", to: "/organizer/events", icon: "calendar" },
+  { key: "sales", label: "Sales", to: "/organizer/sales", icon: "bars" },
+  { key: "scan", label: "Scan Tickets", to: "/organizer/scan/select", icon: "qr" },
+  { key: "withdraw", label: "Withdraw", to: "/organizer/withdraw", icon: "wallet" },
 ];
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
@@ -109,7 +69,7 @@ function Shell({ active, title, subtitle, children }) {
         className={`${cls} ${active === item.key ? "is-active" : ""}`}
         onClick={() => go(item.to)}
       >
-        {item.icon}
+        <Icon name={item.icon} />
         <span>{item.label}</span>
       </button>
     ));
@@ -410,7 +370,7 @@ export default function ScanTicket() {
         type: "success",
         offline: true,
         message: `${r.guestName || "Guest"} admitted${groupInfo}${
-          r.cacheWarning ? ` — ⚠️ ${r.cacheWarning}` : ""
+          r.cacheWarning ? ` — ${r.cacheWarning}` : ""
         }`,
       });
     } else if (r.status === "USED") {
@@ -570,11 +530,18 @@ export default function ScanTicket() {
         <div className="sct-manifest-row">
           <span className="sct-manifest-status">
             {manifestState === "loading" && "Loading guest list…"}
-            {manifestState === "ready" &&
-              manifestInfo &&
-              `📋 ${manifestInfo.count} tickets cached for offline`}
-            {manifestState === "error" &&
-              "⚠️ No cached guest list — connect once to enable offline"}
+            {manifestState === "ready" && manifestInfo && (
+              <>
+                <Icon name="check" /> {manifestInfo.count} tickets cached for
+                offline
+              </>
+            )}
+            {manifestState === "error" && (
+              <>
+                <Icon name="alert" /> No cached guest list — connect once to
+                enable offline
+              </>
+            )}
             {manifestState === "idle" && ""}
           </span>
           <button
@@ -640,12 +607,7 @@ export default function ScanTicket() {
               <span className="sct-scanline" />
               {!scanning && (
                 <div className="sct-idle">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                    <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1v1" />
-                  </svg>
+                  <Icon name="qr" />
                   <p>Camera is off</p>
                 </div>
               )}
@@ -693,7 +655,7 @@ export default function ScanTicket() {
         </form>
 
         <p className="sct-note">
-          ℹ️ <strong>Offline mode</strong> validates against the guest list cached on
+          <Icon name="info" /> <strong>Offline mode</strong> validates against the guest list cached on
           this device. It can't stop two phones that are both offline from admitting
           the same single-entry ticket — any such clashes are flagged here the moment
           the devices sync.
@@ -711,14 +673,9 @@ function SyncSummary({ synced, conflicts = [], onClose }) {
       <div className={`sct-modal ${hasConflicts ? "is-error" : "is-success"}`}>
         <div className="sct-modal-icon" aria-hidden="true">
           {hasConflicts ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 8v5M12 16.5v.5" strokeLinecap="round" />
-              <path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-            </svg>
+            <Icon name="alertTriangle" />
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 12.5l5 5L20 6.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Icon name="check" />
           )}
         </div>
         <h3>{hasConflicts ? "Synced with conflicts" : "All synced"}</h3>
@@ -752,13 +709,9 @@ function Modal({ type, message, offline, onClose }) {
       <div className={`sct-modal ${type === "error" ? "is-error" : "is-success"}`}>
         <div className="sct-modal-icon" aria-hidden="true">
           {type === "error" ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
+            <Icon name="close" />
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 12.5l5 5L20 6.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Icon name="check" />
           )}
         </div>
         {offline && <span className="sct-modal-tag">OFFLINE CHECK</span>}
@@ -783,7 +736,6 @@ function Modal({ type, message, offline, onClose }) {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

@@ -5,6 +5,7 @@
    branded fallback instead of a white screen.
 ═══════════════════════════════════════════════════════════ */
 import { Component } from "react";
+import Icon from "../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -37,18 +38,7 @@ export default class ErrorBoundary extends Component {
         <div className="eb-page" role="alert">
           <div className="eb-card">
             <div className="eb-icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              >
-                <path
-                  d="M12 3l9 16H3l9-16z"
-                  strokeLinejoin="round"
-                />
-                <path d="M12 10v4M12 17v.5" strokeLinecap="round" />
-              </svg>
+              <Icon name="alertTriangle" />
             </div>
             <h1 className="eb-title">Something went wrong</h1>
             <p className="eb-sub">
@@ -73,7 +63,6 @@ export default class ErrorBoundary extends Component {
    CSS
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {

@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -119,11 +120,7 @@ export default function PaymentPending() {
               <span className="pp-ring-pulse" />
               <span className="pp-ring-spin" />
               <span className="pp-ring-core">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <rect x="5" y="10" width="14" height="10" rx="2.5" />
-                  <path d="M8 10V7.5a4 4 0 018 0V10" strokeLinecap="round" />
-                  <path d="M12 14.2v2" strokeLinecap="round" />
-                </svg>
+                <Icon name="lock" />
               </span>
             </div>
 
@@ -148,9 +145,7 @@ export default function PaymentPending() {
         {status === "FAILED" && (
           <div className="pp-inner">
             <div className="pp-status-icon pp-status-danger" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" strokeLinecap="round" />
-              </svg>
+              <Icon name="close" />
             </div>
             <h2 className="pp-h2 pp-h2-danger">Payment Failed</h2>
             <p className="pp-body">{message}</p>
@@ -167,10 +162,7 @@ export default function PaymentPending() {
         {status === "ERROR" && (
           <div className="pp-inner">
             <div className="pp-status-icon pp-status-warn" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <circle cx="12" cy="13" r="8" />
-                <path d="M12 9.5V13l2.5 2M9.5 2.5h5" strokeLinecap="round" />
-              </svg>
+              <Icon name="timer" />
             </div>
             <h2 className="pp-h2 pp-h2-warn">Verification Delayed</h2>
             <p className="pp-body">{message}</p>
@@ -199,7 +191,6 @@ export default function PaymentPending() {
    CSS — all responsive behavior lives here
 ══════════════════════════════════════════════════════════ */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 :root {
