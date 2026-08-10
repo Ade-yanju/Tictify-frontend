@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../components/Icon";
+import { botNumber, whatsappBuyEnabled } from "../utils/whatsapp";
 
 const logo = "/logo.png";
 
@@ -108,9 +109,8 @@ export default function Home() {
           loading={evLoading}
           onOpen={(to) => navigate(to)}
         />
-        <Guests />
-        <Organizers />
-        <HowItWorks />
+        <StackedCards />
+        <WhatsAppSection />
         <Pricing />
         <CTA />
       </main>
@@ -292,22 +292,6 @@ function TrustBar() {
   );
 }
 
-/* ── Feature card ────────────────────────────────────────── */
-/* `icon` is a name from the shared set, not a node — the card has no
-   say in how an icon is drawn, so Home and the rest of the app can't
-   drift apart. Decorative: the heading beside it carries the meaning. */
-function Feature({ icon, title, text }) {
-  return (
-    <div className="tf-card">
-      <div className="tf-card-icon">
-        <Icon name={icon} />
-      </div>
-      <h3>{title}</h3>
-      <p>{text}</p>
-    </div>
-  );
-}
-
 /* ── Live events ──────────────────────────────────────────────
    Replaces a 3-up grid of abstract claims ("Instant e-tickets",
    "QR code entry", "Fraud-proof") with the actual product: events
@@ -406,101 +390,181 @@ function LiveEvents({ events, loading, onOpen }) {
   );
 }
 
-function Guests() {
+/* ── Stacked, overlapping story cards ─────────────────────
+   Three cards that stack as you scroll: each one sticks at the top
+   and the next slides up to partially cover it, so the previous
+   card's header stays visible as a growing "spine" down the page.
+
+   How the overlap is achieved:
+     • each card is `position: sticky` at an offset that INCREASES
+       per card (top: calc(base + i * PEEK)), so card 2 parks 74px
+       lower than card 1 and can never fully hide it;
+     • z-index rises with index, so later cards paint on top;
+     • the cards are opaque with their own border + shadow, which is
+       what makes the covering read as physical layering.
+
+   Falls back to a plain vertical list when the viewport is short or
+   the user prefers reduced motion — sticky stacking on a small screen
+   just traps content behind other content. */
+const STORY = [
+  {
+    id: "how",
+    eyebrow: "How it works",
+    title: "Three steps from idea to sold-out",
+    text: "Create your event, share one link, and let guests pay online. Tickets are issued the moment payment lands — no spreadsheets, no manual sending.",
+    img: "/hero/hero3.jpg",
+    bullets: [
+      "Add details, banner and ticket tiers",
+      "Guests pay securely online",
+      "Scan at the gate with your phone",
+    ],
+  },
+  {
+    id: "guests",
+    eyebrow: "For guests",
+    title: "Your ticket, ready in seconds",
+    text: "Pay and your QR ticket arrives immediately — in your inbox and on WhatsApp. One scan at the gate, no printing and no queues.",
+    img: "/hero/hero6.jpg",
+    bullets: [
+      "Instant e-tickets, delivered to your inbox",
+      "QR code entry — one scan, you're in",
+      "Every ticket unique and single-use",
+    ],
+  },
+  {
+    id: "organizers",
+    eyebrow: "For organizers",
+    title: "Run the show, not the spreadsheet",
+    text: "Launch in minutes, watch sales update live, and withdraw straight to your Nigerian bank account whenever you want.",
+    img: "/hero/hero9.jpg",
+    bullets: [
+      "Launch an event in minutes",
+      "Live sales and revenue analytics",
+      "Fast payouts to your bank",
+    ],
+  },
+];
+
+function StackedCards() {
   return (
-    <section className="tf-section" id="guests">
+    /* No id here: all three anchors (how / guests / organizers) live on
+       the cards themselves, and duplicating "how" on the wrapper made
+       getElementById return the section instead of the card. */
+    <section className="tf-stack-wrap">
       <div className="tf-container">
-        <p className="tf-eyebrow">For guests</p>
-        <h2 className="tf-h2">Your ticket, ready in seconds</h2>
-        <div className="tf-grid-3">
-          <Feature
-            icon="ticket"
-            title="Instant e-tickets"
-            text="Pay and receive your ticket immediately — delivered to your inbox with everything you need."
-          />
-          <Feature
-            icon="qr"
-            title="QR code entry"
-            text="One scan at the gate. No printing, no queues, no 'it's on my other phone'."
-          />
-          <Feature
-            icon="shield"
-            title="Fraud-proof"
-            text="Every ticket is unique and single-use. Duplicates and screenshots don't get in."
-          />
-        </div>
+        {STORY.map((s, i) => (
+          <article
+            className="tf-stack-card"
+            key={s.id}
+            id={s.id}
+            /* Both custom properties drive the sticky offset and the
+               paint order — see .tf-stack-card in CSS. */
+            style={{ "--i": i, zIndex: i + 1 }}
+          >
+            <div className="tf-stack-copy">
+              <p className="tf-eyebrow">{s.eyebrow}</p>
+              <h2 className="tf-stack-title">{s.title}</h2>
+              <p className="tf-stack-text">{s.text}</p>
+              <ul className="tf-stack-list">
+                {s.bullets.map((b) => (
+                  <li key={b}>
+                    <Icon name="check" /> {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="tf-stack-media">
+              <img src={s.img} alt="" loading="lazy" decoding="async" />
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
-function Organizers() {
-  return (
-    <section className="tf-section tf-section-alt" id="organizers">
-      <div className="tf-container">
-        <p className="tf-eyebrow">For organizers</p>
-        <h2 className="tf-h2">Run the show, not the spreadsheet</h2>
-        <div className="tf-grid-3">
-          <Feature
-            icon="bolt"
-            title="Launch in minutes"
-            text="Create an event, set ticket tiers and pricing, and share your link. That's it."
-          />
-          <Feature
-            icon="trend"
-            title="Live analytics"
-            text="Watch sales and revenue update in real time from your dashboard."
-          />
-          <Feature
-            icon="wallet"
-            title="Fast payouts"
-            text="Withdraw your revenue straight to your Nigerian bank account."
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
+/* ── Buy on WhatsApp ──────────────────────────────────────
+   The bot is a real product surface that the landing page never
+   mentioned. When VITE_WHATSAPP_BOT_NUMBER is unset the deep link
+   would be dead, so the CTA is swapped for the plain explanation
+   rather than hiding the feature or shipping a broken link. */
+function WhatsAppSection() {
+  const enabled = whatsappBuyEnabled();
+  const url = enabled
+    ? `https://wa.me/${botNumber()}?text=${encodeURIComponent("menu")}`
+    : null;
 
-/* ── How it works ────────────────────────────────────────── */
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Create your event",
-      text: "Add details, upload a banner and define your ticket tiers.",
-    },
-    {
-      n: "02",
-      title: "Sell tickets",
-      text: "Guests pay securely online and get QR-coded tickets instantly.",
-    },
-    {
-      n: "03",
-      title: "Scan & admit",
-      text: "Validate tickets at the gate with your phone camera. Zero fraud.",
-    },
+  const lines = [
+    "Browse every live event without leaving the chat",
+    "Type an event name to jump straight to it",
+    "Pay by card, payment link or bank transfer",
+    "Your QR ticket arrives right in the conversation",
   ];
 
   return (
-    <section className="tf-section" id="how">
-      <div className="tf-container">
-        <p className="tf-eyebrow">How it works</p>
-        <h2 className="tf-h2">Three steps from idea to sold-out</h2>
-        <div className="tf-steps">
-          {steps.map((s) => (
-            <div className="tf-step" key={s.n}>
-              <span className="tf-step-num">{s.n}</span>
-              <h3>{s.title}</h3>
-              <p>{s.text}</p>
+    <section className="tf-wa" id="whatsapp">
+      <div className="tf-container tf-wa-inner">
+        <div className="tf-wa-copy">
+          <p className="tf-eyebrow">
+            <Icon name="whatsapp" /> On WhatsApp
+          </p>
+          <h2 className="tf-h2">Buy tickets without leaving WhatsApp</h2>
+          <p className="tf-wa-lead">
+            No app to install and no account to create. Message the Tictify
+            bot and buy in the same chat you use every day — tickets are
+            issued the moment your payment lands.
+          </p>
+
+          <ul className="tf-wa-list">
+            {lines.map((l) => (
+              <li key={l}>
+                <Icon name="check" /> {l}
+              </li>
+            ))}
+          </ul>
+
+          {enabled ? (
+            <a
+              className="tf-btn tf-btn-wa tf-btn-lg"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name="whatsapp" /> Open the WhatsApp bot
+            </a>
+          ) : (
+            <p className="tf-wa-soon">
+              <Icon name="info" /> Coming soon to this number — every event
+              page will carry a “Buy on WhatsApp” link.
+            </p>
+          )}
+        </div>
+
+        {/* A stylised chat rather than a screenshot: no fake brand
+            chrome, and it stays legible at any width. */}
+        <div className="tf-wa-phone" aria-hidden="true">
+          <div className="tf-wa-screen">
+            <div className="tf-wa-bubble is-in">
+              🎟️ <strong>Welcome to Tictify!</strong>
+              <br />
+              Buy event tickets right here on WhatsApp.
             </div>
-          ))}
+            <div className="tf-wa-bubble is-out">afrobeats night</div>
+            <div className="tf-wa-bubble is-in">
+              🔎 Found <strong>Afrobeats Night Lagos</strong>
+              <br />
+              Fri 12 Sep · Lagos · from ₦7,500
+            </div>
+            <div className="tf-wa-bubble is-out">1</div>
+            <div className="tf-wa-bubble is-in">
+              ✅ Paid — your QR ticket is below. See you there!
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
-
 /* ── Pricing ─────────────────────────────────────────────── */
 function Pricing() {
   const navigate = useNavigate();
@@ -769,9 +833,6 @@ section { scroll-margin-top:88px; }
 .tf-eyebrow { color:var(--gold); font-size:12.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; margin-bottom:14px; text-align:center; }
 .tf-h2 { font-family:var(--font-h); font-weight:700; font-size:clamp(26px,4.4vw,42px); letter-spacing:-.01em; line-height:1.12; max-width:640px; text-wrap:balance; margin:0 auto clamp(32px,5vw,52px); text-align:center; }
 
-/* ── Cards ── */
-.tf-grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); gap:clamp(14px,2.4vw,24px); }
-
 /* ── Live events rail ──
    A left-aligned section head with its own "All events" action, so it
    reads as a shelf of real inventory rather than another centered
@@ -820,30 +881,66 @@ section { scroll-margin-top:88px; }
   .tf-ev { flex:0 0 74%; max-width:280px; scroll-snap-align:start; }
   .tf-sec-head { align-items:center; }
 }
-.tf-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(22px,3vw,30px); height:100%; transition:transform .3s, border-color .3s; }
-.tf-card:hover { transform:translateY(-4px); border-color:var(--border-h); }
-.tf-card-icon { width:46px; height:46px; border-radius:14px; background:var(--gold-dim); color:var(--gold); display:grid; place-items:center; margin-bottom:18px; }
-.tf-card-icon svg { width:22px; height:22px; }
-.tf-card h3 { font-family:var(--font-h); font-size:17.5px; font-weight:700; margin-bottom:10px; }
-.tf-card p { color:var(--muted); font-size:14.5px; line-height:1.65; }
+/* ── Stacked story cards ── */
+/* --peek (74px) is how much of each previous card's header stays
+   visible once the next one parks on top of it. The sticky offset is
+   base + i*peek, so card 2 can never fully cover card 1. Cards are
+   OPAQUE (not var(--card), which is translucent) — layering only reads
+   as physical if you can't see through the card on top. */
+.tf-stack-wrap { --peek:74px; --stack-top:96px; padding:clamp(64px,9vw,112px) 0 clamp(24px,4vw,40px); }
+.tf-stack-wrap .tf-container { display:flex; flex-direction:column; gap:clamp(20px,3vw,32px); }
+.tf-stack-card { position:sticky; top:calc(var(--stack-top) + var(--i) * var(--peek)); scroll-margin-top:var(--stack-top); display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(28px,4vw,52px); align-items:center; background:#0F111A; border:1px solid var(--border); border-radius:calc(var(--r) + 6px); padding:clamp(28px,4vw,52px); box-shadow:0 -8px 34px rgba(0,0,0,.42); }
+.tf-stack-copy .tf-eyebrow { text-align:left; }
+.tf-stack-title { font-family:var(--font-h); font-weight:700; font-size:clamp(23px,3.4vw,36px); line-height:1.14; letter-spacing:-.01em; text-wrap:balance; margin-bottom:14px; }
+.tf-stack-text { color:var(--muted); font-size:clamp(14.5px,1.7vw,16.5px); line-height:1.7; margin-bottom:24px; }
+.tf-stack-list { list-style:none; display:grid; gap:11px; }
+.tf-stack-list li { display:flex; align-items:flex-start; gap:11px; font-size:14.5px; color:var(--text); }
+.tf-stack-list li svg { flex:none; width:17px; height:17px; margin-top:2px; color:var(--live); }
+.tf-stack-media { border-radius:var(--r); overflow:hidden; aspect-ratio:4/3; border:1px solid var(--border); }
+.tf-stack-media img { width:100%; height:100%; object-fit:cover; object-position:50% 22%; display:block; }
 
-/* ── Steps ── */
-/* The numbering stays because these steps ARE sequential (you can't
-   scan before you sell) — the anti-pattern is numbering content that
-   has no real order. What changes is that they now read as one
-   connected process: a rule runs between the markers so the eye
-   travels 1 → 2 → 3, instead of three identical dashed circles that
-   happen to contain different digits. Connector only on the wide
-   layout, where the cards actually sit in a row. */
-.tf-steps { position:relative; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:clamp(14px,2.4vw,24px); }
-.tf-step { position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(22px,3vw,30px); height:100%; transition:transform .3s, border-color .3s; }
-.tf-step:hover { transform:translateY(-4px); border-color:var(--border-h); }
-.tf-step-num { position:relative; z-index:1; font-family:var(--font-h); font-weight:800; font-size:15px; color:var(--on-gold,#0A0B12); display:inline-grid; place-items:center; width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--gold-300,#F0DA96),var(--gold)); box-shadow:0 4px 14px var(--gold-glo); margin-bottom:18px; }
-@media (min-width:781px) {
-  .tf-step:not(:last-child)::after { content:''; position:absolute; top:calc(clamp(22px,3vw,30px) + 20px); left:calc(clamp(22px,3vw,30px) + 40px); right:calc(clamp(14px,2.4vw,24px) * -1); height:1px; background:linear-gradient(90deg,rgba(232,201,106,.45),rgba(232,201,106,.06)); }
+@media (max-width:860px) {
+  .tf-stack-card { grid-template-columns:1fr; }
+  .tf-stack-media { order:-1; aspect-ratio:16/10; }
 }
-.tf-step h3 { font-family:var(--font-h); font-size:17px; font-weight:700; margin-bottom:10px; }
-.tf-step p { color:var(--muted); font-size:14.5px; line-height:1.65; }
+/* Sticky stacking needs vertical room to breathe: on a short viewport
+   the cards would park on top of each other and trap their own content.
+   Same for reduced motion — the effect IS the scroll. Fall back to a
+   plain vertical list, exactly as the component contract promises. */
+@media (max-height:700px), (prefers-reduced-motion: reduce) {
+  .tf-stack-card { position:static; box-shadow:none; }
+}
+
+/* ── Buy on WhatsApp ── */
+/* The chat mockup uses WhatsApp's real dark palette (screen #0E1621,
+   incoming #202C33, outgoing #005C4B) so it reads instantly as a chat —
+   no fake brand chrome, and it stays legible at any width. */
+.tf-wa { padding:clamp(64px,9vw,112px) 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:radial-gradient(1100px 480px at 82% -10%, rgba(37,211,102,.10), transparent 62%); }
+.tf-wa-inner { display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(32px,5vw,64px); align-items:center; }
+.tf-wa-copy { text-align:center; }
+.tf-wa-copy .tf-eyebrow { display:inline-flex; align-items:center; gap:8px; }
+.tf-wa-copy .tf-eyebrow svg { width:15px; height:15px; color:#25D366; }
+.tf-wa-copy .tf-h2 { margin-bottom:18px; }
+.tf-wa-lead { color:var(--muted); font-size:clamp(15px,1.8vw,17px); line-height:1.7; max-width:520px; margin:0 auto clamp(24px,3vw,32px); }
+.tf-wa-list { list-style:none; display:grid; gap:12px; max-width:520px; margin:0 auto clamp(30px,3.8vw,42px); text-align:left; }
+.tf-wa-list li { display:flex; align-items:flex-start; gap:12px; color:var(--text); font-size:15px; }
+.tf-wa-list li svg { flex:none; width:18px; height:18px; margin-top:2px; color:var(--live); }
+.tf-wa-list li:first-child { font-weight:600; }
+.tf-btn-wa { display:inline-flex; align-items:center; gap:10px; background:#25D366; color:#06210F; font-family:var(--font-b); font-weight:700; font-size:16px; padding:16px 32px; border-radius:999px; border:none; text-decoration:none; transition:transform .25s, box-shadow .25s, filter .25s; }
+.tf-btn-wa:hover { transform:translateY(-2px); box-shadow:0 14px 38px rgba(37,211,102,.28); filter:brightness(1.05); }
+.tf-btn-wa svg { width:20px; height:20px; }
+.tf-wa-soon { display:inline-flex; align-items:flex-start; gap:10px; max-width:440px; text-align:left; color:var(--muted); font-size:14px; line-height:1.6; }
+.tf-wa-soon svg { flex:none; width:17px; height:17px; margin-top:2px; color:var(--gold); }
+.tf-wa-phone { width:min(340px,100%); margin:0 auto; border-radius:34px; padding:12px; background:linear-gradient(160deg,#1a1d29,#0d0f16); border:1px solid var(--border-h); box-shadow:0 30px 80px rgba(0,0,0,.5); }
+.tf-wa-screen { border-radius:24px; background:#0E1621; padding:clamp(14px,2.4vw,20px); display:flex; flex-direction:column; gap:10px; min-height:340px; }
+.tf-wa-bubble { max-width:82%; padding:9px 13px; border-radius:14px; font-size:13px; line-height:1.55; }
+.tf-wa-bubble.is-in { align-self:flex-start; background:#202C33; color:#E9EDEF; border-bottom-left-radius:4px; }
+.tf-wa-bubble.is-out { align-self:flex-end; background:#005C4B; color:#E9EDEF; border-bottom-right-radius:4px; }
+.tf-wa-bubble strong { font-weight:700; }
+@media (max-width:920px) {
+  .tf-wa-inner { grid-template-columns:1fr; }
+  .tf-wa-phone { margin-top:clamp(28px,4vw,40px); }
+}
 
 /* ── Pricing ── */
 .tf-pricing { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr)); gap:clamp(14px,2.4vw,24px); max-width:760px; margin:0 auto; }
