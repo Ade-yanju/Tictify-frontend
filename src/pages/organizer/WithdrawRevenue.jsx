@@ -29,15 +29,47 @@ const NIGERIAN_BANKS = [
   { code: "057", name: "Zenith Bank" },
 ];
 
+/* ── Transfer charge tiers — mirrors the server ──────────────
+   ₦50  for withdrawals of ₦9,999 and below
+   ₦200 for withdrawals of ₦10,000 and above                */
+function getTransferCharge(amount) {
+  return amount >= 10000 ? 200 : 50;
+}
+
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
 
 const NAV = [
-  { key: "dashboard", label: "Dashboard", to: "/organizer/dashboard", icon: "grid" },
-  { key: "create", label: "Create Event", to: "/organizer/create-event", icon: "plusCircle" },
-  { key: "events", label: "My Events", to: "/organizer/events", icon: "calendar" },
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    to: "/organizer/dashboard",
+    icon: "grid",
+  },
+  {
+    key: "create",
+    label: "Create Event",
+    to: "/organizer/create-event",
+    icon: "plusCircle",
+  },
+  {
+    key: "events",
+    label: "My Events",
+    to: "/organizer/events",
+    icon: "calendar",
+  },
   { key: "sales", label: "Sales", to: "/organizer/sales", icon: "bars" },
-  { key: "scan", label: "Scan Tickets", to: "/organizer/scan/select", icon: "qr" },
-  { key: "withdraw", label: "Withdraw", to: "/organizer/withdraw", icon: "wallet" },
+  {
+    key: "scan",
+    label: "Scan Tickets",
+    to: "/organizer/scan/select",
+    icon: "qr",
+  },
+  {
+    key: "withdraw",
+    label: "Withdraw",
+    to: "/organizer/withdraw",
+    icon: "wallet",
+  },
 ];
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
@@ -72,14 +104,20 @@ function Shell({ active, title, subtitle, children }) {
   return (
     <div className="wdr-app">
       <aside className="wdr-sidebar">
-        <button className="wdr-wordmark" onClick={() => go("/organizer/dashboard")}>
+        <button
+          className="wdr-wordmark"
+          onClick={() => go("/organizer/dashboard")}
+        >
           Tic<span>tify</span>
         </button>
         <nav className="wdr-nav">{navButtons("wdr-nav-item")}</nav>
       </aside>
 
       <header className="wdr-topbar">
-        <button className="wdr-wordmark" onClick={() => go("/organizer/dashboard")}>
+        <button
+          className="wdr-wordmark"
+          onClick={() => go("/organizer/dashboard")}
+        >
           Tic<span>tify</span>
         </button>
         <button
@@ -224,7 +262,8 @@ export default function WithdrawRevenue() {
           open: true,
           withdrawalId: data.withdrawalId,
           message:
-            data.message || "We sent a 6-digit confirmation code to your email.",
+            data.message ||
+            "We sent a 6-digit confirmation code to your email.",
         });
       } else {
         // Legacy path (no OTP required) — original success behavior
@@ -235,7 +274,12 @@ export default function WithdrawRevenue() {
           message: "Payout successful! Funds are arriving now.",
         });
         setBalance((prev) => prev - amountNum);
-        setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
+        setForm({
+          amount: "",
+          bankCode: "",
+          accountNumber: "",
+          accountName: "",
+        });
       }
     } catch (err) {
       setModal({ open: true, type: "error", title: "", message: err.message });
@@ -292,7 +336,9 @@ export default function WithdrawRevenue() {
         open: true,
         type: "success",
         title:
-          data.status === "PAID" ? "Payout on the way! 🎉" : "Withdrawal confirmed",
+          data.status === "PAID"
+            ? "Payout on the way! 🎉"
+            : "Withdrawal confirmed",
         message: data.message || "Your withdrawal has been confirmed.",
       });
       setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
@@ -321,7 +367,9 @@ export default function WithdrawRevenue() {
 
       {modal.open && (
         <div className="wdr-overlay">
-          <div className={`wdr-modal ${modal.type === "error" ? "is-error" : "is-success"}`}>
+          <div
+            className={`wdr-modal ${modal.type === "error" ? "is-error" : "is-success"}`}
+          >
             <div className="wdr-modal-icon" aria-hidden="true">
               {modal.type === "error" ? (
                 <Icon name="close" />
@@ -329,7 +377,9 @@ export default function WithdrawRevenue() {
                 <Icon name="check" />
               )}
             </div>
-            <h3>{modal.title || (modal.type === "error" ? "Error" : "Success")}</h3>
+            <h3>
+              {modal.title || (modal.type === "error" ? "Error" : "Success")}
+            </h3>
             <p>{modal.message}</p>
             <button
               className="wdr-btn wdr-btn-gold"
@@ -404,14 +454,20 @@ export default function WithdrawRevenue() {
           </div>
           <span className="wdr-hero-label">Available balance</span>
           <span className="wdr-hero-amount">₦{balance.toLocaleString()}</span>
-          <span className="wdr-hero-hint">Earnings from all your live and past events</span>
+          <span className="wdr-hero-hint">
+            Earnings from all your live and past events
+          </span>
         </section>
 
         {/* ── Withdrawal form ── */}
         <form className="wdr-card" onSubmit={submit}>
-          <label className="wdr-label" htmlFor="wdr-amount">Amount (₦)</label>
+          <label className="wdr-label" htmlFor="wdr-amount">
+            Amount (₦)
+          </label>
           <div className="wdr-amount-wrap">
-            <span className="wdr-naira" aria-hidden="true">₦</span>
+            <span className="wdr-naira" aria-hidden="true">
+              ₦
+            </span>
             <input
               id="wdr-amount"
               className="wdr-input wdr-input-amount"
@@ -424,13 +480,13 @@ export default function WithdrawRevenue() {
             />
           </div>
 
-          {/* Live payout breakdown — bank transfer fee is borne by the organizer
-              (₦10 ≤5k · ₦25 ≤50k · ₦50 above — mirrors the server) */}
+          {/* Live payout breakdown — tiered transfer charge, borne by the organizer
+              (₦50 for ₦9,999 and below · ₦200 for ₦10,000 and above — mirrors the server) */}
           {Number(form.amount) >= 500 && (
             <div className="wdr-feebox">
               {(() => {
                 const amt = Number(form.amount);
-                const fee = 100; // ₦50 stamp duty + ₦50 platform fee (mirrors the server)
+                const fee = getTransferCharge(amt);
                 return (
                   <>
                     <div className="wdr-feerow">
@@ -438,12 +494,8 @@ export default function WithdrawRevenue() {
                       <span>₦{amt.toLocaleString()}</span>
                     </div>
                     <div className="wdr-feerow">
-                      <span>Stamp duty</span>
-                      <span>− ₦50</span>
-                    </div>
-                    <div className="wdr-feerow">
-                      <span>Platform fee</span>
-                      <span>− ₦50</span>
+                      <span>Transfer charge</span>
+                      <span>− ₦{fee}</span>
                     </div>
                     <div className="wdr-feerow is-total">
                       <span>Your bank receives</span>
@@ -455,7 +507,9 @@ export default function WithdrawRevenue() {
             </div>
           )}
 
-          <label className="wdr-label" htmlFor="wdr-bank">Bank</label>
+          <label className="wdr-label" htmlFor="wdr-bank">
+            Bank
+          </label>
           <select
             id="wdr-bank"
             className="wdr-input wdr-select"
@@ -471,7 +525,9 @@ export default function WithdrawRevenue() {
             ))}
           </select>
 
-          <label className="wdr-label" htmlFor="wdr-acct-no">Account Number</label>
+          <label className="wdr-label" htmlFor="wdr-acct-no">
+            Account Number
+          </label>
           <input
             id="wdr-acct-no"
             className="wdr-input"
@@ -482,7 +538,9 @@ export default function WithdrawRevenue() {
             required
           />
 
-          <label className="wdr-label" htmlFor="wdr-acct-name">Account Name</label>
+          <label className="wdr-label" htmlFor="wdr-acct-name">
+            Account Name
+          </label>
           <input
             id="wdr-acct-name"
             className="wdr-input"
@@ -493,10 +551,7 @@ export default function WithdrawRevenue() {
             required
           />
 
-          <button
-            className="wdr-btn wdr-btn-gold wdr-cta"
-            disabled={loading}
-          >
+          <button className="wdr-btn wdr-btn-gold wdr-cta" disabled={loading}>
             {loading ? "Processing..." : "Request Withdrawal"}
           </button>
 
