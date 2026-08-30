@@ -45,6 +45,8 @@ const NavIc = {
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/organizer/dashboard", icon: NavIc.dashboard },
   { label: "Create Event", path: "/organizer/create-event", icon: NavIc.create },
+  { label: "Insights", path: "/organizer/insights", icon: NavIc.sales },
+  { label: "Referrals", path: "/organizer/referrals", icon: NavIc.users || NavIc.sales },
   { label: "My Events", path: "/organizer/events", icon: NavIc.events },
   { label: "Sales", path: "/organizer/sales", icon: NavIc.sales },
   { label: "Scan Tickets", path: "/organizer/scan/select", icon: NavIc.scan },
@@ -237,6 +239,14 @@ export default function MyEvents() {
       setProcessingId(null);
       setConfirmDelete(null);
     }
+  }
+
+  async function duplicateEvent(event) {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/events/duplicate/${event._id}`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!res.ok) throw new Error("Could not duplicate event");
+      setSuccessNotice("Event duplicated as a draft"); await fetchEvents();
+    } catch (err) { alert(err.message); }
   }
 
   /* ================= GUEST LIST CSV EXPORT ================= */
@@ -492,6 +502,9 @@ export default function MyEvents() {
                     onClick={() => setEditEvent(event)}
                   >
                     Edit
+                  </button>
+                  <button className="mev-abtn mev-abtn-tool" onClick={() => duplicateEvent(event)}>
+                    Duplicate
                   </button>
 
                   <button

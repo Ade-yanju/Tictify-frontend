@@ -30,6 +30,8 @@ import MyEvents from "../pages/organizer/MyEvents";
 import TicketSales from "../pages/organizer/TicketSales";
 import WithdrawRevenue from "../pages/organizer/WithdrawRevenue";
 import OrganizerEventStats from "../pages/organizer/OrganizerEventStats";
+import OrganizerReferrals from "../pages/organizer/OrganizerReferrals";
+import OrganizerInsights from "../pages/organizer/OrganizerInsights";
 import SelectEventToScan from "../pages/organizer/SelectEventToScan";
 /* ================= ADMIN ================= */
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -152,6 +154,8 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/organizer/referrals" element={<ProtectedRoute><OrganizerRoute><OrganizerReferrals /></OrganizerRoute></ProtectedRoute>} />
+        <Route path="/organizer/insights" element={<ProtectedRoute><OrganizerRoute><OrganizerInsights /></OrganizerRoute></ProtectedRoute>} />
 
         <Route
           path="/organizer/withdraw"

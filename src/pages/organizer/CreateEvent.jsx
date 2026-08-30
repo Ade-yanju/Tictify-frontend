@@ -167,6 +167,8 @@ export default function CreateEvent() {
   const [modal, setModal] = useState(null);
   const [affiliatesEnabled, setAffiliatesEnabled] = useState(false);
   const [affiliatePercent, setAffiliatePercent] = useState(15);
+  const [templates, setTemplates] = useState([]);
+  useEffect(() => { fetch(`${import.meta.env.VITE_API_URL}/api/events/templates`).then(r => r.json()).then(setTemplates).catch(() => {}); }, []);
 
   const affPercentClamped = Math.min(
     50,
@@ -376,6 +378,7 @@ export default function CreateEvent() {
       <div className="cev-layout">
         {/* ══════════ FORM COLUMN ══════════ */}
         <section className="cev-form">
+          <div className="cev-block"><p className="cev-label">Start from a template</p><select className="cev-input" defaultValue="" onChange={e => { const t = templates.find(x => x.id === e.target.value); if (t) setForm(f => ({ ...f, category: t.category, ticketTypes: t.ticketTypes })); }}><option value="">Choose a template (optional)</option>{templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
           {/* EVENT TYPE */}
           <div className="cev-block">
             <p className="cev-label">Event type</p>

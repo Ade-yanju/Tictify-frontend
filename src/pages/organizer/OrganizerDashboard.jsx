@@ -69,6 +69,9 @@ const NavIc = {
   withdraw: (
     <Icon name="wallet" />
   ),
+  users: (
+    <Icon name="users" />
+  ),
   logout: (
     <Icon name="signOut" />
   ),
@@ -77,6 +80,8 @@ const NavIc = {
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/organizer/dashboard", icon: NavIc.dashboard },
   { label: "Create Event", path: "/organizer/create-event", icon: NavIc.create },
+  { label: "Referrals", path: "/organizer/referrals", icon: NavIc.users },
+  { label: "Insights", path: "/organizer/insights", icon: NavIc.sales },
   { label: "My Events", path: "/organizer/events", icon: NavIc.events },
   { label: "Sales", path: "/organizer/sales", icon: NavIc.sales },
   { label: "Scan Tickets", path: "/organizer/scan/select", icon: NavIc.scan },
