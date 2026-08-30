@@ -27,6 +27,7 @@ const NAV = [
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Ambassadors", path: "/admin/ambassadors", icon: "graduation" },
   { label: "Affiliates", path: "/admin/affiliates", icon: "percent" },
+  { label: "Feedback", path: "/admin/feedback", icon: "message" },
 ];
 
 const fmtNaira = (n) => `₦${Number(n || 0).toLocaleString()}`;

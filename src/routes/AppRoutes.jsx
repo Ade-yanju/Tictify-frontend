@@ -14,6 +14,7 @@ import BecomeAffiliate from "../pages/BecomeAffiliate";
 import Legal from "../pages/Legal";
 import About from "../pages/About";
 import Contact from "../pages/Contact";
+import Feedback from "../pages/Feedback";
 import AffiliateDashboard from "../pages/AffiliateDashboard";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
@@ -38,6 +39,7 @@ import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
 import AdminAmbassadors from "../pages/admin/AdminAmbassadors";
 import AdminAffiliates from "../pages/admin/AdminAffiliates";
+import AdminFeedback from "../pages/admin/AdminFeedback";
 
 /* ================= GUARDS ================= */
 import ProtectedRoute from "./ProtectedRoute";
@@ -65,6 +67,7 @@ export default function AppRoutes() {
         <Route path="/refunds" element={<Legal />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
         <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
@@ -238,6 +241,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/admin/feedback" element={<ProtectedRoute><AdminRoute><AdminFeedback /></AdminRoute></ProtectedRoute>} />
 
         {/* ========= FALLBACK ========= */}
         <Route path="*" element={<Home />} />

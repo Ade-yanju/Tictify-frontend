@@ -4,7 +4,7 @@
    All responsive behavior lives in real CSS (@media) below.
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Icon from "../components/Icon";
 import { getToken, logout } from "../services/authService";
 
@@ -46,6 +46,7 @@ function KpiCard({ icon, label, value, tone, gold }) {
 export default function AffiliateDashboard() {
   injectStyles("tictify-affiliate-dash-css", CSS);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,14 @@ export default function AffiliateDashboard() {
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [copiedEventId, setCopiedEventId] = useState(null);
+
+  useEffect(() => {
+    const token = new URLSearchParams(location.search).get("affiliate_token");
+    if (token) {
+      localStorage.setItem("token", token);
+      window.history.replaceState({}, document.title, "/affiliate/dashboard");
+    }
+  }, [location.search]);
 
   useEffect(() => {
     let cancelled = false;
