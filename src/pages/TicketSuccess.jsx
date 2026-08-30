@@ -501,6 +501,11 @@ export default function TicketSuccess() {
             Browse more events <Icon name="arrowRight" />
           </button>
         </footer>
+        <section style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "rgba(232,201,106,.08)", textAlign: "center" }} aria-label="Feedback invitation">
+          <strong>How was your booking experience?</strong>
+          <p style={{ margin: "8px 0 12px", opacity: .75 }}>Your feedback helps us improve. It only takes a minute and is optional.</p>
+          <button className="ts-btn ts-btn-outline" onClick={() => navigate("/feedback")}>Share feedback</button>
+        </section>
       </article>
 
       {/* ── email modal ── */}

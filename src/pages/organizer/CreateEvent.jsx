@@ -355,7 +355,7 @@ export default function CreateEvent() {
           onClose={() => {
             setModal(null);
             if (modal.type === "success") {
-              navigate("/organizer/dashboard");
+              navigate("/feedback?source=event-created");
             }
           }}
         />
