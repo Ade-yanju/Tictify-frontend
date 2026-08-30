@@ -67,7 +67,7 @@ export default function AppRoutes() {
         <Route path="/refunds" element={<Legal />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
+        <Route path="/feedback" element={<Feedback />} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
         <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
