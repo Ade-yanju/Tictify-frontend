@@ -231,11 +231,12 @@ export default function CreateEvent() {
     if (
       !form.title ||
       !form.location ||
+      !form.description.trim() ||
       !form.startTime ||
       !form.endTime ||
       !form.capacity
     ) {
-      return "All event fields are required";
+      return "Title, description, location, dates, and capacity are required";
     }
 
     if (new Date(form.endTime) <= new Date(form.startTime)) {
