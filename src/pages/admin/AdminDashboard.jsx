@@ -72,6 +72,10 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [finance, setFinance] = useState(null);
+  const [financeLoading, setFinanceLoading] = useState(true);
+  const [financeError, setFinanceError] = useState("");
+  const [financeRetry, setFinanceRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -109,6 +113,40 @@ export default function AdminDashboard() {
     load();
   }, [navigate]);
 
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    let cancelled = false;
+    setFinanceLoading(true);
+    setFinanceError("");
+
+    async function loadFinance() {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/admin/finance`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+
+        if (!response.ok) throw new Error("Unable to load platform finance");
+
+        const json = await response.json();
+        if (!cancelled) setFinance(json);
+      } catch (err) {
+        if (!cancelled) {
+          setFinanceError(err.message || "Unable to load platform finance");
+        }
+      } finally {
+        if (!cancelled) setFinanceLoading(false);
+      }
+    }
+
+    loadFinance();
+    return () => {
+      cancelled = true;
+    };
+  }, [financeRetry]);
+
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
 
@@ -141,6 +179,13 @@ export default function AdminDashboard() {
         <KPICard label="Registered Organizers" value={stats.organizers || 0} icon={"users"} />
         <KPICard label="Pending Withdrawals" value={`₦${(stats.pendingAmount || 0).toLocaleString()}`} icon={"clock"} />
       </section>
+
+      <FinanceOverview
+        finance={finance}
+        loading={financeLoading}
+        error={financeError}
+        onRetry={() => setFinanceRetry((value) => value + 1)}
+      />
 
       {/* Charts Section */}
       <section className="adb-charts">
@@ -299,6 +344,167 @@ function KPICard({ label, value, icon, trend }) {
         {trend && <p className="adb-kpi-trend">{trend}</p>}
       </div>
     </div>
+  );
+}
+
+const formatNaira = (value) => `₦${Number(value || 0).toLocaleString()}`;
+
+function FinanceMetric({ label, value, detail, tone = "" }) {
+  return (
+    <div className={`adb-finance-metric ${tone ? `is-${tone}` : ""}`}>
+      <p className="adb-finance-metric-label">{label}</p>
+      <strong className="adb-finance-metric-value">{value}</strong>
+      {detail && <span className="adb-finance-metric-detail">{detail}</span>}
+    </div>
+  );
+}
+
+function FinanceOverview({ finance, loading, error, onRetry }) {
+  if (loading && !finance) {
+    return (
+      <section className="adb-finance">
+        <div className="adb-finance-skeleton adb-skel" />
+      </section>
+    );
+  }
+
+  if (!finance) {
+    return (
+      <section className="adb-finance">
+        <div className="adb-finance-head">
+          <div>
+            <h2 className="adb-section-title">Platform money flow</h2>
+            <p className="adb-finance-muted">{error || "Finance data is unavailable."}</p>
+          </div>
+          <button className="adb-finance-refresh" onClick={onRetry}>Retry</button>
+        </div>
+      </section>
+    );
+  }
+
+  const paystack = finance.paystack || {};
+  const flow = finance.cashFlow || {};
+  const ledger = paystack.ledger || [];
+  const balanceAvailable = paystack.balance != null;
+
+  return (
+    <section className="adb-finance">
+      <div className="adb-finance-head">
+        <div>
+          <h2 className="adb-section-title">Platform money flow</h2>
+          <p className="adb-finance-muted">
+            Live Paystack balance alongside Tictify’s recorded inflows and payouts.
+          </p>
+        </div>
+        <div className="adb-finance-actions">
+          {error && <span className="adb-finance-muted">{error}</span>}
+          <button className="adb-finance-refresh" onClick={onRetry}>Refresh</button>
+        </div>
+      </div>
+
+      <div className="adb-finance-grid">
+        <div className={`adb-finance-balance ${balanceAvailable ? "" : "is-unavailable"}`}>
+          <div className="adb-finance-balance-top">
+            <span className="adb-finance-balance-label">Paystack available balance</span>
+            <Icon name="wallet" />
+          </div>
+          <strong className="adb-finance-balance-value">
+            {balanceAvailable ? formatNaira(paystack.balance) : "Unavailable"}
+          </strong>
+          <p className="adb-finance-balance-note">
+            {balanceAvailable ? (
+              <>
+                {paystack.balanceFetchedAt && (
+                  <>Updated {new Date(paystack.balanceFetchedAt).toLocaleTimeString()}. </>
+                )}
+                Settled NGN funds currently available for transfers.
+                {paystack.error && <> Ledger status: {paystack.error}</>}
+              </>
+            ) : (
+              paystack.error || "Paystack balance is unavailable."
+            )}
+          </p>
+        </div>
+
+        <div className="adb-finance-metrics">
+          <FinanceMetric
+            label="Recorded money in"
+            value={formatNaira(flow.moneyIn)}
+            detail="Successful sales + affiliate joins, all time"
+            tone="positive"
+          />
+          <FinanceMetric
+            label="Recorded money out"
+            value={formatNaira(flow.moneyOut)}
+            detail="Approved/paid payouts + refunds, all time"
+            tone="negative"
+          />
+          <FinanceMetric
+            label="Recent Paystack in"
+            value={formatNaira(paystack.recentMoneyIn)}
+            detail={`Positive movements in latest ${ledger.length} entries`}
+            tone="positive"
+          />
+          <FinanceMetric
+            label="Recent Paystack out"
+            value={formatNaira(paystack.recentMoneyOut)}
+            detail={`Negative movements in latest ${ledger.length} entries`}
+            tone="negative"
+          />
+          <FinanceMetric
+            label="Wallets held"
+            value={formatNaira(finance.walletLiabilities)}
+            detail="Funds still owed to organizers/partners"
+          />
+        </div>
+      </div>
+
+      <div className="adb-finance-ledger">
+        <div className="adb-finance-ledger-head">
+          <div>
+            <h3 className="adb-card-title">Recent Paystack account activity</h3>
+            <p className="adb-finance-muted">Provider ledger entries, newest first.</p>
+          </div>
+          {paystack.ledgerMeta?.total != null && (
+            <span className="adb-finance-muted">{Number(paystack.ledgerMeta.total).toLocaleString()} total entries</span>
+          )}
+        </div>
+
+        {ledger.length === 0 ? (
+          <p className="adb-finance-empty">No Paystack ledger entries were returned.</p>
+        ) : (
+          <div className="adb-finance-ledger-table-wrap">
+            <table className="adb-finance-ledger-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Source</th>
+                  <th>Reason</th>
+                  <th className="adb-num">Movement</th>
+                  <th className="adb-num">Balance after</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.slice(0, 8).map((entry) => {
+                  const incoming = entry.difference >= 0;
+                  return (
+                    <tr key={entry.id || `${entry.createdAt}-${entry.difference}`}>
+                      <td data-label="Date">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}</td>
+                      <td data-label="Source">{entry.source}</td>
+                      <td data-label="Reason">{entry.reason || "—"}</td>
+                      <td data-label="Movement" className={`adb-num adb-finance-movement ${incoming ? "is-in" : "is-out"}`}>
+                        {incoming ? "+" : "−"}{formatNaira(Math.abs(entry.difference))}
+                      </td>
+                      <td data-label="Balance after" className="adb-num">{formatNaira(entry.balance)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -506,6 +712,46 @@ button, input, select { font-family:var(--font-b); }
 .adb-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(18px,2.2vw,24px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
 .adb-kpi-trend { font-size:12px; color:var(--live); font-weight:600; margin-top:4px; }
 
+/* ── Platform finance ── */
+.adb-finance { display:flex; flex-direction:column; gap:16px; animation:adb-fade .4s ease both; }
+.adb-finance-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+.adb-finance-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.adb-finance-refresh { background:transparent; border:1px solid var(--border); color:var(--gold); border-radius:999px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; transition:background .2s, border-color .2s; }
+.adb-finance-refresh:hover { background:var(--gold-dim); border-color:var(--gold); }
+.adb-finance-muted { color:var(--muted); font-size:12.5px; line-height:1.5; }
+.adb-finance-skeleton { height:238px; border-radius:var(--r); }
+.adb-finance-grid { display:grid; grid-template-columns:minmax(260px,.8fr) minmax(0,1.7fr); gap:clamp(12px,2vw,20px); }
+.adb-finance-balance { background:linear-gradient(135deg,rgba(232,201,106,.18),rgba(232,201,106,.05) 72%); border:1px solid rgba(232,201,106,.3); border-radius:var(--r); padding:clamp(20px,3vw,30px); min-height:208px; display:flex; flex-direction:column; justify-content:center; }
+.adb-finance-balance.is-unavailable { border-color:rgba(224,92,92,.35); background:rgba(224,92,92,.06); }
+.adb-finance-balance-top { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); }
+.adb-finance-balance-top svg { color:var(--gold); width:24px; height:24px; }
+.adb-finance-balance-label { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.adb-finance-balance-value { font-family:var(--font-h); font-size:clamp(30px,4vw,44px); line-height:1.15; color:var(--gold); margin-top:14px; font-variant-numeric:tabular-nums; word-break:break-word; }
+.adb-finance-balance.is-unavailable .adb-finance-balance-value { color:var(--danger); font-size:clamp(25px,3.5vw,36px); }
+.adb-finance-balance-note { color:var(--muted); font-size:12.5px; line-height:1.55; margin-top:10px; max-width:410px; }
+.adb-finance-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(10px,1.6vw,16px); }
+.adb-finance-metric { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(16px,2vw,21px); min-width:0; }
+.adb-finance-metric.is-positive { border-color:rgba(107,240,160,.25); }
+.adb-finance-metric.is-negative { border-color:rgba(224,92,92,.25); }
+.adb-finance-metric-label { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+.adb-finance-metric-value { display:block; font-family:var(--font-h); font-size:clamp(18px,2.2vw,25px); margin-top:8px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.adb-finance-metric.is-positive .adb-finance-metric-value { color:var(--live); }
+.adb-finance-metric.is-negative .adb-finance-metric-value { color:var(--danger); }
+.adb-finance-metric-detail { display:block; color:var(--muted); font-size:12px; line-height:1.45; margin-top:5px; }
+.adb-finance-ledger { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(18px,2.6vw,26px); min-width:0; }
+.adb-finance-ledger-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.adb-finance-ledger-head .adb-card-title { margin-bottom:4px; }
+.adb-finance-ledger-table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.adb-finance-ledger-table { width:100%; border-collapse:collapse; font-size:13px; min-width:680px; }
+.adb-finance-ledger-table th { text-align:left; color:var(--muted); font-family:var(--font-h); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:11px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+.adb-finance-ledger-table td { padding:12px 10px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+.adb-finance-ledger-table tr:last-child td { border-bottom:none; }
+.adb-finance-ledger-table td:first-child { color:var(--muted); white-space:nowrap; }
+.adb-finance-movement { font-family:var(--font-h); font-weight:700; white-space:nowrap; }
+.adb-finance-movement.is-in { color:var(--live); }
+.adb-finance-movement.is-out { color:var(--danger); }
+.adb-finance-empty { color:var(--muted); font-size:13px; padding:20px 0 4px; }
+
 /* ── Cards / charts ── */
 .adb-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr)); gap:clamp(12px,2vw,20px); }
 .adb-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(18px,2.6vw,26px); min-width:0; }
@@ -603,6 +849,8 @@ button, input, select { font-family:var(--font-b); }
   .adb-drawer .adb-logout { margin-top:22px; }
 }
 @media (max-width:720px) {
+  .adb-finance-grid { grid-template-columns:1fr; }
+  .adb-finance-balance { min-height:180px; }
   /* Table collapses into stacked cards — no horizontal scroll needed */
   .adb-table-wrap { overflow-x:visible; border:none; background:none; }
   .adb-table { min-width:0; display:block; }
@@ -614,9 +862,19 @@ button, input, select { font-family:var(--font-b); }
   .adb-table tbody tr td:last-child { border-bottom:none; }
   .adb-table tbody td::before { content:attr(data-label); font-family:var(--font-h); font-weight:700; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); text-align:left; flex:0 0 auto; }
   .adb-num { text-align:right; }
+
+  .adb-finance-ledger-table-wrap { overflow-x:visible; }
+  .adb-finance-ledger-table { min-width:0; display:block; }
+  .adb-finance-ledger-table thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+  .adb-finance-ledger-table tbody { display:flex; flex-direction:column; gap:10px; }
+  .adb-finance-ledger-table tbody tr { display:block; border:1px solid var(--border); border-radius:var(--r-sm); padding:5px 12px; }
+  .adb-finance-ledger-table tbody td { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:8px 0; text-align:right; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+  .adb-finance-ledger-table tbody tr td:last-child { border-bottom:none; }
+  .adb-finance-ledger-table tbody td::before { content:attr(data-label); color:var(--muted); font-family:var(--font-h); font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; text-align:left; flex:0 0 auto; }
 }
 @media (max-width:480px) {
   .adb-kpi { padding:14px; }
+  .adb-finance-metrics { grid-template-columns:1fr; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation:none !important; transition:none !important; }
