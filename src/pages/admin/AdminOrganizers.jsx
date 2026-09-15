@@ -39,6 +39,7 @@ const NAV = [
       <Icon name="percent" />
     ),
   },
+  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
 ];
 
 /* ══════════════════════════════════════════════════════════

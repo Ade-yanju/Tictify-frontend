@@ -30,62 +30,45 @@
     <!-- Google AdSense site-ownership verification -->
     <meta name="google-adsense-account" content="ca-pub-1453648623540291" />
     <title>Tictify</title>
+    <style>
+      html, body { background: #080910; }
+      .boot-screen {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: 16px;
+        color: #f0ede8;
+        font-family: system-ui, sans-serif;
+        text-align: center;
+      }
+      .boot-mark {
+        font: 800 30px/1.1 system-ui, sans-serif;
+        letter-spacing: -0.04em;
+      }
+      .boot-mark span { color: #e8c96a; }
+      .boot-spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid rgba(255,255,255,.14);
+        border-top-color: #e8c96a;
+        border-radius: 50%;
+        animation: boot-spin .8s linear infinite;
+      }
+      .boot-copy { margin: 0; color: #8b887e; font-size: 13px; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-spinner { animation: none; }
+      }
+    </style>
   </head>
   <body>
-    <!--
-      Crawlable fallback content. React replaces #root on load, so users
-      see the full app; search engines and reviewers that don't run
-      JavaScript still get a real, descriptive page instead of a blank
-      <div>. Keep this in sync with the homepage messaging.
-    -->
     <div id="root">
-      <main style="max-width:820px;margin:0 auto;padding:32px 20px;font-family:system-ui,sans-serif;line-height:1.6;color:#1a1a1a">
-        <h1>Tictify — Event Ticketing for Nigeria</h1>
-        <p>
-          Tictify is a Nigerian event ticketing platform where organisers
-          sell tickets online and attendees pay securely and receive a
-          unique QR-code ticket. Browse live events, buy tickets with card
-          or bank transfer through Paystack, and get admitted in seconds at
-          the gate.
-        </p>
-
-        <h2>For event attendees</h2>
-        <p>
-          Discover concerts, parties, festivals and shows across Nigeria on
-          our <a href="/events">events page</a>. Pick your ticket type,
-          pay online, and your QR-code ticket arrives by email — show it at
-          the entrance for fast, secure entry. Lost your ticket? Recover it
-          anytime from “Find my tickets”.
-        </p>
-
-        <h2>For event organisers</h2>
-        <p>
-          Create an event in minutes, set multiple ticket types and prices,
-          and start selling. You keep the full ticket price — platform and
-          payment fees are added on top and paid by the guest. Track sales
-          in real time, scan guests in at the gate from any phone, and
-          withdraw your earnings straight to your Nigerian bank account.
-        </p>
-
-        <h2>Why Tictify</h2>
-        <ul>
-          <li>Secure QR-code tickets with fast gate check-in</li>
-          <li>Card and bank-transfer payments via Paystack</li>
-          <li>Real-time sales dashboard and automatic payouts</li>
-          <li>Discount codes, early-bird pricing and group tickets</li>
-          <li>Promoter and affiliate links to grow your sales</li>
-        </ul>
-
-        <p>
-          Learn more: <a href="/about">About Tictify</a> ·
-          <a href="/blog">Blog</a> ·
-          <a href="/contact">Contact us</a> ·
-          <a href="/terms">Terms of Service</a> ·
-          <a href="/privacy">Privacy Policy</a> ·
-          <a href="/refunds">Refund Policy</a>
-        </p>
-        <p>Support: <a href="mailto:tictify@gmail.com">tictify@gmail.com</a></p>
-      </main>
+      <div class="boot-screen" aria-label="Loading Tictify">
+        <div class="boot-mark">Tic<span>tify</span></div>
+        <div class="boot-spinner" aria-hidden="true"></div>
+        <p class="boot-copy">Loading your workspace…</p>
+      </div>
     </div>
     <noscript>
       Tictify is a Nigerian event ticketing platform. Please enable

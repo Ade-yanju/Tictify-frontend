@@ -54,6 +54,7 @@ const NAV = [
       <Icon name="percent" />
     ),
   },
+  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
 ];
 
 const TOOLTIP_STYLE = {
@@ -185,6 +186,7 @@ export default function AdminDashboard() {
         loading={financeLoading}
         error={financeError}
         onRetry={() => setFinanceRetry((value) => value + 1)}
+        navigate={navigate}
       />
 
       {/* Charts Section */}
@@ -243,6 +245,7 @@ export default function AdminDashboard() {
           <ActionCard title="View Events" desc="Monitor all events" icon={"calendar"} onClick={() => navigate("/admin/events")} />
           <ActionCard title="Organizers" desc="Manage organizers" icon={"users"} onClick={() => navigate("/admin/organizers")} />
           <ActionCard title="Sales Analytics" desc="View detailed analytics" icon={"bars"} onClick={() => navigate("/admin/sales")} />
+          <ActionCard title="Feedback Inbox" desc="Review community feedback" icon={"mail"} onClick={() => navigate("/admin/feedback")} />
         </div>
       </section>
     </Shell>
@@ -359,7 +362,7 @@ function FinanceMetric({ label, value, detail, tone = "" }) {
   );
 }
 
-function FinanceOverview({ finance, loading, error, onRetry }) {
+function FinanceOverview({ finance, loading, error, onRetry, navigate }) {
   if (loading && !finance) {
     return (
       <section className="adb-finance">
@@ -385,6 +388,7 @@ function FinanceOverview({ finance, loading, error, onRetry }) {
   const paystack = finance.paystack || {};
   const flow = finance.cashFlow || {};
   const ledger = paystack.ledger || [];
+  const settlements = finance.settlements || [];
   const balanceAvailable = paystack.balance != null;
 
   return (
@@ -398,6 +402,7 @@ function FinanceOverview({ finance, loading, error, onRetry }) {
         </div>
         <div className="adb-finance-actions">
           {error && <span className="adb-finance-muted">{error}</span>}
+          <button className="adb-finance-refresh" onClick={() => navigate("/admin/withdrawals")}>Settlements</button>
           <button className="adb-finance-refresh" onClick={onRetry}>Refresh</button>
         </div>
       </div>
@@ -459,6 +464,8 @@ function FinanceOverview({ finance, loading, error, onRetry }) {
         </div>
       </div>
 
+      <SettlementAccounts rows={settlements} navigate={navigate} />
+
       <div className="adb-finance-ledger">
         <div className="adb-finance-ledger-head">
           <div>
@@ -505,6 +512,50 @@ function FinanceOverview({ finance, loading, error, onRetry }) {
         )}
       </div>
     </section>
+  );
+}
+
+function SettlementAccounts({ rows, navigate }) {
+  return (
+    <div className="adb-settlements">
+      <div className="adb-settlements-head">
+        <div>
+          <h3 className="adb-card-title">Recent settlement destinations</h3>
+          <p className="adb-finance-muted">Where approved or completed payouts are being sent.</p>
+        </div>
+        <button className="adb-finance-refresh" onClick={() => navigate("/admin/withdrawals")}>View all</button>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="adb-finance-empty">No approved settlements yet.</p>
+      ) : (
+        <div className="adb-settlements-grid">
+          {rows.map((settlement) => (
+            <article className="adb-settlement" key={settlement.id}>
+              <div className="adb-settlement-top">
+                <div>
+                  <strong>{settlement.bankName || "Bank account"}</strong>
+                  <p>{settlement.accountName || "Account holder not provided"}</p>
+                </div>
+                <StatusChip status={settlement.status} />
+              </div>
+              <div className="adb-settlement-account">•••• {settlement.accountLast4 || "—"}</div>
+              <div className="adb-settlement-money">
+                <span>Amount to bank</span>
+                <strong>₦{Number(settlement.amountToBank || 0).toLocaleString()}</strong>
+              </div>
+              <div className="adb-settlement-meta">
+                <span>Requested ₦{Number(settlement.requestedAmount || 0).toLocaleString()}</span>
+                <span>Fee ₦{Number(settlement.transferFee || 0).toLocaleString()}</span>
+              </div>
+              {settlement.paystackReference && (
+                <p className="adb-settlement-reference">{settlement.paystackReference}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -751,6 +802,16 @@ button, input, select { font-family:var(--font-b); }
 .adb-finance-movement.is-in { color:var(--live); }
 .adb-finance-movement.is-out { color:var(--danger); }
 .adb-finance-empty { color:var(--muted); font-size:13px; padding:20px 0 4px; }
+.adb-settlements { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:clamp(18px,2.6vw,26px); min-width:0; }
+.adb-settlements-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.adb-settlements-head .adb-card-title { margin-bottom:4px; }
+.adb-settlements-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); gap:12px; }
+.adb-settlement { min-width:0; border:1px solid var(--border); border-radius:var(--r-sm); padding:15px; background:rgba(0,0,0,.12); }
+.adb-settlement-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.adb-settlement-top strong { font-family:var(--font-h); font-size:14px; overflow-wrap:anywhere; }.adb-settlement-top p { color:var(--muted); font-size:12px; margin-top:4px; overflow-wrap:anywhere; }
+.adb-settlement-account { color:var(--gold); font-family:var(--font-mono); font-size:13px; letter-spacing:.08em; margin:17px 0 12px; }
+.adb-settlement-money { display:flex; align-items:baseline; justify-content:space-between; gap:10px; border-top:1px solid var(--border); padding-top:11px; }.adb-settlement-money span { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }.adb-settlement-money strong { color:var(--live); font-family:var(--font-h); font-size:18px; white-space:nowrap; }
+.adb-settlement-meta { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; margin-top:9px; flex-wrap:wrap; }.adb-settlement-reference { color:var(--text-dim); font-family:var(--font-mono); font-size:10px; margin-top:11px; overflow-wrap:anywhere; }
 
 /* ── Cards / charts ── */
 .adb-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr)); gap:clamp(12px,2vw,20px); }
@@ -806,6 +867,9 @@ button, input, select { font-family:var(--font-b); }
 /* ── Status chip ── */
 .adb-chip { display:inline-block; font-family:var(--font-h); font-weight:700; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; padding:4px 10px; border-radius:999px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
 .adb-chip-live { color:var(--live); border-color:rgba(107,240,160,.4); background:rgba(107,240,160,.1); }
+.adb-chip-paid { color:var(--live); border-color:rgba(107,240,160,.4); background:rgba(107,240,160,.1); }
+.adb-chip-approved { color:var(--gold); border-color:rgba(232,201,106,.4); background:var(--gold-dim); }
+.adb-chip-failed { color:var(--danger); border-color:rgba(224,92,92,.4); background:rgba(224,92,92,.1); }
 .adb-chip-ended { color:var(--danger); border-color:rgba(224,92,92,.4); background:rgba(224,92,92,.1); }
 .adb-chip-draft { color:var(--gold); border-color:rgba(232,201,106,.4); background:var(--gold-dim); }
 .adb-chip-cancelled { color:var(--danger); border-color:rgba(224,92,92,.3); background:rgba(224,92,92,.06); text-decoration:line-through; }

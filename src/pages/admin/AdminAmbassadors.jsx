@@ -33,6 +33,7 @@ const NAV = [
       <Icon name="percent" />
     ),
   },
+  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
 ];
 
 const STATUSES = ["ALL", "APPLIED", "APPROVED", "REJECTED", "REVOKED"];

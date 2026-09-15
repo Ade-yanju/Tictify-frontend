@@ -17,6 +17,24 @@ function injectStyles(id, content) {
   }
 }
 
+function maskAccountNumber(accountNumber) {
+  const value = String(accountNumber || "");
+  if (!value) return "—";
+  return value.length > 4 ? `•••• ${value.slice(-4)}` : value;
+}
+
+function payoutAmount(withdrawal) {
+  return withdrawal?.netAmount ?? withdrawal?.amount ?? 0;
+}
+
+function payoutStatusLabel(status) {
+  if (status === "PAID") return "Settled / confirmed";
+  if (status === "APPROVED") return "Sent to Paystack — awaiting confirmation";
+  if (status === "FAILED") return "Failed — funds returned";
+  if (status === "PENDING") return "Awaiting approval";
+  return status || "—";
+}
+
 /* ── Icons (inline, dependency-free) ─────────────────────── */
 
 const NAV = [
@@ -39,6 +57,7 @@ const NAV = [
       <Icon name="percent" />
     ),
   },
+  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -130,8 +149,12 @@ export default function AdminWithdrawals() {
   const stats = {
     pending: withdrawals.filter((w) => w.status === "PENDING").length,
     approved: withdrawals.filter((w) => w.status === "APPROVED").length,
+    paid: withdrawals.filter((w) => w.status === "PAID").length,
     rejected: withdrawals.filter((w) => w.status === "REJECTED").length,
     totalAmount: withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0),
+    settledAmount: withdrawals
+      .filter((w) => w.status === "PAID")
+      .reduce((sum, w) => sum + payoutAmount(w), 0),
   };
 
   return (
@@ -147,6 +170,7 @@ export default function AdminWithdrawals() {
         <section className="awd-kpis">
           <StatCard label="Pending" value={stats.pending} tone="gold" icon={"clock"} />
           <StatCard label="Approved" value={stats.approved} tone="live" icon={"checkCircle"} />
+          <StatCard label="Settled to banks" value={`₦${stats.settledAmount.toLocaleString()}`} tone="live" icon={"bank"} />
           <StatCard label="Rejected" value={stats.rejected} tone="danger" icon={"closeCircle"} />
           <StatCard label="Total Amount" value={`₦${stats.totalAmount.toLocaleString()}`} tone="gold" icon={"coins"} />
         </section>
@@ -171,7 +195,7 @@ export default function AdminWithdrawals() {
         <section className="awd-filter">
           <div className="awd-filter-label">Filter by Status</div>
           <div className="awd-filter-btns">
-            {["ALL", "PENDING", "APPROVED", "REJECTED"].map((status) => (
+            {["ALL", "AWAITING_OTP", "PENDING", "APPROVED", "PAID", "FAILED", "REJECTED", "EXPIRED"].map((status) => (
               <button
                 key={status}
                 className={`awd-filter-btn ${statusFilter === status ? "is-active" : ""}`}
@@ -212,9 +236,16 @@ export default function AdminWithdrawals() {
 
                   <div className="awd-card-body">
                     <div className="awd-info-row">
-                      <span className="awd-info-label">Amount</span>
+                      <span className="awd-info-label">Requested</span>
                       <span className="awd-amount">
                         ₦{(withdrawal.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="awd-info-row">
+                      <span className="awd-info-label">To bank</span>
+                      <span className="awd-amount awd-amount-secondary">
+                        ₦{payoutAmount(withdrawal).toLocaleString()}
                       </span>
                     </div>
 
@@ -224,9 +255,14 @@ export default function AdminWithdrawals() {
                     </div>
 
                     <div className="awd-info-row">
+                      <span className="awd-info-label">Account name</span>
+                      <span>{withdrawal.bankDetails?.accountName || "—"}</span>
+                    </div>
+
+                    <div className="awd-info-row">
                       <span className="awd-info-label">Account</span>
                       <span className="awd-account">
-                        {withdrawal.bankDetails?.accountNumber || "—"}
+                        {maskAccountNumber(withdrawal.bankDetails?.accountNumber)}
                       </span>
                     </div>
 
@@ -354,9 +390,13 @@ function StatCard({ label, value, tone, icon }) {
 
 function StatusBadge({ status }) {
   const badgeClass = {
+    AWAITING_OTP: "is-pending",
     PENDING: "is-pending",
     APPROVED: "is-approved",
+    PAID: "is-paid",
+    FAILED: "is-failed",
     REJECTED: "is-rejected",
+    EXPIRED: "is-expired",
   };
   return (
     <span className={`awd-badge ${badgeClass[status] || "is-pending"}`}>
@@ -381,16 +421,34 @@ function WithdrawalModal({ withdrawal, onClose, onApprove, onReject, isProcessin
           </Section>
 
           <Section title="Withdrawal Details">
-            <Detail label="Amount" value={`₦${(withdrawal.amount || 0).toLocaleString()}`} highlight />
+            <Detail label="Requested amount" value={`₦${(withdrawal.amount || 0).toLocaleString()}`} highlight />
+            <Detail label="Transfer fee" value={`₦${(withdrawal.transferFee || 0).toLocaleString()}`} />
+            <Detail label="Amount to bank" value={`₦${payoutAmount(withdrawal).toLocaleString()}`} highlight />
             <Detail label="Status" value={withdrawal.status} />
+            <Detail label="Settlement state" value={payoutStatusLabel(withdrawal.status)} />
             <Detail label="Request Date" value={new Date(withdrawal.createdAt).toLocaleDateString()} />
+            {withdrawal.approvedAt && <Detail label="Approved at" value={new Date(withdrawal.approvedAt).toLocaleString()} />}
+            {withdrawal.paystackReference && <Detail label="Paystack reference" value={withdrawal.paystackReference} />}
           </Section>
 
-          <Section title="Bank Details">
+          <Section title="Settlement account">
             <Detail label="Bank Name" value={withdrawal.bankDetails?.bankName} />
             <Detail label="Account Number" value={withdrawal.bankDetails?.accountNumber} />
             <Detail label="Account Name" value={withdrawal.bankDetails?.accountName} />
           </Section>
+
+          {withdrawal.processedBy && (
+            <Section title="Processed by">
+              <Detail label="Admin" value={withdrawal.processedBy.name || withdrawal.processedBy.email} />
+              <Detail label="Email" value={withdrawal.processedBy.email} />
+            </Section>
+          )}
+
+          {withdrawal.failureReason && (
+            <Section title="Transfer note">
+              <p className="awd-transfer-note">{withdrawal.failureReason}</p>
+            </Section>
+          )}
 
           {withdrawal.bankDetails?.swiftCode && (
             <Section title="Additional Details">
@@ -558,6 +616,7 @@ button, input, select { font-family:var(--font-b); }
 .awd-info-row { display:flex; justify-content:space-between; gap:10px; font-size:13.5px; }
 .awd-info-label { color:var(--muted); }
 .awd-amount { font-family:var(--font-h); font-weight:700; color:var(--gold); font-variant-numeric:tabular-nums; }
+.awd-amount-secondary { color:var(--live); }
 .awd-account { font-variant-numeric:tabular-nums; letter-spacing:.04em; }
 .awd-card-foot { padding:12px; border-top:1px solid var(--border); text-align:center; background:var(--gold-dim); }
 .awd-hint { font-size:12px; color:var(--gold); font-weight:600; }
@@ -566,7 +625,10 @@ button, input, select { font-family:var(--font-b); }
 .awd-badge { padding:5px 12px; border-radius:999px; font-weight:700; font-size:11px; letter-spacing:.06em; white-space:nowrap; }
 .awd-badge.is-pending { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
 .awd-badge.is-approved { background:var(--live); color:#080910; }
+.awd-badge.is-paid { background:var(--live-dim); color:var(--live); border:1px solid rgba(91,227,154,.35); }
+.awd-badge.is-failed { background:var(--danger-dim); color:var(--danger); border:1px solid rgba(242,104,94,.35); }
 .awd-badge.is-rejected { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
+.awd-badge.is-expired { background:rgba(139,136,126,.12); color:var(--muted); border:1px solid var(--border); }
 
 /* ── Empty state ── */
 .awd-empty { padding:64px 20px; text-align:center; }
@@ -589,6 +651,7 @@ button, input, select { font-family:var(--font-b); }
 .awd-detail-label { color:var(--muted); }
 .awd-detail-value { font-weight:500; text-align:right; overflow-wrap:anywhere; }
 .awd-detail-value.is-highlight { font-family:var(--font-h); color:var(--gold); font-weight:700; font-variant-numeric:tabular-nums; }
+.awd-transfer-note { color:var(--danger); background:var(--danger-dim); border:1px solid rgba(242,104,94,.25); border-radius:var(--r-sm); padding:11px 12px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
 .awd-modal-foot { padding:clamp(18px,3vw,24px); border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; position:sticky; bottom:0; background:var(--surface); }
 .awd-btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text); padding:11px 20px; border-radius:999px; cursor:pointer; font-weight:600; font-size:13.5px; transition:border-color .2s; }
 .awd-btn-ghost:hover:not(:disabled) { border-color:var(--border-h); }

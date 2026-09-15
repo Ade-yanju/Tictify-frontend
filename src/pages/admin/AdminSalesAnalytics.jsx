@@ -47,6 +47,7 @@ const NAV = [
       <Icon name="percent" />
     ),
   },
+  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
 ];
 
 const TOOLTIP_STYLE = {

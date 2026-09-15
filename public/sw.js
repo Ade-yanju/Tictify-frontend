@@ -11,7 +11,7 @@
    - Navigations                      → network-first, offline
      fallback to the cached app shell
 ═══════════════════════════════════════════════════════════ */
-const VERSION = "tictify-v1";
+const VERSION = "tictify-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/logo.png", "/icon-192.png"];
 
 self.addEventListener("install", (event) => {
