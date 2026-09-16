@@ -242,7 +242,7 @@ export default function AmbassadorDashboard() {
 
       <footer className="amb-footer">
         <div className="amb-container">
-          <p>© {new Date().getFullYear()} Tictify. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Tictify. All rights reserved. · Tictify Nigeria Limited (Company Registration No. 9279658)</p>
         </div>
       </footer>
     </div>

@@ -722,7 +722,7 @@ function Footer() {
           <a href="mailto:tictify@gmail.com">tictify@gmail.com</a>
         </div>
         <div className="tf-footer-bottom">
-          <p>© {new Date().getFullYear()} Tictify. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Tictify. All rights reserved. · Tictify Nigeria Limited (Company Registration No. 9279658)</p>
           <p className="tf-footer-made">Built for events across Nigeria 🇳🇬</p>
         </div>
       </div>

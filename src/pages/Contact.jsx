@@ -147,7 +147,7 @@ export default function Contact() {
 
       <footer className="ct2-footer">
         <div className="ct2-container">
-          <p>© {new Date().getFullYear()} Tictify. All rights reserved. · <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+          <p>© {new Date().getFullYear()} Tictify. All rights reserved. · Tictify Nigeria Limited (Company Registration No. 9279658) · <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
         </div>
       </footer>
     </div>

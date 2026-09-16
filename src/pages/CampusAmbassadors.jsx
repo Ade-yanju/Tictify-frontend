@@ -104,7 +104,7 @@ function Footer() {
   return (
     <footer className="ca-footer">
       <div className="ca-container">
-        <p>© {new Date().getFullYear()} Tictify. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Tictify. All rights reserved. · Tictify Nigeria Limited (Company Registration No. 9279658)</p>
       </div>
     </footer>
   );
