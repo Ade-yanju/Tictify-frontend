@@ -28,8 +28,8 @@ function payoutAmount(withdrawal) {
 }
 
 function payoutStatusLabel(status) {
-  if (status === "PAID") return "Settled / confirmed";
-  if (status === "APPROVED") return "Sent to Paystack — awaiting confirmation";
+  if (status === "SUCCESS") return "Settled / confirmed";
+  if (status === "PROCESSING") return "Sent to Paystack — awaiting confirmation";
   if (status === "FAILED") return "Failed — funds returned";
   if (status === "PENDING") return "Queued — automatic retry";
   return status || "—";
@@ -147,12 +147,12 @@ export default function AdminWithdrawals() {
 
   const stats = {
     pending: withdrawals.filter((w) => w.status === "PENDING").length,
-    approved: withdrawals.filter((w) => w.status === "APPROVED").length,
-    paid: withdrawals.filter((w) => w.status === "PAID").length,
+    processing: withdrawals.filter((w) => w.status === "PROCESSING").length,
+    successful: withdrawals.filter((w) => w.status === "SUCCESS").length,
     rejected: withdrawals.filter((w) => w.status === "REJECTED").length,
     totalAmount: withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0),
     settledAmount: withdrawals
-      .filter((w) => w.status === "PAID")
+      .filter((w) => w.status === "SUCCESS")
       .reduce((sum, w) => sum + payoutAmount(w), 0),
   };
 
@@ -161,15 +161,15 @@ export default function AdminWithdrawals() {
       <Shell
         active="/admin/withdrawals"
         title="Withdrawal Requests"
-        subtitle="Review and approve payout requests"
+        subtitle="Automatic payout monitoring"
         navigate={navigate}
         onLogout={() => { logout(); navigate("/login"); }}
       >
         {/* Stats Cards */}
         <section className="awd-kpis">
           <StatCard label="Pending" value={stats.pending} tone="gold" icon={"clock"} />
-          <StatCard label="Approved" value={stats.approved} tone="live" icon={"checkCircle"} />
-          <StatCard label="Settled to banks" value={`₦${stats.settledAmount.toLocaleString()}`} tone="live" icon={"bank"} />
+          <StatCard label="Processing" value={stats.processing} tone="live" icon={"checkCircle"} />
+          <StatCard label="Successful to banks" value={`₦${stats.settledAmount.toLocaleString()}`} tone="live" icon={"bank"} />
           <StatCard label="Rejected" value={stats.rejected} tone="danger" icon={"closeCircle"} />
           <StatCard label="Total Amount" value={`₦${stats.totalAmount.toLocaleString()}`} tone="gold" icon={"coins"} />
         </section>
@@ -194,7 +194,7 @@ export default function AdminWithdrawals() {
         <section className="awd-filter">
           <div className="awd-filter-label">Filter by Status</div>
           <div className="awd-filter-btns">
-            {["ALL", "AWAITING_OTP", "PENDING", "APPROVED", "PAID", "FAILED", "REJECTED", "EXPIRED"].map((status) => (
+            {["ALL", "AWAITING_OTP", "PENDING", "PROCESSING", "SUCCESS", "FAILED", "REJECTED", "EXPIRED"].map((status) => (
               <button
                 key={status}
                 className={`awd-filter-btn ${statusFilter === status ? "is-active" : ""}`}
@@ -290,7 +290,6 @@ export default function AdminWithdrawals() {
         <WithdrawalModal
           withdrawal={selectedWithdrawal}
           onClose={() => setSelectedWithdrawal(null)}
-          onApprove={() => handleAction(selectedWithdrawal._id, "approve")}
           onReject={() => handleAction(selectedWithdrawal._id, "reject")}
           isProcessing={processingId === selectedWithdrawal._id}
         />
@@ -391,8 +390,8 @@ function StatusBadge({ status }) {
   const badgeClass = {
     AWAITING_OTP: "is-pending",
     PENDING: "is-pending",
-    APPROVED: "is-approved",
-    PAID: "is-paid",
+    PROCESSING: "is-processing",
+    SUCCESS: "is-success",
     FAILED: "is-failed",
     REJECTED: "is-rejected",
     EXPIRED: "is-expired",
@@ -404,7 +403,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function WithdrawalModal({ withdrawal, onClose, onApprove, onReject, isProcessing }) {
+function WithdrawalModal({ withdrawal, onClose, onReject, isProcessing }) {
   return (
     <div className="awd-modal" onClick={onClose}>
       <div className="awd-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -463,10 +462,7 @@ function WithdrawalModal({ withdrawal, onClose, onApprove, onReject, isProcessin
           {withdrawal.status === "PENDING" && (
             <>
               <button className="awd-btn-danger" onClick={onReject} disabled={isProcessing}>
-                {isProcessing ? "..." : "Reject"}
-              </button>
-              <button className="awd-btn-gold" onClick={onApprove} disabled={isProcessing}>
-                {isProcessing ? "..." : "Approve"}
+                {isProcessing ? "..." : "Emergency refund"}
               </button>
             </>
           )}
@@ -623,8 +619,8 @@ button, input, select { font-family:var(--font-b); }
 /* ── Badges ── */
 .awd-badge { padding:5px 12px; border-radius:999px; font-weight:700; font-size:11px; letter-spacing:.06em; white-space:nowrap; }
 .awd-badge.is-pending { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
-.awd-badge.is-approved { background:var(--live); color:#080910; }
-.awd-badge.is-paid { background:var(--live-dim); color:var(--live); border:1px solid rgba(91,227,154,.35); }
+.awd-badge.is-processing { background:var(--live); color:#080910; }
+.awd-badge.is-success { background:var(--live-dim); color:var(--live); border:1px solid rgba(91,227,154,.35); }
 .awd-badge.is-failed { background:var(--danger-dim); color:var(--danger); border:1px solid rgba(242,104,94,.35); }
 .awd-badge.is-rejected { background:rgba(224,92,92,.15); color:var(--danger); border:1px solid rgba(224,92,92,.35); }
 .awd-badge.is-expired { background:rgba(139,136,126,.12); color:var(--muted); border:1px solid var(--border); }

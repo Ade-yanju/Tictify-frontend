@@ -348,7 +348,7 @@ export default function WithdrawRevenue() {
         if (!res.ok) continue;
         const status = await res.json();
         setLatestWithdrawal(status);
-        if (status.status === "PAID") {
+        if (status.status === "SUCCESS") {
           setModal({
             open: true,
             type: "success",
@@ -417,9 +417,9 @@ export default function WithdrawRevenue() {
         open: true,
         type: "success",
         title:
-          data.status === "PAID"
+          data.status === "SUCCESS"
             ? "Payout on the way! 🎉"
-            : data.status === "APPROVED"
+            : data.status === "PROCESSING"
               ? "Withdrawal processing"
               : "Withdrawal queued",
         message: data.message || "Your withdrawal has been confirmed.",
@@ -717,12 +717,12 @@ button { cursor:pointer; }
 
 .wdr-status-card { margin-bottom:20px; padding:16px 18px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); }
 .wdr-status-card.is-pending, .wdr-status-card.is-awaiting_otp { border-color:rgba(232,201,106,.35); background:linear-gradient(145deg,var(--gold-dim),var(--card)); }
-.wdr-status-card.is-approved, .wdr-status-card.is-paid { border-color:rgba(107,240,160,.35); background:linear-gradient(145deg,rgba(107,240,160,.08),var(--card)); }
+.wdr-status-card.is-processing, .wdr-status-card.is-success { border-color:rgba(107,240,160,.35); background:linear-gradient(145deg,rgba(107,240,160,.08),var(--card)); }
 .wdr-status-card.is-failed, .wdr-status-card.is-rejected { border-color:rgba(224,92,92,.35); background:linear-gradient(145deg,rgba(224,92,92,.08),var(--card)); }
 .wdr-status-topline { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .wdr-status-label { color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
 .wdr-status-topline strong { color:var(--gold); font-family:var(--font-h); font-size:12px; letter-spacing:.05em; text-transform:uppercase; }
-.wdr-status-card.is-approved .wdr-status-topline strong, .wdr-status-card.is-paid .wdr-status-topline strong { color:var(--live); }
+.wdr-status-card.is-processing .wdr-status-topline strong, .wdr-status-card.is-success .wdr-status-topline strong { color:var(--live); }
 .wdr-status-card.is-failed .wdr-status-topline strong, .wdr-status-card.is-rejected .wdr-status-topline strong { color:var(--danger); }
 .wdr-status-card p { margin-top:9px; color:var(--text); font-size:13.5px; line-height:1.55; }
 .wdr-status-card small { display:block; margin-top:8px; color:var(--muted); font-size:12px; }

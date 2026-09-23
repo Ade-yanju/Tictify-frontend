@@ -248,7 +248,7 @@ export default function AdminDashboard() {
       <section className="adb-actions-section">
         <h3 className="adb-section-title">Quick Actions</h3>
         <div className="adb-actions">
-          <ActionCard title="Manage Withdrawals" desc="Approve payout requests" icon={"wallet"} onClick={() => navigate("/admin/withdrawals")} />
+          <ActionCard title="Manage Withdrawals" desc="Monitor automatic payouts" icon={"wallet"} onClick={() => navigate("/admin/withdrawals")} />
           <ActionCard title="View Events" desc="Monitor all events" icon={"calendar"} onClick={() => navigate("/admin/events")} />
           <ActionCard title="Organizers" desc="Manage organizers" icon={"users"} onClick={() => navigate("/admin/organizers")} />
           <ActionCard title="Sales Analytics" desc="View detailed analytics" icon={"bars"} onClick={() => navigate("/admin/sales")} />
