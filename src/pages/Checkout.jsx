@@ -162,6 +162,7 @@ export default function Checkout() {
   /* Card redirects break inside webviews — transfer always works, so
      that's the default in one. Elsewhere card stays the default. */
   const [payMethod, setPayMethod] = useState("card");
+  const [purchaseMode, setPurchaseMode] = useState("full");
   /* null = still asking the server. Never offer a method the account
      can't actually complete — doing so produces instantly-failed
      payments and a guest who can't buy. */
@@ -244,6 +245,10 @@ export default function Checkout() {
     !processing &&
     !salesClosed &&
     !tierSoldOut;
+
+  const installmentPrincipalDue = quote
+    ? Number(quote.subtotal || 0) + Number(quote.platformFee || 0)
+    : null;
 
   useEffect(() => {
     if (!id) {
@@ -378,6 +383,29 @@ export default function Checkout() {
     return data;
   }
 
+  async function initiateInstallmentPayment() {
+    const promoterRef = sessionStorage.getItem("tictify_ref");
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/installments/initiate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: id,
+          ticketType: ticket.name,
+          quantity: qty,
+          name,
+          email,
+          ...(promoterRef ? { promoter: promoterRef } : {}),
+          ...(quote?.discount?.code ? { discountCode: quote.discount.code } : {}),
+        }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Could not start installment payment");
+    return data;
+  }
+
   /* Card (or free) — hand off to Paystack's hosted page */
   async function payByLink() {
     const data = await initiate("link");
@@ -391,6 +419,12 @@ export default function Checkout() {
     setError("");
     setFallbackNote("");
     try {
+      if (purchaseMode === "installment") {
+        const data = await initiateInstallmentPayment();
+        if (!data?.paymentUrl) throw new Error("Installment payment initialization failed");
+        window.location.href = data.paymentUrl;
+        return;
+      }
       /* Free tickets never touch the transfer path */
       if (payMethod !== "transfer" || !(ticket.price > 0)) {
         await payByLink();
@@ -903,7 +937,48 @@ export default function Checkout() {
                 {/* Paid tickets only, and only when there's a real choice
                     to make — transfer is hidden when the account can't
                     provision one. */}
-                {ticket?.price > 0 && !salesClosed && transferOffered && (
+                {ticket?.price > 0 && !salesClosed && event.installmentsEnabled && (
+                  <div className="ck-field">
+                    <label className="ck-label">Payment plan</label>
+                    <div className="ck-pm" role="radiogroup" aria-label="Payment plan">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={purchaseMode === "full"}
+                        className={`ck-pm-opt ${purchaseMode === "full" ? "is-on" : ""}`}
+                        onClick={() => setPurchaseMode("full")}
+                      >
+                        <span className="ck-pm-icon" aria-hidden="true"><Icon name="card" /></span>
+                        <span className="ck-pm-text">
+                          <span className="ck-pm-label">Pay in full</span>
+                          <span className="ck-pm-note">Get your QR ticket after payment</span>
+                        </span>
+                        <span className="ck-pm-tick" aria-hidden="true">{purchaseMode === "full" ? "●" : ""}</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={purchaseMode === "installment"}
+                        className={`ck-pm-opt ${purchaseMode === "installment" ? "is-on" : ""}`}
+                        onClick={() => setPurchaseMode("installment")}
+                      >
+                        <span className="ck-pm-icon" aria-hidden="true"><Icon name="clock" /></span>
+                        <span className="ck-pm-text">
+                          <span className="ck-pm-label">Pay in installments</span>
+                          <span className="ck-pm-note">Minimum {event.installmentMinimumPercent || 30}% now · QR after full payment</span>
+                        </span>
+                        <span className="ck-pm-tick" aria-hidden="true">{purchaseMode === "installment" ? "●" : ""}</span>
+                      </button>
+                    </div>
+                    {purchaseMode === "installment" && (
+                      <p className="ck-step-note">
+                        Your tickets will be reserved and your secure payment link will be emailed. Complete the balance by {event.installmentDueAt ? new Date(event.installmentDueAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "the deadline"}.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {purchaseMode === "full" && ticket?.price > 0 && !salesClosed && transferOffered && (
                   <div className="ck-field">
                     <label className="ck-label">How do you want to pay?</label>
                     <div
@@ -1020,21 +1095,26 @@ export default function Checkout() {
                             </span>
                           </div>
                           <p className="ck-sum-caption">
-                            Instant QR delivery, fraud protection &amp; support
+                            {purchaseMode === "installment"
+                              ? "Charged once and included in your ticket balance"
+                              : "Instant QR delivery, fraud protection &amp; support"}
                           </p>
                         </div>
                         <div className="ck-sum-fee">
                           <div className="ck-sum-row">
                             <span>Secure payment processing</span>
-                            <span className="ck-sum-val ck-num">
-                              ₦
-                              {Number(
-                                quote.processingFee || 0,
-                              ).toLocaleString()}
-                            </span>
+                            {purchaseMode === "installment" ? (
+                              <span className="ck-sum-val ck-num">Per payment</span>
+                            ) : (
+                              <span className="ck-sum-val ck-num">
+                                ₦{Number(quote.processingFee || 0).toLocaleString()}
+                              </span>
+                            )}
                           </div>
                           <p className="ck-sum-caption">
-                            Charged by our payment partner Paystack
+                            {purchaseMode === "installment"
+                              ? "A processing fee is added to each Paystack payment."
+                              : "Charged by our payment partner Paystack"}
                           </p>
                         </div>
                       </>
@@ -1110,17 +1190,21 @@ export default function Checkout() {
               <div className="ck-sum-divider" aria-hidden="true" />
 
               <div className="ck-sum-total">
-                <span className="ck-sum-total-label">Total</span>
+                <span className="ck-sum-total-label">
+                  {purchaseMode === "installment" ? "Ticket balance" : "Total"}
+                </span>
                 <span className="ck-sum-total-num">
                   {ticket?.price > 0
-                    ? `₦${Number(quote?.total ?? effectivePrice(ticket) * qty).toLocaleString()}`
+                    ? `₦${Number(purchaseMode === "installment" ? (installmentPrincipalDue ?? effectivePrice(ticket) * qty) : (quote?.total ?? effectivePrice(ticket) * qty)).toLocaleString()}`
                     : "Free"}
                 </span>
               </div>
 
               <p className="ck-assure">
                 <Icon name="lock" />
-                You&rsquo;re covered — valid QR ticket or your money back
+                {purchaseMode === "installment"
+                  ? "Your QR ticket is issued after the balance is fully paid"
+                  : "You&rsquo;re covered — valid QR ticket or your money back"}
               </p>
 
               {/* Sales window shut — explain once, up front, instead of
@@ -1187,6 +1271,7 @@ export default function Checkout() {
                      promise a next step. */
                   if (salesClosed) return "Ticket sales have closed";
                   if (tierSoldOut) return "Sold out";
+                  if (purchaseMode === "installment") return <>Reserve &amp; pay deposit <Icon name="arrowRight" /></>;
                   const label =
                     ticket?.price > 0
                       ? payMethod === "transfer"

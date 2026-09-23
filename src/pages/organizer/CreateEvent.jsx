@@ -167,6 +167,9 @@ export default function CreateEvent() {
   const [modal, setModal] = useState(null);
   const [affiliatesEnabled, setAffiliatesEnabled] = useState(false);
   const [affiliatePercent, setAffiliatePercent] = useState(15);
+  const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
+  const [installmentMinimumPercent, setInstallmentMinimumPercent] = useState(30);
+  const [installmentDueAt, setInstallmentDueAt] = useState("");
   const [templates, setTemplates] = useState([]);
   useEffect(() => { fetch(`${import.meta.env.VITE_API_URL}/api/events/templates`).then(r => r.json()).then(setTemplates).catch(() => {}); }, []);
 
@@ -248,6 +251,16 @@ export default function CreateEvent() {
     }
     if (salesCloseError) return salesCloseError;
 
+    if (installmentsEnabled && eventType === "PAID") {
+      if (!installmentDueAt) return "Choose when installment payments must be completed";
+      const deadline = new Date(installmentDueAt);
+      if (isNaN(deadline.getTime())) return "Enter a valid installment deadline";
+      if (deadline <= new Date()) return "Installment deadline must be in the future";
+      if (form.startTime && deadline > new Date(form.startTime)) {
+        return "Installment deadline must be before the event starts";
+      }
+    }
+
     for (const t of form.ticketTypes) {
       if (!t.name || !t.quantity) {
         return "Ticket name and quantity are required";
@@ -285,6 +298,11 @@ export default function CreateEvent() {
         capacity: Number(form.capacity),
         affiliatesEnabled,
         ...(affiliatesEnabled ? { affiliatePercent: affPercentClamped } : {}),
+        installmentsEnabled: eventType === "PAID" && installmentsEnabled,
+        installmentMinimumPercent: Math.min(90, Math.max(10, Number(installmentMinimumPercent) || 30)),
+        ...(eventType === "PAID" && installmentsEnabled && installmentDueAt
+          ? { installmentDueAt }
+          : {}),
         ticketTypes: form.ticketTypes.map((t) => ({
           name: t.name,
           quantity: Number(t.quantity),
@@ -812,6 +830,57 @@ export default function CreateEvent() {
               </button>
             </div>
           </div>
+
+          {/* INSTALLMENTS */}
+          {eventType === "PAID" && (
+            <div className="cev-block">
+              <p className="cev-label">Installment payments</p>
+              <button
+                type="button"
+                className={`cev-aff-toggle ${installmentsEnabled ? "is-on" : ""}`}
+                role="switch"
+                aria-checked={installmentsEnabled}
+                onClick={() => setInstallmentsEnabled((value) => !value)}
+              >
+                <span className="cev-aff-knob" aria-hidden="true" />
+                <span>Allow guests to pay in installments</span>
+              </button>
+              <p className="cev-sw-help">
+                A reservation holds the tickets, but the QR ticket is only issued after the full balance is paid.
+              </p>
+              {installmentsEnabled && (
+                <div className="cev-grid cev-installment-fields">
+                  <div className="cev-field">
+                    <label className="cev-field-label" htmlFor="cev-installment-percent">
+                      Minimum first payment %
+                    </label>
+                    <input
+                      id="cev-installment-percent"
+                      type="number"
+                      min="10"
+                      max="90"
+                      className="cev-input"
+                      value={installmentMinimumPercent}
+                      onChange={(e) => setInstallmentMinimumPercent(e.target.value)}
+                    />
+                  </div>
+                  <div className="cev-field">
+                    <label className="cev-field-label" htmlFor="cev-installment-due">
+                      Complete payment by
+                    </label>
+                    <input
+                      id="cev-installment-due"
+                      type="datetime-local"
+                      className="cev-input"
+                      max={form.startTime || undefined}
+                      value={installmentDueAt}
+                      onChange={(e) => setInstallmentDueAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* AFFILIATES */}
           <div className="cev-block">

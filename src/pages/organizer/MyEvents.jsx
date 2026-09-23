@@ -719,6 +719,15 @@ function EditEventModal({ event, onClose, onSaved }) {
   const [affiliatePercent, setAffiliatePercent] = useState(
     event.affiliatePercent ?? 15,
   );
+  const [installmentsEnabled, setInstallmentsEnabled] = useState(
+    !!event.installmentsEnabled,
+  );
+  const [installmentMinimumPercent, setInstallmentMinimumPercent] = useState(
+    event.installmentMinimumPercent ?? 30,
+  );
+  const [installmentDueAt, setInstallmentDueAt] = useState(
+    event.installmentDueAt ? toLocalInput(event.installmentDueAt) : "",
+  );
 
   const affPercentClamped = Math.min(
     50,
@@ -757,6 +766,26 @@ function EditEventModal({ event, onClose, onSaved }) {
     return "";
   })();
 
+  const installmentPercentClamped = Math.min(
+    90,
+    Math.max(10, Number(installmentMinimumPercent) || 30),
+  );
+
+  const installmentError = (() => {
+    if (!installmentsEnabled) return "";
+    if (!(event.ticketTypes || []).some((ticket) => Number(ticket.price) > 0)) {
+      return "Installments are only available when the event has paid tickets";
+    }
+    if (!installmentDueAt) return "Choose when installment payments must be completed";
+    const deadline = new Date(installmentDueAt);
+    if (isNaN(deadline.getTime())) return "Enter a valid installment deadline";
+    if (deadline <= new Date()) return "Installment deadline must be in the future";
+    if (form.startTime && deadline > new Date(form.startTime)) {
+      return "Installment deadline must be before the event starts";
+    }
+    return "";
+  })();
+
   /* "Sat, 22 Aug 2026, 11:59 PM" */
   const formatWhen = (value) => {
     if (!value) return null;
@@ -776,7 +805,9 @@ function EditEventModal({ event, onClose, onSaved }) {
 
   async function save() {
     if (saving) return;
-    if (salesCloseError) return setError(salesCloseError);
+    if (salesCloseError || installmentError) {
+      return setError(salesCloseError || installmentError);
+    }
     setSaving(true);
     setError("");
     try {
@@ -805,6 +836,9 @@ function EditEventModal({ event, onClose, onSaved }) {
             ...(affiliatesEnabled
               ? { affiliatePercent: affPercentClamped }
               : {}),
+            installmentsEnabled,
+            installmentMinimumPercent: installmentPercentClamped,
+            installmentDueAt: installmentsEnabled ? installmentDueAt : "",
           }),
         },
       );
@@ -1006,6 +1040,59 @@ function EditEventModal({ event, onClose, onSaved }) {
               onChange={update}
             />
           </div>
+
+          <div className="mev-form-field mev-form-span2">
+            <button
+              type="button"
+              className={`mev-aff-toggle ${installmentsEnabled ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={installmentsEnabled}
+              onClick={() => setInstallmentsEnabled((value) => !value)}
+            >
+              <span className="mev-aff-knob" aria-hidden="true" />
+              <span>Allow guests to pay in installments</span>
+            </button>
+            <p className="mev-aff-hint">
+              Tickets remain reserved, but the QR ticket is issued only after
+              the balance is complete.
+            </p>
+          </div>
+
+          {installmentsEnabled && (
+            <>
+              <div className="mev-form-field">
+                <label className="mev-form-label" htmlFor="mev-edit-installment-percent">
+                  Minimum first payment (%)
+                </label>
+                <input
+                  id="mev-edit-installment-percent"
+                  type="number"
+                  min="10"
+                  max="90"
+                  className="mev-form-input"
+                  value={installmentMinimumPercent}
+                  onChange={(e) => setInstallmentMinimumPercent(e.target.value)}
+                />
+              </div>
+              <div className="mev-form-field">
+                <label className="mev-form-label" htmlFor="mev-edit-installment-due">
+                  Balance due by
+                </label>
+                <input
+                  id="mev-edit-installment-due"
+                  type="datetime-local"
+                  className="mev-form-input"
+                  value={installmentDueAt}
+                  max={form.startTime || undefined}
+                  onChange={(e) => setInstallmentDueAt(e.target.value)}
+                />
+              </div>
+              <p className="mev-aff-hint mev-form-span2">
+                Guests receive a secure payment link by email and can make one
+                or more balance payments before this deadline.
+              </p>
+            </>
+          )}
 
           <div className="mev-form-field mev-form-span2">
             <span className="mev-form-label">Banner display</span>

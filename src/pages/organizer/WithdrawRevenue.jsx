@@ -16,7 +16,8 @@ function injectStyles(id, content) {
   }
 }
 
-// Fixed Paystack codes for common digital & commercial banks
+// Fallback only for local/test environments. Production bank options come
+// from the backend's live Paystack bank list.
 const NIGERIAN_BANKS = [
   { code: "", name: "-- Select Bank --" },
   { code: "044", name: "Access Bank" },
@@ -29,11 +30,10 @@ const NIGERIAN_BANKS = [
   { code: "057", name: "Zenith Bank" },
 ];
 
-/* ── Transfer charge tiers — mirrors the server ──────────────
-   ₦50  for withdrawals of ₦9,999 and below
-   ₦200 for withdrawals of ₦10,000 and above                */
+/* This is only a display estimate. The backend calculates and stores the
+   final fee, which is the source of truth for every withdrawal. */
 function getTransferCharge(amount) {
-  return amount >= 10000 ? 200 : 50;
+  return amount > 0 ? 100 : 0;
 }
 
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
@@ -159,6 +159,8 @@ export default function WithdrawRevenue() {
     accountName: "",
   });
   const [balance, setBalance] = useState(0);
+  const [banks, setBanks] = useState(NIGERIAN_BANKS);
+  const [latestWithdrawal, setLatestWithdrawal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [modal, setModal] = useState({
@@ -195,8 +197,42 @@ export default function WithdrawRevenue() {
     }
   }
 
+  async function loadBanks() {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/withdrawals/banks`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      const data = await res.json();
+      if (res.ok && Array.isArray(data?.banks) && data.banks.length) {
+        setBanks([{ code: "", name: "-- Select Bank --" }, ...data.banks]);
+      }
+    } catch {
+      // Keep the small fallback list for local/test environments where the
+      // backend may not have Paystack credentials configured.
+    }
+  }
+
+  async function loadWithdrawalHistory() {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/withdrawals/all`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      const data = await res.json();
+      if (res.ok && Array.isArray(data) && data.length) {
+        setLatestWithdrawal(data[0]);
+      }
+    } catch {
+      // Withdrawal history is non-blocking; the server status remains the
+      // source of truth when a request is actively being tracked.
+    }
+  }
+
   useEffect(() => {
     loadBalance();
+    loadBanks();
+    loadWithdrawalHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -228,7 +264,7 @@ export default function WithdrawRevenue() {
 
     setLoading(true);
     try {
-      const selectedBank = NIGERIAN_BANKS.find((b) => b.code === form.bankCode);
+      const selectedBank = banks.find((b) => b.code === form.bankCode);
 
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/withdrawals/request`,
@@ -241,7 +277,7 @@ export default function WithdrawRevenue() {
           body: JSON.stringify({
             amount: amountNum,
             bankDetails: {
-              bankName: selectedBank.name,
+              bankName: selectedBank?.name || "",
               bankCode: form.bankCode,
               accountNumber: form.accountNumber.trim(),
               accountName: form.accountName.trim(),
@@ -273,7 +309,9 @@ export default function WithdrawRevenue() {
           title: "",
           message: "Payout successful! Funds are arriving now.",
         });
-        setBalance((prev) => prev - amountNum);
+        // Reload the server balance instead of applying a client-side
+        // subtraction. Wallet holds and provider settlement are backend truth.
+        loadBalance();
         setForm({
           amount: "",
           bankCode: "",
@@ -292,6 +330,49 @@ export default function WithdrawRevenue() {
     setOtpStep({ open: false, withdrawalId: null, message: "" });
     setOtp("");
     setOtpError("");
+  }
+
+  async function trackWithdrawal(withdrawalId) {
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    // The transfer API is asynchronous. Keep the organizer page aligned with
+    // the backend/webhook state for a short period, then leave the queued
+    // message in place if the bank/provider is still processing.
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await wait(5000);
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/withdrawals/${withdrawalId}/status`,
+          { headers: { Authorization: `Bearer ${getToken()}` } },
+        );
+        if (!res.ok) continue;
+        const status = await res.json();
+        setLatestWithdrawal(status);
+        if (status.status === "PAID") {
+          setModal({
+            open: true,
+            type: "success",
+            title: "Payout completed 🎉",
+            message: status.message,
+          });
+          await loadBalance();
+          return;
+        }
+        if (status.status === "FAILED" || status.status === "REJECTED") {
+          setModal({
+            open: true,
+            type: "error",
+            title: "Withdrawal update",
+            message: status.message,
+          });
+          await loadBalance();
+          return;
+        }
+      } catch {
+        // A temporary status request failure should not disturb the queued
+        // withdrawal; the next scheduled attempt will reconcile it.
+      }
+    }
   }
 
   async function confirmOtp(e) {
@@ -338,11 +419,15 @@ export default function WithdrawRevenue() {
         title:
           data.status === "PAID"
             ? "Payout on the way! 🎉"
-            : "Withdrawal confirmed",
+            : data.status === "APPROVED"
+              ? "Withdrawal processing"
+              : "Withdrawal queued",
         message: data.message || "Your withdrawal has been confirmed.",
       });
       setForm({ amount: "", bankCode: "", accountNumber: "", accountName: "" });
       loadBalance();
+      loadWithdrawalHistory();
+      trackWithdrawal(otpStep.withdrawalId);
     } catch (err) {
       setOtpError(err.message || "Something went wrong. Try again.");
     } finally {
@@ -447,6 +532,21 @@ export default function WithdrawRevenue() {
       )}
 
       <div className="wdr-stage">
+        {latestWithdrawal && (
+          <section className={`wdr-status-card is-${String(latestWithdrawal.status || "").toLowerCase()}`}>
+            <div className="wdr-status-topline">
+              <span className="wdr-status-label">Latest withdrawal</span>
+              <strong>{String(latestWithdrawal.status || "").replaceAll("_", " ")}</strong>
+            </div>
+            <p>{latestWithdrawal.message}</p>
+            {latestWithdrawal.accountLast4 && (
+              <small>
+                {latestWithdrawal.bankName || "Bank account"} ····{latestWithdrawal.accountLast4}
+              </small>
+            )}
+          </section>
+        )}
+
         {/* ── Hero balance card ── */}
         <section className="wdr-hero">
           <div className="wdr-hero-icon" aria-hidden="true">
@@ -518,7 +618,7 @@ export default function WithdrawRevenue() {
             onChange={updateField}
             required
           >
-            {NIGERIAN_BANKS.map((b) => (
+            {banks.map((b) => (
               <option key={b.code} value={b.code}>
                 {b.name}
               </option>
@@ -614,6 +714,18 @@ button { cursor:pointer; }
 
 /* ── Stage ── */
 .wdr-stage { max-width:460px; animation:wdrFadeUp .4s ease; }
+
+.wdr-status-card { margin-bottom:20px; padding:16px 18px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); }
+.wdr-status-card.is-pending, .wdr-status-card.is-awaiting_otp { border-color:rgba(232,201,106,.35); background:linear-gradient(145deg,var(--gold-dim),var(--card)); }
+.wdr-status-card.is-approved, .wdr-status-card.is-paid { border-color:rgba(107,240,160,.35); background:linear-gradient(145deg,rgba(107,240,160,.08),var(--card)); }
+.wdr-status-card.is-failed, .wdr-status-card.is-rejected { border-color:rgba(224,92,92,.35); background:linear-gradient(145deg,rgba(224,92,92,.08),var(--card)); }
+.wdr-status-topline { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.wdr-status-label { color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
+.wdr-status-topline strong { color:var(--gold); font-family:var(--font-h); font-size:12px; letter-spacing:.05em; text-transform:uppercase; }
+.wdr-status-card.is-approved .wdr-status-topline strong, .wdr-status-card.is-paid .wdr-status-topline strong { color:var(--live); }
+.wdr-status-card.is-failed .wdr-status-topline strong, .wdr-status-card.is-rejected .wdr-status-topline strong { color:var(--danger); }
+.wdr-status-card p { margin-top:9px; color:var(--text); font-size:13.5px; line-height:1.55; }
+.wdr-status-card small { display:block; margin-top:8px; color:var(--muted); font-size:12px; }
 
 /* Hero balance card */
 .wdr-hero { position:relative; overflow:hidden; background:linear-gradient(145deg, var(--gold-dim), var(--card) 65%); border:1px solid rgba(232,201,106,.32); border-radius:var(--r); padding:clamp(22px,4vw,30px); display:flex; flex-direction:column; gap:6px; margin-bottom:20px; }

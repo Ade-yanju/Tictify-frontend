@@ -202,6 +202,18 @@ export default function Legal() {
             reference (it starts with <code>TICTIFY-</code>) and we will help mediate.
           </p>
 
+          <h3>Installment reservations</h3>
+          <p>
+            For installment purchases, the Tictify service fee is charged once and included in the
+            ticket balance; Paystack&apos;s payment-processing fee is applied to each separate
+            payment and shown before it is confirmed. The ticket remains reserved but no QR code
+            is issued until the balance is complete. If the balance is not completed by the
+            organizer&apos;s deadline, the reservation expires, the ticket is released, and all
+            successful installment charges (including applicable processing fees) are refunded to
+            the original payment method. Banks and card providers may take 3–10 working days to
+            display the refund.
+          </p>
+
           <h3>Duplicate or failed charges</h3>
           <p>
             If you were charged but did not receive a ticket, your payment is recoverable — email

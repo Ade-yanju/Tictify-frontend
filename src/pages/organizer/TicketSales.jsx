@@ -139,6 +139,7 @@ export default function TicketSales() {
   const navigate = useNavigate();
 
   const [data, setData] = useState(EMPTY_SALES);
+  const [installments, setInstallments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({
     open: false,
@@ -197,6 +198,12 @@ export default function TicketSales() {
     }
 
     loadSales();
+    fetch(`${import.meta.env.VITE_API_URL}/api/installments/organizer/list`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows) => mounted && setInstallments(Array.isArray(rows) ? rows : []))
+      .catch(() => {});
     return () => {
       mounted = false;
     };
@@ -329,6 +336,37 @@ export default function TicketSales() {
                   ))}
                 </div>
               </>
+            )}
+          </section>
+
+          <section className="tks-section">
+            <h2 className="tks-section-title">Installment reservations</h2>
+            {installments.length === 0 ? (
+              <div className="tks-empty">
+                <p className="tks-empty-icon"><Icon name="clock" /></p>
+                <p className="tks-empty-text">No installment reservations yet.</p>
+              </div>
+            ) : (
+              <div className="tks-table-wrap">
+                <div className="tks-table-scroll">
+                  <table className="tks-table">
+                    <thead>
+                      <tr><th>Event</th><th>Guest</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                      {installments.map((plan) => (
+                        <tr key={plan._id}>
+                          <td className="tks-cell-title">{plan.event?.title || plan.eventTitle}</td>
+                          <td>{plan.email}</td>
+                          <td className="tks-cell-num">₦{Number(plan.amountPaid || 0).toLocaleString()}</td>
+                          <td className="tks-cell-num tks-cell-revenue">₦{Number(plan.amountRemaining || 0).toLocaleString()}</td>
+                          <td><span className={`tks-badge ${plan.status === "PAID" ? "is-live" : plan.status === "EXPIRED" ? "is-ended" : "is-pending"}`}>{plan.status.replaceAll("_", " ")}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </section>
         </>

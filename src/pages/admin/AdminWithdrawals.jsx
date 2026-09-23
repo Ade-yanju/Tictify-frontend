@@ -31,7 +31,7 @@ function payoutStatusLabel(status) {
   if (status === "PAID") return "Settled / confirmed";
   if (status === "APPROVED") return "Sent to Paystack — awaiting confirmation";
   if (status === "FAILED") return "Failed — funds returned";
-  if (status === "PENDING") return "Awaiting approval";
+  if (status === "PENDING") return "Queued — automatic retry";
   return status || "—";
 }
 
@@ -117,9 +117,8 @@ export default function AdminWithdrawals() {
         }
       );
 
-      /* Surface the server's actual reason — the payout path returns
-         Paystack's own error (e.g. transfers not enabled, balance too
-         low) and puts the request back in the pending queue. */
+      /* The backend keeps provider diagnostics private and returns a safe
+         queue message. Detailed reconciliation data remains server-side. */
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Action failed");
 
@@ -183,7 +182,7 @@ export default function AdminWithdrawals() {
           </div>
         )}
 
-        {/* Action failure — shows Paystack's real reason, request stays pending */}
+        {/* Action feedback — provider diagnostics stay server-side */}
         {actionError && (
           <div className="awd-action-err" role="alert">
             <span>{actionError}</span>

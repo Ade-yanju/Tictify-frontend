@@ -7,6 +7,7 @@ import EventDetails from "../pages/EventDetails";
 import Checkout from "../pages/Checkout";
 import TicketSuccess from "../pages/TicketSuccess";
 import PaymentPending from "../pages/PaymentPending";
+import InstallmentPlan from "../pages/InstallmentPlan";
 import MyTickets from "../pages/MyTickets";
 import CampusAmbassadors from "../pages/CampusAmbassadors";
 import AmbassadorDashboard from "../pages/AmbassadorDashboard";
@@ -59,6 +60,7 @@ export default function AppRoutes() {
         <Route path="/checkout/:id" element={<Checkout />} />
         <Route path="/success/:reference" element={<TicketSuccess />} />
         <Route path="/payment/pending" element={<PaymentPending />} />
+        <Route path="/installments/:token" element={<InstallmentPlan />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/campusambassadors" element={<CampusAmbassadors />} />
         <Route path="/ambassador" element={<AmbassadorDashboard />} />

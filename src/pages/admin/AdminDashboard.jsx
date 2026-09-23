@@ -73,6 +73,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [installments, setInstallments] = useState([]);
   const [finance, setFinance] = useState(null);
   const [financeLoading, setFinanceLoading] = useState(true);
   const [financeError, setFinanceError] = useState("");
@@ -89,11 +90,14 @@ export default function AdminDashboard() {
 
     async function load() {
       try {
-        const [dashRes, chartRes] = await Promise.all([
+        const [dashRes, chartRes, installmentRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/installments/admin/list`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -104,6 +108,7 @@ export default function AdminDashboard() {
 
         setData(await dashRes.json());
         setAnalytics(await chartRes.json());
+        if (installmentRes.ok) setInstallments(await installmentRes.json());
       } catch (err) {
         setError(err.message || "Unable to load dashboard");
       } finally {
@@ -236,6 +241,8 @@ export default function AdminDashboard() {
 
       {/* Recent activity */}
       <RecentActivity rows={recentSales} />
+
+      <InstallmentOverview rows={installments} />
 
       {/* Quick Actions */}
       <section className="adb-actions-section">
@@ -665,6 +672,44 @@ function RecentActivity({ rows }) {
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+function InstallmentOverview({ rows }) {
+  const active = rows.filter((row) => ["RESERVED", "PARTIALLY_PAID"].includes(row.status));
+  const paid = rows.filter((row) => row.status === "PAID");
+  const outstanding = active.reduce((sum, row) => sum + Number(row.amountRemaining || 0), 0);
+  return (
+    <section className="adb-sbe">
+      <div className="adb-finance-head">
+        <div>
+          <h3 className="adb-section-title">Installment reservations</h3>
+          <p className="adb-finance-muted">Deposits, reserved inventory and balances still owed by guests.</p>
+        </div>
+        <div className="adb-finance-muted">{active.length} active · {paid.length} completed · ₦{outstanding.toLocaleString()} outstanding</div>
+      </div>
+      {rows.length === 0 ? (
+        <div className="adb-empty"><p>No installment reservations yet.</p></div>
+      ) : (
+        <div className="adb-table-wrap">
+          <table className="adb-table">
+            <thead><tr><th>Event</th><th>Organizer</th><th>Guest</th><th className="adb-num">Paid</th><th className="adb-num">Balance</th><th>Status</th></tr></thead>
+            <tbody>
+              {rows.slice(0, 100).map((row) => (
+                <tr key={row._id}>
+                  <td data-label="Event"><strong className="adb-td-strong">{row.event?.title || row.eventTitle}</strong></td>
+                  <td data-label="Organizer">{row.organizer?.name || row.organizer?.email || "—"}</td>
+                  <td data-label="Guest">{row.email}</td>
+                  <td data-label="Paid" className="adb-num adb-gold">₦{Number(row.amountPaid || 0).toLocaleString()}</td>
+                  <td data-label="Balance" className="adb-num">₦{Number(row.amountRemaining || 0).toLocaleString()}</td>
+                  <td data-label="Status"><StatusChip status={row.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );
