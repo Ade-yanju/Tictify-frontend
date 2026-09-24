@@ -24,6 +24,7 @@ import {
 import { getToken } from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -47,75 +48,14 @@ const NAV = [
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
 function Shell({ active, title, subtitle, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = (cls) =>
-    NAV.map((item) => (
-      <button
-        key={item.key}
-        className={`${cls} ${active === item.key ? "is-active" : ""}`}
-        onClick={() => go(item.to)}
-      >
-        <Icon name={item.icon} />
-        <span>{item.label}</span>
-      </button>
-    ));
-
   return (
-    <div className="sct-app">
-      <aside className="sct-sidebar">
-        <button className="sct-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <nav className="sct-nav">{navButtons("sct-nav-item")}</nav>
-      </aside>
-
-      <header className="sct-topbar">
-        <button className="sct-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <button
-          className={`sct-burger ${menuOpen ? "is-open" : ""}`}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </header>
-
-      <div className={`sct-drawer ${menuOpen ? "is-open" : ""}`}>
-        {navButtons("sct-drawer-item")}
-      </div>
-
-      <main className="sct-main">
-        <div className="sct-head">
-          <h1 className="sct-title">{title}</h1>
-          {subtitle && <p className="sct-subtitle">{subtitle}</p>}
-        </div>
-        {children}
-      </main>
-    </div>
+    <OrganizerChrome active={active} title={title} subtitle={subtitle} legacyPrefix="sct">
+      {children}
+    </OrganizerChrome>
   );
 }
 
 export default function ScanTicket() {
-  injectStyles("tictify-scan-ticket-css", CSS);
 
   const navigate = useNavigate();
   const [params] = useSearchParams();

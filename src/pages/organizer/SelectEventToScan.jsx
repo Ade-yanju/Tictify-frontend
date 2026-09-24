@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 import { getToken } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -29,70 +30,10 @@ const NAV = [
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
 function Shell({ active, title, subtitle, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = (cls) =>
-    NAV.map((item) => (
-      <button
-        key={item.key}
-        className={`${cls} ${active === item.key ? "is-active" : ""}`}
-        onClick={() => go(item.to)}
-      >
-        <Icon name={item.icon} />
-        <span>{item.label}</span>
-      </button>
-    ));
-
   return (
-    <div className="ses-app">
-      <aside className="ses-sidebar">
-        <button className="ses-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <nav className="ses-nav">{navButtons("ses-nav-item")}</nav>
-      </aside>
-
-      <header className="ses-topbar">
-        <button className="ses-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <button
-          className={`ses-burger ${menuOpen ? "is-open" : ""}`}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </header>
-
-      <div className={`ses-drawer ${menuOpen ? "is-open" : ""}`}>
-        {navButtons("ses-drawer-item")}
-      </div>
-
-      <main className="ses-main">
-        <div className="ses-head">
-          <h1 className="ses-title">{title}</h1>
-          {subtitle && <p className="ses-subtitle">{subtitle}</p>}
-        </div>
-        {children}
-      </main>
-    </div>
+    <OrganizerChrome active={active} title={title} subtitle={subtitle} legacyPrefix="ses">
+      {children}
+    </OrganizerChrome>
   );
 }
 
@@ -100,7 +41,6 @@ function Shell({ active, title, subtitle, children }) {
 const EMPTY_EVENTS = [];
 
 export default function SelectEventToScan() {
-  injectStyles("tictify-select-scan-css", CSS);
 
   const navigate = useNavigate();
 

@@ -1,0 +1,19 @@
+.orgx-insight-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(230px, .8fr) minmax(220px, .7fr); gap: 14px; margin: 0 0 22px; }
+.orgx-insight-grid .orgx-panel { min-height: 220px; }
+.orgx-bars-chart { display: flex; align-items: flex-end; gap: 10px; height: 142px; margin-top: 28px; padding: 0 10px 22px; border-bottom: 1px solid #ece6f3; background: repeating-linear-gradient(to bottom, transparent 0 31px, #f1ecf5 32px 33px); }
+.orgx-bar-item { display: flex; height: 100%; flex: 1; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
+.orgx-bar-item span { width: min(26px, 70%); min-height: 8px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #7418ed, #ad65f1); }
+.orgx-bar-item small { max-width: 46px; overflow: hidden; color: #a398ad; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.orgx-attendance-ring { display: grid; width: 132px; height: 132px; margin: 28px auto 14px; place-items: center; border-radius: 50%; }
+.orgx-attendance-ring::before { width: 88px; height: 88px; border-radius: 50%; background: #fff; content: ""; grid-area: 1 / 1; }
+.orgx-attendance-ring div { z-index: 1; display: grid; place-items: center; grid-area: 1 / 1; }
+.orgx-attendance-ring strong { color: #342642; font-family: var(--font-h); font-size: 20px; }
+.orgx-attendance-ring span { color: #9b90a5; font-size: 9px; }
+.orgx-insight-caption { margin: 0; color: #8e829b; font-size: 10px; text-align: center; }
+.orgx-insight-summary { display: grid; align-content: start; gap: 0; }
+.orgx-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 19px 0; border-bottom: 1px solid #f0ecf4; color: #897d94; font-size: 11px; }
+.orgx-summary-row:last-child { border-bottom: 0; }
+.orgx-summary-row strong { color: #7418ed; font-family: var(--font-h); font-size: 15px; }
+
+@media (max-width: 980px) { .orgx-insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .orgx-insight-bars { grid-column: span 2; } }
+@media (max-width: 600px) { .orgx-insight-grid { grid-template-columns: 1fr; } .orgx-insight-bars { grid-column: span 1; } }

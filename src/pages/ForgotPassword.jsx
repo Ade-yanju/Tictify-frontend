@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════════════ */
 import { useState } from "react";
 import Icon from "../components/Icon";
+import AuthBrandPanel from "../components/AuthBrandPanel";
 import { useNavigate } from "react-router-dom";
 
 const logo = "/logo.png";
@@ -56,14 +57,16 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="fp-page">
+    <div className="fp-page auth-page auth-forgot">
       <div className="fp-glow" aria-hidden="true" />
+
+      <AuthBrandPanel />
 
       <button className="fp-back" onClick={() => navigate("/login")}>
         ← Back
       </button>
 
-      <div className="fp-card">
+      <div className="fp-card auth-card">
         <img
           src={logo}
           alt="Tictify"

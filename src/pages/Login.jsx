@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Icon from "../components/Icon";
+import AuthBrandPanel from "../components/AuthBrandPanel";
 import {
   login,
   verifyEmail,
@@ -365,7 +366,7 @@ export default function Login() {
 
   return (
     <div
-      className="lg-page"
+      className="lg-page auth-page auth-login"
       style={{
         minHeight: "100svh",
         background: "var(--bg)",
@@ -392,6 +393,8 @@ export default function Login() {
           animation: "glowPulse 4s ease infinite",
         }}
       />
+
+      <AuthBrandPanel />
 
       {modal && (
         <AuthModal
@@ -456,7 +459,7 @@ export default function Login() {
 
       {/* Card */}
       <div
-        className="lg-card"
+        className="lg-card auth-card"
         style={{
           position: "relative",
           zIndex: 1,
@@ -471,6 +474,7 @@ export default function Login() {
       >
         {/* Logo mark */}
         <div
+          className="auth-mark"
           style={{
             width: 44,
             height: 44,

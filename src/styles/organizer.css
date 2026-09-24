@@ -1,0 +1,235 @@
+/* Organizer console visual system
+   Shared across the legacy page shells so every organizer route reads as one
+   product: purple navigation, a light workspace, quiet borders, and clear
+   data hierarchy. Behaviour remains in the page components. */
+
+:is(
+  .odb-shell,
+  .mev-shell,
+  .tks-shell,
+  .cev-shell,
+  .wdr-app,
+  .sct-app,
+  .oes-app,
+  .org-shell
+) {
+  --bg: #f7f6fb;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --border: #e8e2f0;
+  --border-h: #cfc2df;
+  --text: #2c2438;
+  --muted: #756b82;
+  --gold: #7418ed;
+  --gold-dim: #f0e8ff;
+  --gold-glo: rgba(116, 24, 237, 0.2);
+  --live: #179b64;
+  --danger: #d14c63;
+  min-height: 100svh;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell) :is(.odb-side, .mev-side, .tks-side, .cev-side),
+:is(.wdr-app, .sct-app, .oes-app) :is(.wdr-sidebar, .sct-sidebar, .oes-sidebar),
+.org-shell .org-side {
+  width: 226px !important;
+  background: linear-gradient(180deg, #7100f2 0%, #4c00c9 100%) !important;
+  border: 0 !important;
+  color: #fff !important;
+  box-shadow: 10px 0 32px rgba(74, 20, 145, 0.12);
+}
+
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell) :is(.odb-wordmark, .mev-wordmark, .tks-wordmark, .cev-wordmark),
+:is(.wdr-app, .sct-app, .oes-app) :is(.wdr-wordmark, .sct-wordmark, .oes-wordmark),
+.org-shell .org-brand {
+  color: #fff !important;
+  font-family: var(--font-h) !important;
+  letter-spacing: -0.045em;
+}
+
+:is(.odb-wordmark, .mev-wordmark, .tks-wordmark, .cev-wordmark, .wdr-wordmark, .sct-wordmark, .oes-wordmark) :is(em, span),
+.org-shell .org-brand em {
+  color: #e8ccff !important;
+}
+
+:is(.odb-nav-item, .mev-nav-item, .tks-nav-item, .cev-nav-item, .wdr-nav-item, .sct-nav-item, .oes-nav-item, .org-link) {
+  border: 0 !important;
+  border-radius: 11px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+:is(.odb-nav-item, .mev-nav-item, .tks-nav-item, .cev-nav-item, .wdr-nav-item, .sct-nav-item, .oes-nav-item, .org-link):hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+:is(.odb-nav-item.is-active, .mev-nav-item.is-active, .tks-nav-item.is-active, .cev-nav-item.is-active, .wdr-nav-item.is-active, .sct-nav-item.is-active, .oes-nav-item.is-active, .org-link.active) {
+  background: rgba(255, 255, 255, 0.19) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 #fff;
+}
+
+:is(.odb-nav-item.is-active, .mev-nav-item.is-active, .tks-nav-item.is-active, .cev-nav-item.is-active, .wdr-nav-item.is-active, .sct-nav-item.is-active, .oes-nav-item.is-active)::before {
+  display: none !important;
+}
+
+.org-shell .org-logout,
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell) .odb-logout {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app) :is(.odb-main, .mev-main, .tks-main, .cev-main, .wdr-main, .sct-main, .oes-main),
+.org-shell .org-main {
+  max-width: 1280px !important;
+  margin-left: auto;
+  margin-right: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(20px, 4vw, 56px) 72px !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+.org-shell .org-main { margin-left: 226px; }
+
+:is(.odb-title, .mev-title, .tks-title, .cev-title, .wdr-title, .sct-title, .oes-title, .ins-wrap h1, .ref-wrap h1, .fb-card h1) {
+  color: #2b203a !important;
+  font-family: var(--font-h) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.045em !important;
+}
+
+:is(.odb-sub, .mev-sub, .tks-sub, .cev-sub, .wdr-subtitle, .sct-subtitle, .oes-subtitle, .ins-sub, .ref-sub, .fb-card > p) {
+  color: #81768e !important;
+}
+
+:is(.odb-card, .odb-kpi, .odb-action, .odb-event, .odb-empty, .odb-wallet, .odb-wa, .mev-card, .mev-empty, .tks-kpi, .tks-table-wrap, .tks-card, .tks-empty, .wdr-status-card, .wdr-hero, .wdr-card, .sct-gate, .sct-scanner-card, .oes-card, .oes-empty, .cev-block, .cev-preview, .ins-card, .ins-empty, .ref-card, .ref-how article, .fb-card) {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: 0 8px 24px rgba(67, 39, 101, 0.045);
+}
+
+:is(.odb-kpi, .odb-action, .odb-event, .odb-empty, .mev-card, .mev-empty, .tks-kpi, .tks-table-wrap, .tks-card, .tks-empty, .wdr-status-card, .wdr-card, .sct-gate, .sct-scanner-card, .oes-card, .oes-empty, .cev-block, .cev-preview, .ins-card, .ins-empty, .ref-card, .ref-how article, .fb-card) {
+  background: #fff !important;
+}
+
+.odb-wallet,
+.wdr-hero {
+  border: 0 !important;
+  background: linear-gradient(135deg, #5d00d9 0%, #8b1df0 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 14px 34px rgba(93, 0, 217, 0.2) !important;
+}
+
+:is(.odb-wallet, .wdr-hero) :is(.odb-wallet-label, .odb-wallet-value, .odb-wallet-note, .wdr-hero-label, .wdr-hero-amount, .wdr-hero-hint) { color: #fff !important; }
+:is(.odb-wallet, .wdr-hero) :is(.odb-eye, .wdr-hero-icon) { background: rgba(255,255,255,.15) !important; border-color: rgba(255,255,255,.22) !important; color: #fff !important; }
+
+.odb-wa {
+  background: #f6efff !important;
+  border-color: #ded0f2 !important;
+}
+
+:is(.odb-wa-title, .odb-section-title, .mev-section-title, .tks-section-title, .cev-block-title, .oes-promo-title) { color: #342642 !important; }
+:is(.odb-kpi-label, .mev-card-meta, .tks-cell-title, .wdr-label, .oes-meta, .ins-card small, .ref-stat, .ref-how span, .fb-label) { color: #83788f !important; }
+
+:is(.odb-btn-gold, .mev-btn-gold, .tks-btn-gold, .wdr-btn-gold, .cev-btn-gold, .sct-btn-gold, .oes-btn-gold, .ref-actions button, .fb-form button) {
+  border: 0 !important;
+  background: #7418ed !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(116, 24, 237, 0.2) !important;
+}
+
+:is(.odb-btn-gold, .mev-btn-gold, .tks-btn-gold, .wdr-btn-gold, .cev-btn-gold, .sct-btn-gold, .oes-btn-gold, .ref-actions button, .fb-form button):hover {
+  background: #5f0dcc !important;
+  box-shadow: 0 11px 24px rgba(116, 24, 237, 0.28) !important;
+}
+
+:is(.mev-btn-ghost, .tks-back, .cev-back, .sct-btn-ghost, .wdr-otp-cancel) {
+  border-color: var(--border) !important;
+  color: #6f6280 !important;
+  background: transparent !important;
+}
+
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) input,
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) select,
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) textarea {
+  border-color: #dfd7ea !important;
+  background: #fcfbff !important;
+  color: #30253c !important;
+}
+
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) input:focus,
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) select:focus,
+:is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app, .org-shell) textarea:focus {
+  border-color: #8c43ea !important;
+  box-shadow: 0 0 0 4px rgba(116, 24, 237, 0.11) !important;
+  outline: none !important;
+}
+
+:is(.tks-table-wrap, .tks-card) { overflow: hidden; }
+.tks-table { color: var(--text) !important; }
+.tks-table th { background: #f7f1ff !important; color: #6f6280 !important; border-color: var(--border) !important; }
+.tks-table td { border-color: var(--border) !important; }
+
+:is(.mev-progress, .odb-progress, .sct-gate-bar) { background: #eee8f5 !important; }
+:is(.mev-progress-fill, .odb-progress-fill, .sct-gate-fill) { background: linear-gradient(90deg, #7418ed, #b058f5) !important; box-shadow: none !important; }
+
+:is(.mev-banner-fallback, .oes-empty-icon, .odb-empty-icon) { color: #7418ed !important; background: #f2eaff !important; }
+
+:is(.mev-badge.is-live, .odb-badge.is-live, .tks-badge.is-live, .oes-status.is-live) { background: #e9f9f1 !important; border-color: #bcebd2 !important; color: #138154 !important; }
+:is(.mev-badge.is-draft, .odb-badge.is-draft, .tks-badge.is-pending, .oes-status.is-pending) { background: #f1eaff !important; border-color: #dbc8f5 !important; color: #7418ed !important; }
+:is(.mev-badge.is-ended, .odb-badge.is-ended, .tks-badge.is-ended, .oes-status.is-ended) { background: #fff0f2 !important; border-color: #f1c3cc !important; color: #bf3f57 !important; }
+
+:is(.ins-card h2, .ref-code, .oes-stat.is-accent .oes-stat-value, .mev-revenue, .tks-cell-revenue) { color: #7418ed !important; }
+.ref-kicker, .ins-kicker, .fb-kicker { color: #7418ed !important; }
+.ref-how article b { color: #7418ed !important; }
+
+:is(.odb-topbar, .mev-topbar, .tks-topbar, .cev-topbar, .wdr-topbar, .sct-topbar, .oes-topbar) {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+:is(.odb-topbar, .mev-topbar, .tks-topbar, .cev-topbar, .wdr-topbar, .sct-topbar, .oes-topbar) :is(.odb-wordmark, .mev-wordmark, .tks-wordmark, .cev-wordmark, .wdr-wordmark, .sct-wordmark, .oes-wordmark) { color: #7418ed !important; }
+:is(.odb-burger, .mev-burger, .tks-burger, .cev-burger, .wdr-burger, .sct-burger, .oes-burger) { background: #f5efff !important; border-color: #dfd0f1 !important; }
+:is(.odb-burger, .mev-burger, .tks-burger, .cev-burger, .wdr-burger, .sct-burger, .oes-burger) span { background: #7418ed !important; }
+
+:is(.odb-drawer, .mev-drawer, .tks-drawer, .cev-drawer, .wdr-drawer, .sct-drawer, .oes-drawer) {
+  background: #5b00d1 !important;
+}
+
+.org-shell .org-mobile {
+  background: #fff !important;
+  border-color: var(--border) !important;
+  color: #7418ed !important;
+}
+.org-shell .org-mobile button { color: #7418ed !important; }
+.org-shell .org-drawer { background: #5b00d1 !important; }
+
+:is(.wdr-status-card.is-pending, .wdr-status-card.is-awaiting_otp) { background: #f6efff !important; border-color: #ddc9f6 !important; }
+:is(.wdr-status-card.is-processing, .wdr-status-card.is-success) { background: #eefbf4 !important; border-color: #bee8d0 !important; }
+:is(.wdr-status-card.is-failed, .wdr-status-card.is-rejected) { background: #fff2f4 !important; border-color: #f1c6ce !important; }
+.wdr-feebox { background: #f6efff !important; border-color: #ddc9f6 !important; }
+
+.sct-stage { max-width: 620px !important; }
+.sct-camera, .sct-viewport { border-radius: 16px !important; }
+.sct-note, .sct-sync-strip { background: #f6efff !important; border-color: #ddc9f6 !important; color: var(--text) !important; }
+
+.auth-page :is(.rg-ov, .fp-error, .rp-error) { z-index: 2100; }
+
+@media (min-width: 1024px) {
+  :is(.odb-main, .mev-main, .tks-main, .cev-main, .wdr-main, .sct-main, .oes-main) { min-height: 100svh; }
+}
+
+@media (max-width: 1023px) {
+  .org-shell .org-main { margin-left: 0; padding-top: 82px !important; }
+  :is(.odb-shell, .mev-shell, .tks-shell, .cev-shell, .wdr-app, .sct-app, .oes-app) :is(.odb-main, .mev-main, .tks-main, .cev-main, .wdr-main, .sct-main, .oes-main) { padding-top: 24px !important; }
+}
+
+@media (max-width: 640px) {
+  :is(.odb-main, .mev-main, .tks-main, .cev-main, .wdr-main, .sct-main, .oes-main, .org-main) { padding-inline: 16px !important; }
+  :is(.odb-kpis, .tks-kpis) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}

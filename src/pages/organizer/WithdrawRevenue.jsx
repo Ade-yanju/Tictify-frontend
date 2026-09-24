@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -74,81 +75,14 @@ const NAV = [
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
 function Shell({ active, title, subtitle, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = (cls) =>
-    NAV.map((item) => (
-      <button
-        key={item.key}
-        className={`${cls} ${active === item.key ? "is-active" : ""}`}
-        onClick={() => go(item.to)}
-      >
-        <Icon name={item.icon} />
-        <span>{item.label}</span>
-      </button>
-    ));
-
   return (
-    <div className="wdr-app">
-      <aside className="wdr-sidebar">
-        <button
-          className="wdr-wordmark"
-          onClick={() => go("/organizer/dashboard")}
-        >
-          Tic<span>tify</span>
-        </button>
-        <nav className="wdr-nav">{navButtons("wdr-nav-item")}</nav>
-      </aside>
-
-      <header className="wdr-topbar">
-        <button
-          className="wdr-wordmark"
-          onClick={() => go("/organizer/dashboard")}
-        >
-          Tic<span>tify</span>
-        </button>
-        <button
-          className={`wdr-burger ${menuOpen ? "is-open" : ""}`}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </header>
-
-      <div className={`wdr-drawer ${menuOpen ? "is-open" : ""}`}>
-        {navButtons("wdr-drawer-item")}
-      </div>
-
-      <main className="wdr-main">
-        <div className="wdr-head">
-          <h1 className="wdr-title">{title}</h1>
-          {subtitle && <p className="wdr-subtitle">{subtitle}</p>}
-        </div>
-        {children}
-      </main>
-    </div>
+    <OrganizerChrome active={active} title={title} subtitle={subtitle} legacyPrefix="wdr">
+      {children}
+    </OrganizerChrome>
   );
 }
 
 export default function WithdrawRevenue() {
-  injectStyles("tictify-withdraw-css", CSS);
 
   // eslint-disable-next-line no-unused-vars -- hook preserved from original page logic (back nav now lives in the shell)
   const navigate = useNavigate();

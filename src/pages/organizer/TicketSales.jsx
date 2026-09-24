@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -52,65 +53,10 @@ const NAV_ITEMS = [
 
 /* ── App shell: sidebar ≥1024px, top bar + drawer below ──────── */
 function Shell({ active, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = NAV_ITEMS.map((item) => (
-    <button
-      key={item.path}
-      className={`tks-nav-item ${active === item.path ? "is-active" : ""}`}
-      onClick={() => go(item.path)}
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </button>
-  ));
-
   return (
-    <div className="tks-shell">
-      <aside className="tks-side">
-        <button className="tks-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tictify<em>.</em>
-        </button>
-        <nav className="tks-nav">{navButtons}</nav>
-      </aside>
-
-      <div className="tks-body">
-        <div className="tks-topbar">
-          <button className="tks-wordmark" onClick={() => go("/organizer/dashboard")}>
-            Tictify<em>.</em>
-          </button>
-          <button
-            className={`tks-burger ${menuOpen ? "is-open" : ""}`}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </div>
-
-        <div className={`tks-drawer ${menuOpen ? "is-open" : ""}`}>
-          <nav className="tks-nav">{navButtons}</nav>
-        </div>
-
-        <main className="tks-main">{children}</main>
-      </div>
-    </div>
+    <OrganizerChrome active={active} legacyPrefix="tks">
+      {children}
+    </OrganizerChrome>
   );
 }
 
@@ -135,7 +81,6 @@ const EMPTY_SALES = {
 };
 
 export default function TicketSales() {
-  injectStyles("tictify-tks-css", CSS);
   const navigate = useNavigate();
 
   const [data, setData] = useState(EMPTY_SALES);

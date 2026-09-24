@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
+import OrganizerEventAnalytics from "../../components/OrganizerEventAnalytics";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -28,71 +30,11 @@ const NAV = [
 ];
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
-function Shell({ active, title, subtitle, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = (cls) =>
-    NAV.map((item) => (
-      <button
-        key={item.key}
-        className={`${cls} ${active === item.key ? "is-active" : ""}`}
-        onClick={() => go(item.to)}
-      >
-        <Icon name={item.icon} />
-        <span>{item.label}</span>
-      </button>
-    ));
-
+function Shell({ active, children }) {
   return (
-    <div className="oes-app">
-      <aside className="oes-sidebar">
-        <button className="oes-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <nav className="oes-nav">{navButtons("oes-nav-item")}</nav>
-      </aside>
-
-      <header className="oes-topbar">
-        <button className="oes-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tic<span>tify</span>
-        </button>
-        <button
-          className={`oes-burger ${menuOpen ? "is-open" : ""}`}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </header>
-
-      <div className={`oes-drawer ${menuOpen ? "is-open" : ""}`}>
-        {navButtons("oes-drawer-item")}
-      </div>
-
-      <main className="oes-main">
-        <div className="oes-head">
-          <h1 className="oes-title">{title}</h1>
-          {subtitle && <p className="oes-subtitle">{subtitle}</p>}
-        </div>
-        {children}
-      </main>
-    </div>
+    <OrganizerChrome active={active} legacyPrefix="oes">
+      {children}
+    </OrganizerChrome>
   );
 }
 
@@ -100,7 +42,6 @@ function Shell({ active, title, subtitle, children }) {
 const EMPTY_EVENTS = [];
 
 export default function OrganizerEventStats() {
-  injectStyles("tictify-event-stats-css", CSS);
 
   const navigate = useNavigate();
 
@@ -203,6 +144,8 @@ export default function OrganizerEventStats() {
       {!loading && !error && (
         <>
           {/* ================= EMPTY ================= */}
+          <OrganizerEventAnalytics events={events} />
+
           {events.length === 0 ? (
             <div className="oes-empty">
               <div className="oes-empty-icon" aria-hidden="true">

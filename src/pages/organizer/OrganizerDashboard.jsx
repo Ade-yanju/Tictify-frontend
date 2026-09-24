@@ -9,6 +9,8 @@ import { getToken, getUser, logout, updateProfile } from "../../services/authSer
 import { normalizeWhatsApp, formatWhatsApp } from "../../utils/phone";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerDashboardVisuals from "../../components/OrganizerDashboardVisualsLive";
+import OrganizerChrome from "../../components/OrganizerChrome";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -90,77 +92,10 @@ const NAV_ITEMS = [
 
 /* ── App shell: sidebar ≥1024px, top bar + drawer below ──────── */
 function Shell({ active, onLogout, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = NAV_ITEMS.map((item) => (
-    <button
-      key={item.path}
-      className={`odb-nav-item ${active === item.path ? "is-active" : ""}`}
-      onClick={() => go(item.path)}
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </button>
-  ));
-
   return (
-    <div className="odb-shell">
-      <aside className="odb-side">
-        <button className="odb-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tictify<em>.</em>
-        </button>
-        <nav className="odb-nav">{navButtons}</nav>
-        {onLogout && (
-          <button className="odb-logout" onClick={onLogout}>
-            {NavIc.logout}
-            <span>Logout</span>
-          </button>
-        )}
-      </aside>
-
-      <div className="odb-body">
-        <div className="odb-topbar">
-          <button className="odb-wordmark" onClick={() => go("/organizer/dashboard")}>
-            Tictify<em>.</em>
-          </button>
-          <button
-            className={`odb-burger ${menuOpen ? "is-open" : ""}`}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </div>
-
-        <div className={`odb-drawer ${menuOpen ? "is-open" : ""}`}>
-          <nav className="odb-nav">{navButtons}</nav>
-          {onLogout && (
-            <button className="odb-logout" onClick={onLogout}>
-              {NavIc.logout}
-              <span>Logout</span>
-            </button>
-          )}
-        </div>
-
-        <main className="odb-main">{children}</main>
-      </div>
-    </div>
+    <OrganizerChrome active={active} legacyPrefix="odb" onLogout={onLogout}>
+      {children}
+    </OrganizerChrome>
   );
 }
 
@@ -177,6 +112,9 @@ const EMPTY = {
     live: 0,
   },
   events: [],
+  salesTrend: [],
+  ticketMix: [],
+  capacity: {},
 };
 
 /* ── Normalize API response defensively ─────────────────────── */
@@ -240,6 +178,9 @@ export default function OrganizerDashboard() {
           // ✅ normalizeStats ensures walletBalance is ALWAYS a number
           stats: normalizeStats(res?.stats),
           events: Array.isArray(res?.events) ? res.events : [],
+          salesTrend: Array.isArray(res?.salesTrend) ? res.salesTrend : [],
+          ticketMix: Array.isArray(res?.ticketMix) ? res.ticketMix : [],
+          capacity: res?.capacity || {},
         };
       });
 
@@ -281,7 +222,7 @@ export default function OrganizerDashboard() {
     navigate("/login", { replace: true });
   }
 
-  const { organizer, stats, events } = data;
+  const { organizer, stats, events, salesTrend, ticketMix, capacity } = data;
 
   return (
     <Shell
@@ -363,6 +304,8 @@ export default function OrganizerDashboard() {
             <StatCard label="Upcoming Events" value={stats.upcoming} />
             <StatCard label="Live Now" value={stats.live} accent />
           </section>
+
+          <OrganizerDashboardVisuals stats={stats} events={events} salesTrend={salesTrend} ticketMix={ticketMix} capacity={capacity} />
 
           {/* ── QUICK ACTIONS ── */}
           <section className="odb-section">

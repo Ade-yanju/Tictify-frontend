@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Icon from "../components/Icon";
+import AuthBrandPanel from "../components/AuthBrandPanel";
 
 const logo = "/logo.png";
 
@@ -99,14 +100,16 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="rp-page">
+    <div className="rp-page auth-page auth-reset">
       <div className="rp-glow" aria-hidden="true" />
+
+      <AuthBrandPanel />
 
       <button className="rp-back" onClick={() => navigate("/login")}>
         ← Back
       </button>
 
-      <div className="rp-card">
+      <div className="rp-card auth-card">
         <img
           src={logo}
           alt="Tictify"

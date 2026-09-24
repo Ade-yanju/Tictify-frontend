@@ -1,0 +1,7 @@
+.ses-shell { --bg: #f7f6fb; --surface: #fff; --card: #fff; --border: #e8e2f0; --border-h: #cfc2df; --text: #2c2438; --muted: #756b82; --gold: #7418ed; --gold-dim: #f0e8ff; --gold-glo: rgba(116,24,237,.2); --live: #179b64; --danger: #d14c63; background: #f7f6fb !important; color: #2c2438 !important; }
+.ses-shell .ses-card, .ses-shell .ses-empty, .ses-shell .ses-error { border-color: #e8e2f0 !important; background: #fff !important; color: #2c2438 !important; box-shadow: 0 8px 24px rgba(67,39,101,.045); }
+.ses-shell .ses-title { color: #2b203a !important; font-family: var(--font-h) !important; font-weight: 800 !important; letter-spacing: -.045em !important; }
+.ses-shell .ses-subtitle, .ses-shell .ses-meta, .ses-shell .ses-empty p { color: #81768e !important; }
+.ses-shell .ses-badge { background: #e9f9f1 !important; border-color: #bcebd2 !important; color: #138154 !important; }
+.ses-shell .ses-go, .ses-shell .ses-card:hover .ses-go { color: #7418ed !important; }
+.ses-shell .ses-btn-gold { border: 0 !important; background: #7418ed !important; color: #fff !important; }

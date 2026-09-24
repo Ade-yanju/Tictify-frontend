@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 import { getToken } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -62,70 +63,14 @@ const NAV_ITEMS = [
 
 /* ── App shell: sidebar ≥1024px, top bar + drawer below ──────── */
 function Shell({ active, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = NAV_ITEMS.map((item) => (
-    <button
-      key={item.path}
-      className={`cev-nav-item ${active === item.path ? "is-active" : ""}`}
-      onClick={() => go(item.path)}
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </button>
-  ));
-
   return (
-    <div className="cev-shell">
-      <aside className="cev-side">
-        <button className="cev-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tictify<em>.</em>
-        </button>
-        <nav className="cev-nav">{navButtons}</nav>
-      </aside>
-
-      <div className="cev-body">
-        <div className="cev-topbar">
-          <button className="cev-wordmark" onClick={() => go("/organizer/dashboard")}>
-            Tictify<em>.</em>
-          </button>
-          <button
-            className={`cev-burger ${menuOpen ? "is-open" : ""}`}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </div>
-
-        <div className={`cev-drawer ${menuOpen ? "is-open" : ""}`}>
-          <nav className="cev-nav">{navButtons}</nav>
-        </div>
-
-        <main className="cev-main">{children}</main>
-      </div>
-    </div>
+    <OrganizerChrome active={active} legacyPrefix="cev">
+      {children}
+    </OrganizerChrome>
   );
 }
 
 export default function CreateEvent() {
-  injectStyles("tictify-cev-css", CSS);
   const navigate = useNavigate();
 
   /* "Sat, 22 Aug 2026, 11:59 PM" */
@@ -171,7 +116,7 @@ export default function CreateEvent() {
   const [installmentMinimumPercent, setInstallmentMinimumPercent] = useState(30);
   const [installmentDueAt, setInstallmentDueAt] = useState("");
   const [templates, setTemplates] = useState([]);
-  useEffect(() => { fetch(`${import.meta.env.VITE_API_URL}/api/events/templates`).then(r => r.json()).then(setTemplates).catch(() => {}); }, []);
+  useEffect(() => { fetch(`${import.meta.env.VITE_API_URL}/api/events/templates`).then(r => r.json()).then(data => setTemplates(Array.isArray(data) ? data : [])).catch(() => {}); }, []);
 
   const affPercentClamped = Math.min(
     50,

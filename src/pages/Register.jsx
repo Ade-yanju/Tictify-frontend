@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Icon from "../components/Icon";
+import AuthBrandPanel from "../components/AuthBrandPanel";
 import {
   register,
   verifyEmail,
@@ -288,9 +289,11 @@ export default function Register() {
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
-    <div className="rg-page">
+    <div className="rg-page auth-page auth-register">
       {/* Ambient gold glow behind the card */}
       <div className="rg-glow" aria-hidden="true" />
+
+      <AuthBrandPanel />
 
       {modal && (
         <AuthModal
@@ -316,7 +319,7 @@ export default function Register() {
         ← Back
       </button>
 
-      <div className="rg-card">
+      <div className="rg-card auth-card">
         <img
           src={logo}
           alt="Tictify"

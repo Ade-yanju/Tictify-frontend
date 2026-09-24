@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
+import OrganizerChrome from "../../components/OrganizerChrome";
 import ShareSheet from "../../components/ShareSheet";
 import { buyOnWhatsAppUrl } from "../../utils/whatsapp";
 
@@ -55,65 +56,10 @@ const NAV_ITEMS = [
 
 /* ── App shell: sidebar ≥1024px, top bar + drawer below ──────── */
 function Shell({ active, children }) {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = NAV_ITEMS.map((item) => (
-    <button
-      key={item.path}
-      className={`mev-nav-item ${active === item.path ? "is-active" : ""}`}
-      onClick={() => go(item.path)}
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </button>
-  ));
-
   return (
-    <div className="mev-shell">
-      <aside className="mev-side">
-        <button className="mev-wordmark" onClick={() => go("/organizer/dashboard")}>
-          Tictify<em>.</em>
-        </button>
-        <nav className="mev-nav">{navButtons}</nav>
-      </aside>
-
-      <div className="mev-body">
-        <div className="mev-topbar">
-          <button className="mev-wordmark" onClick={() => go("/organizer/dashboard")}>
-            Tictify<em>.</em>
-          </button>
-          <button
-            className={`mev-burger ${menuOpen ? "is-open" : ""}`}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </div>
-
-        <div className={`mev-drawer ${menuOpen ? "is-open" : ""}`}>
-          <nav className="mev-nav">{navButtons}</nav>
-        </div>
-
-        <main className="mev-main">{children}</main>
-      </div>
-    </div>
+    <OrganizerChrome active={active} legacyPrefix="mev">
+      {children}
+    </OrganizerChrome>
   );
 }
 
@@ -152,7 +98,6 @@ function toLocalInput(d) {
 }
 
 export default function MyEvents() {
-  injectStyles("tictify-mev-css", CSS);
   const navigate = useNavigate();
 
   const [events, setEvents] = useState([]);
@@ -166,6 +111,13 @@ export default function MyEvents() {
   const [editEvent, setEditEvent] = useState(null);
   const [discountEvent, setDiscountEvent] = useState(null);
   const [successNotice, setSuccessNotice] = useState("");
+  const [eventQuery, setEventQuery] = useState("");
+  const [eventStatus, setEventStatus] = useState("ALL");
+  const visibleEvents = events.filter((event) => {
+    const query = eventQuery.trim().toLowerCase();
+    return (eventStatus === "ALL" || event.status === eventStatus) && (!query || `${event.title || ""} ${event.location || ""} ${event.status || ""}`.toLowerCase().includes(query));
+  });
+
 
   useEffect(() => {
     if (!successNotice) return;
@@ -289,6 +241,7 @@ export default function MyEvents() {
     }
   }
 
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -367,6 +320,11 @@ export default function MyEvents() {
         </button>
       </header>
 
+      <div className="mev-toolbar">
+        <div className="mev-tabs">{[["ALL", "All events"], ["LIVE", "Live"], ["DRAFT", "Drafts"], ["ENDED", "Ended"]].map(([value, label]) => <button type="button" key={value} className={eventStatus === value ? "is-active" : ""} onClick={() => setEventStatus(value)}>{label}</button>)}</div>
+        <label className="mev-search"><Icon name="search" size={15} /><input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)} placeholder="Search events" aria-label="Search events" /></label>
+      </div>
+
       {/* LOADING SKELETON */}
       {loading && (
         <section className="mev-grid" aria-hidden="true">
@@ -401,7 +359,7 @@ export default function MyEvents() {
       {/* GRID */}
       {!loading && events.length > 0 && (
         <section className="mev-grid">
-          {events.map((event) => {
+          {visibleEvents.map((event) => {
             /* Server-computed availability mirrors the checkout guards
                exactly, so these numbers are what will actually sell. */
             const avail = event.availability;
@@ -597,6 +555,7 @@ function PromoterModal({ event, onClose }) {
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+
 
   useEffect(() => {
     if (!copied) return;
@@ -1211,6 +1170,7 @@ function DiscountModal({ event, onClose }) {
       setLoading(false);
     }
   }
+
 
   useEffect(() => {
     loadCodes();
