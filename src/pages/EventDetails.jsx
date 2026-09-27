@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ShareSheet from "../components/ShareSheet";
 import Icon from "../components/Icon";
+import PublicOrganizerAttribution from "../components/PublicOrganizerAttribution";
 import { buyOnWhatsAppUrl } from "../utils/whatsapp";
 
 const logo = "/logo.png";
@@ -368,6 +369,7 @@ export default function EventDetails() {
               </div>
 
               <h1 className="ed-title">{event.title}</h1>
+              <PublicOrganizerAttribution event={event} />
 
               <div className="ed-meta">
                 {[
@@ -651,6 +653,13 @@ img { display:block; }
 .ed-lead { grid-area:lead; animation:edFadeUp .4s ease both; min-width:0; }
 .ed-panel { grid-area:panel; }
 .ed-body { grid-area:body; animation:edFadeUp .4s ease .05s both; min-width:0; }
+
+.tictify-host { display:flex; align-items:center; gap:10px; margin:0 0 22px; }
+.tictify-host-avatar { display:grid; width:38px; height:38px; flex:0 0 38px; place-items:center; overflow:hidden; border:1px solid rgba(232,201,106,.38); border-radius:50%; background:var(--gold-dim); color:var(--gold); font-size:12px; font-weight:800; }
+.tictify-host-avatar img { width:100%; height:100%; object-fit:cover; }
+.tictify-host-copy { display:flex; min-width:0; flex-direction:column; gap:2px; }
+.tictify-host-copy small { color:var(--muted); font-size:11px; }
+.tictify-host-copy strong { overflow:hidden; color:var(--text); font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ── Info column ── */
 .ed-info { animation:edFadeUp .4s ease both; min-width:0; }

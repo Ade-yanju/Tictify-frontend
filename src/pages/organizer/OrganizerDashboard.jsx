@@ -309,7 +309,16 @@ export default function OrganizerDashboard() {
           </section>
 
           <OrganizerDashboardVisuals stats={stats} events={events} salesTrend={salesTrend} ticketMix={ticketMix} capacity={capacity} />
-          <TransactionHistory transactions={transactions} />
+          <section className="odb-section odb-ledger-preview">
+            <div>
+              <p className="odb-kicker">Account ledger</p>
+              <h2 className="odb-section-title">Transaction history</h2>
+              <p>Review ticket sales, withdrawals, and fees on a dedicated page.</p>
+            </div>
+            <button className="odb-link" onClick={() => navigate("/organizer/transactions")}>
+              Open transaction history <Icon name="arrowRight" />
+            </button>
+          </section>
 
           {/* ── QUICK ACTIONS ── */}
           <section className="odb-section">

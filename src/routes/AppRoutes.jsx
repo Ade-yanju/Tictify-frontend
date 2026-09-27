@@ -25,6 +25,8 @@ import ResetPassword from "../pages/ResetPassword";
 
 /* ================= ORGANIZER ================= */
 import OrganizerDashboard from "../pages/organizer/OrganizerDashboard";
+import OrganizerTransactions from "../pages/organizer/OrganizerTransactions";
+import OrganizerProfile from "../pages/organizer/OrganizerProfile";
 import ScanTicket from "../pages/organizer/ScanTicket";
 import CreateEvent from "../pages/organizer/CreateEvent";
 import MyEvents from "../pages/organizer/MyEvents";
@@ -169,6 +171,9 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/organizer/transactions" element={<ProtectedRoute><OrganizerRoute><OrganizerTransactions /></OrganizerRoute></ProtectedRoute>} />
+        <Route path="/organizer/profile" element={<ProtectedRoute><OrganizerRoute><OrganizerProfile /></OrganizerRoute></ProtectedRoute>} />
 
         {/* ========= ADMIN ========= */}
         <Route

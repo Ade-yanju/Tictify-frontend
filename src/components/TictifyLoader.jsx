@@ -4,10 +4,11 @@ export default function TictifyLoader({
   label = "Loading your workspace…",
   fullScreen = false,
   compact = false,
+  inline = false,
 }) {
   return (
     <div
-      className={`tictify-loader${fullScreen ? " is-fullscreen" : ""}${compact ? " is-compact" : ""}`}
+      className={`tictify-loader${fullScreen ? " is-fullscreen" : ""}${compact ? " is-compact" : ""}${inline ? " is-inline" : ""}`}
       role="status"
       aria-live="polite"
     >

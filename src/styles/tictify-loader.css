@@ -75,6 +75,20 @@
   gap: 8px;
 }
 
+.tictify-loader.is-inline {
+  display: inline-flex;
+  min-width: 0;
+  flex-direction: row;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.tictify-loader.is-inline .tictify-loader-brand { gap: 0; }
+.tictify-loader.is-inline .tictify-loader-wordmark,
+.tictify-loader.is-inline .tictify-loader-zoom { display: none; }
+.tictify-loader.is-inline .tictify-loader-mark { width: 18px; height: 18px; border-radius: 6px; box-shadow: none; }
+.tictify-loader.is-inline p { color: inherit; font-size: inherit; font-weight: inherit; }
+
 .tictify-loader.is-compact .tictify-loader-mark {
   width: 30px;
   height: 30px;

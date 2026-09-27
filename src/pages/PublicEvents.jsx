@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "../components/Icon";
+import PublicOrganizerAttribution from "../components/PublicOrganizerAttribution";
 
 const logo = "/logo.png";
 
@@ -178,6 +179,7 @@ function EventCard({ event, onClick, index }) {
 
       <div className="pe-card-body">
         <h3 className="pe-card-title">{event.title}</h3>
+        <PublicOrganizerAttribution event={event} compact />
         {event.city && <span className="pe-card-city">{event.city}</span>}
         <p className="pe-card-meta">
           <span className="pe-card-ic"><Icon name="pin" /></span> {event.location}
@@ -524,6 +526,14 @@ img { display:block; }
 .pe-badge-live { background:rgba(107,240,160,.16); color:var(--live); }
 .pe-badge-live .pe-badge-dot { animation:pePulse 1.5s ease-in-out infinite; }
 .pe-badge-sold { background:rgba(224,92,92,.16); color:var(--danger); }
+
+.tictify-host { display:flex; align-items:center; gap:8px; min-width:0; }
+.tictify-host-avatar { display:grid; width:27px; height:27px; flex:0 0 27px; place-items:center; overflow:hidden; border:1px solid rgba(232,201,106,.32); border-radius:50%; background:var(--gold-dim); color:var(--gold); font-size:9px; font-weight:800; }
+.tictify-host-avatar img { width:100%; height:100%; object-fit:cover; }
+.tictify-host-copy { display:flex; min-width:0; flex-direction:column; gap:1px; }
+.tictify-host-copy small { color:var(--muted); font-size:10px; line-height:1.1; }
+.tictify-host-copy strong { overflow:hidden; color:var(--text); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.tictify-host.is-compact { margin-top:1px; }
 
 /* card body */
 .pe-card-body { padding:18px 20px 20px; flex:1; display:flex; flex-direction:column; gap:8px; }

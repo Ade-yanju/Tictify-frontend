@@ -10,6 +10,7 @@ const NAV = [
   ["Create event", "/organizer/create-event", "plusCircle"],
   ["My events", "/organizer/events", "calendar"],
   ["Sales", "/organizer/sales", "bars"],
+  ["Transactions", "/organizer/transactions", "ticket"],
   ["Scan tickets", "/organizer/scan/select", "qr"],
   ["Insights", "/organizer/insights", "trend"],
   ["Referrals", "/organizer/referrals", "users"],
@@ -39,7 +40,14 @@ export default function OrganizerChrome({
   const [user, setUser] = useState(() => getUser() || {});
 
   useEffect(() => {
-    setUser(getUser() || {});
+    const syncUser = () => setUser(getUser() || {});
+    syncUser();
+    window.addEventListener("tictify:user-updated", syncUser);
+    window.addEventListener("storage", syncUser);
+    return () => {
+      window.removeEventListener("tictify:user-updated", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
   }, []);
 
   useEffect(() => {
@@ -122,8 +130,8 @@ export default function OrganizerChrome({
               <kbd>⌘ K</kbd>
             </label>
             <OrganizerNotificationBell />
-            <button type="button" className="orgx-user-chip" onClick={() => go("/organizer/dashboard")}>
-              <span>{initials(user?.name)}</span>
+            <button type="button" className="orgx-user-chip" onClick={() => go("/organizer/profile")}>
+              <span className="orgx-user-avatar">{user?.avatar ? <img src={user.avatar} alt="" /> : initials(user?.name)}</span>
               <strong>{user?.name || "Organizer"}</strong>
             </button>
             <button

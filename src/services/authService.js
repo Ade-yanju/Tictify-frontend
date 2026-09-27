@@ -105,9 +105,9 @@ export function getUser() {
 }
 
 /* ================= UPDATE PROFILE =================
-   Currently only the WhatsApp number (dashboard backfill banner).
-   The stored user is patched in place on success so the banner —
-   which reads getUser() — disappears without a reload. */
+   Supports organizer name/avatar edits and the WhatsApp backfill banner.
+   The stored user is patched in place on success so the shell and banner
+   update without a reload. */
 export async function updateProfile(data) {
   const res = await fetch(`${API}/me`, {
     method: "PATCH",
@@ -130,6 +130,7 @@ export async function updateProfile(data) {
       "user",
       JSON.stringify({ ...(getUser() || {}), ...body.user }),
     );
+    window.dispatchEvent(new Event("tictify:user-updated"));
   }
   return body;
 }
