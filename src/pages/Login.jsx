@@ -307,7 +307,7 @@ export default function Login() {
             err.message || "Verify your email — we just sent you a new code",
         });
       } else {
-        setModal({ type: "error", message: "Invalid email or password" });
+        setModal({ type: "error", message: err?.status === 401 ? "Invalid email or password" : err?.message || "We could not reach Tictify. Check your connection and try again." });
       }
     } finally {
       setLoading(false);
