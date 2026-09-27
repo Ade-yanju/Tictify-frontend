@@ -4,7 +4,7 @@
    All responsive behavior lives in real CSS (@media) below.
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "../components/Icon";
 
 const logo = "/logo.png";
@@ -212,9 +212,11 @@ function EventCard({ event, onClick, index }) {
 export default function PublicEvents() {
   injectStyles("tictify-public-events-css", CSS);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [events, setEvents] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [dateFilter] = useState(() => searchParams.get("date") || "any");
   const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -280,13 +282,31 @@ export default function PublicEvents() {
       if (new Date(e.endDate) <= now) return false;
       if (category !== "All" && (e.category || "Other") !== category)
         return false;
+      const eventDate = new Date(e.date);
+      if (dateFilter !== "any" && !Number.isNaN(eventDate.getTime())) {
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        if (dateFilter === "7days") {
+          const nextWeek = new Date(today);
+          nextWeek.setDate(nextWeek.getDate() + 7);
+          if (eventDate < today || eventDate > nextWeek) return false;
+        }
+        if (dateFilter === "weekend") {
+          const weekendStart = new Date(today);
+          weekendStart.setDate(weekendStart.getDate() + ((6 - today.getDay() + 7) % 7));
+          const weekendEnd = new Date(weekendStart);
+          weekendEnd.setDate(weekendEnd.getDate() + 1);
+          weekendEnd.setHours(23, 59, 59, 999);
+          if (eventDate < weekendStart || eventDate > weekendEnd) return false;
+        }
+      }
       return (
         !q ||
         e.title?.toLowerCase().includes(q) ||
         e.location?.toLowerCase().includes(q)
       );
     });
-  }, [events, search, category]);
+  }, [events, search, category, dateFilter]);
 
   return (
     <div className="pe-page">
@@ -344,6 +364,11 @@ export default function PublicEvents() {
                 {c}
               </button>
             ))}
+          </div>
+          <div className="pe-proof-row" aria-label="Tictify booking benefits">
+            <span><Icon name="shield" /> Secure checkout</span>
+            <span><Icon name="ticket" /> Instant QR tickets</span>
+            <span><strong>{loading ? "…" : filteredEvents.length}</strong> events to explore</span>
           </div>
         </div>
       </section>

@@ -1,0 +1,374 @@
+/* Shared landing-page polish. These rules refine the existing components
+   without changing the established Tictify colors or typography. */
+.tf-page {
+  --landing-panel: rgba(255, 255, 255, .045);
+  --landing-panel-strong: rgba(255, 255, 255, .07);
+  --landing-line: rgba(255, 255, 255, .12);
+}
+
+.tf-trust {
+  position: relative;
+  padding: 29px 0 31px !important;
+  border-color: var(--landing-line) !important;
+  background: linear-gradient(90deg, rgba(116, 24, 237, .05), transparent 38%, rgba(232, 201, 106, .04));
+}
+
+.tf-trust .tf-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.tf-trust p.tf-trust-lead {
+  flex: 1 1 300px;
+  margin: 0;
+  color: rgba(240, 237, 232, .75) !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .12em !important;
+  line-height: 1.55;
+  text-align: left !important;
+}
+
+.tf-trust-grid {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 22px;
+}
+
+.tf-trust-grid span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(240, 237, 232, .63);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tf-trust-grid svg {
+  width: 15px;
+  height: 15px;
+  color: var(--gold);
+}
+
+.tf-section#events {
+  background: radial-gradient(700px 260px at 4% 0%, rgba(116, 24, 237, .1), transparent 70%);
+}
+
+.tf-sec-head {
+  padding-bottom: 3px;
+}
+
+.tf-seeall {
+  border-bottom: 1px solid rgba(232, 201, 106, .34);
+}
+
+.tf-ev {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025) 55%),
+    #12141f !important;
+}
+
+.tf-ev-body {
+  min-height: 128px;
+}
+
+.tf-ev-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tf-ev-meta::before {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: var(--live);
+  content: "";
+}
+
+.tf-stack-wrap {
+  position: relative;
+  overflow: clip;
+  background: linear-gradient(180deg, var(--bg), #0b0d14 88%);
+}
+
+.tf-stack-wrap::before {
+  position: absolute;
+  top: 8%;
+  right: -180px;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: rgba(116, 24, 237, .1);
+  content: "";
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.tf-stack-card {
+  border-color: rgba(255, 255, 255, .14) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .065), rgba(255, 255, 255, .025) 52%),
+    #0f111a !important;
+}
+
+.tf-stack-card::before {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: -1px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--gold);
+  content: "";
+  opacity: .82;
+}
+
+.tf-stack-card:nth-child(2)::before {
+  background: #b883ff;
+}
+
+.tf-stack-card:nth-child(3)::before {
+  background: var(--live);
+}
+
+.tf-stack-media {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+.tf-stack-media img {
+  filter: saturate(.9);
+  transition: transform .6s cubic-bezier(.22, 1, .36, 1), filter .6s ease;
+}
+
+.tf-stack-card:hover .tf-stack-media img {
+  filter: saturate(1.08);
+  transform: scale(1.035);
+}
+
+.tf-wa {
+  position: relative;
+  overflow: hidden;
+}
+
+.tf-wa::after {
+  position: absolute;
+  right: -90px;
+  bottom: -210px;
+  width: 430px;
+  height: 430px;
+  border: 1px solid rgba(37, 211, 102, .18);
+  border-radius: 50%;
+  box-shadow: 0 0 0 46px rgba(37, 211, 102, .025), 0 0 0 92px rgba(37, 211, 102, .018);
+  content: "";
+  pointer-events: none;
+}
+
+.tf-wa-copy {
+  position: relative;
+  z-index: 1;
+  text-align: left !important;
+}
+
+.tf-wa-copy .tf-eyebrow {
+  justify-content: flex-start;
+}
+
+.tf-wa-copy .tf-h2 {
+  margin-left: 0 !important;
+  text-align: left;
+}
+
+.tf-wa-lead,
+.tf-wa-list {
+  margin-left: 0 !important;
+}
+
+.tf-wa-phone {
+  position: relative;
+  z-index: 1;
+  transform: rotate(2deg);
+  transition: transform .35s ease, box-shadow .35s ease;
+}
+
+.tf-wa-phone::before {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  z-index: 2;
+  width: 72px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .16);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.tf-wa-phone:hover {
+  box-shadow: 0 34px 90px rgba(0, 0, 0, .62);
+  transform: rotate(0deg) translateY(-5px);
+}
+
+.tf-section-alt {
+  background:
+    radial-gradient(700px 360px at 90% 30%, rgba(232, 201, 106, .07), transparent 70%),
+    var(--surface);
+}
+
+.tf-price-card {
+  border-color: rgba(255, 255, 255, .13) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025) 58%),
+    #11131d !important;
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+
+.tf-price-card:hover {
+  border-color: rgba(255, 255, 255, .28) !important;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, .3);
+  transform: translateY(-5px);
+}
+
+.tf-price-card.is-featured {
+  border-color: rgba(232, 201, 106, .5) !important;
+  background:
+    linear-gradient(145deg, rgba(232, 201, 106, .16), rgba(255, 255, 255, .025) 62%),
+    #11131d !important;
+}
+
+.tf-price-card ul {
+  padding-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  padding-inline-start: 0;
+  padding-top: 20px;
+}
+
+.tf-price-card li {
+  color: rgba(240, 237, 232, .72);
+}
+
+.tf-cta {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(420px 220px at 50% 0%, rgba(232, 201, 106, .17), transparent 72%),
+    linear-gradient(145deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .2);
+}
+
+.tf-cta::before,
+.tf-cta::after {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border: 1px solid rgba(232, 201, 106, .18);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.tf-cta::before {
+  top: -62px;
+  left: -46px;
+}
+
+.tf-cta::after {
+  right: -46px;
+  bottom: -62px;
+}
+
+.tf-cta > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tf-footer {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 28%),
+    var(--surface);
+}
+
+.tf-footer-brand .tf-logo {
+  height: 45px;
+}
+
+.tf-footer-col button,
+.tf-footer-legal button,
+.tf-footer-legal a {
+  transition: color .2s ease, transform .2s ease;
+}
+
+.tf-footer-col button:hover,
+.tf-footer-legal button:hover,
+.tf-footer-legal a:hover {
+  transform: translateX(2px);
+}
+
+@media (max-width: 860px) {
+  .tf-trust .tf-container {
+    display: grid;
+    gap: 18px;
+  }
+
+  .tf-trust p.tf-trust-lead {
+    text-align: center !important;
+  }
+
+  .tf-trust-grid {
+    justify-content: center;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 560px) {
+  .tf-trust-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .tf-trust-grid span {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 9px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .tf-wa-copy {
+    text-align: center !important;
+  }
+
+  .tf-wa-copy .tf-eyebrow {
+    justify-content: center;
+  }
+
+  .tf-wa-copy .tf-h2 {
+    text-align: center;
+  }
+
+  .tf-wa-lead,
+  .tf-wa-list {
+    margin-right: auto !important;
+    margin-left: auto !important;
+  }
+
+  .tf-stack-card::before {
+    top: 18px;
+    bottom: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-stack-media img,
+  .tf-stack-card,
+  .tf-price-card,
+  .tf-wa-phone {
+    transition: none;
+  }
+}

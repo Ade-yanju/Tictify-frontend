@@ -18,6 +18,10 @@ import "./styles/organizer-create-event.css";
 import "./styles/organizer-screen-upgrade.css";
 import "./styles/organizer-overlay-upgrade.css";
 import "./styles/organizer-ops-layout.css";
+import "./styles/home-hero-upgrade.css";
+import "./styles/home-landing-polish.css";
+import "./styles/organizer-transaction-history.css";
+import "./styles/public-events-upgrade.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -1,0 +1,331 @@
+/* Organizer ledger: a compact account view that stays readable beside the
+   existing dashboard charts and remains useful on narrow screens. */
+.odb-transactions {
+  margin-top: clamp(24px, 4vw, 38px);
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 22px;
+  background:
+    radial-gradient(520px 170px at 92% 0%, rgba(232, 201, 106, .08), transparent 72%),
+    linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .018));
+}
+
+.odb-kicker {
+  margin: 0 0 7px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.odb-tx-head {
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.odb-tx-head .odb-section-title {
+  margin: 0;
+}
+
+.odb-tx-description {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.odb-tx-head .odb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.odb-tx-head .odb-link svg {
+  width: 15px;
+}
+
+.odb-tx-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.odb-tx-summary-card {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 14px;
+  background: rgba(8, 9, 16, .35);
+}
+
+.odb-tx-summary-card span,
+.odb-tx-summary-card strong {
+  display: block;
+}
+
+.odb-tx-summary-card span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.odb-tx-summary-card strong {
+  margin-top: 8px;
+  color: var(--text);
+  font-family: var(--font-h);
+  font-size: clamp(18px, 2.6vw, 25px);
+  letter-spacing: -.03em;
+}
+
+.odb-tx-summary-card.is-income strong {
+  color: var(--live);
+}
+
+.odb-tx-summary-card.is-outgoing strong {
+  color: var(--gold);
+}
+
+.odb-tx-summary-card.is-fee strong {
+  color: #c5a0ff;
+}
+
+.odb-tx-filters {
+  display: flex;
+  gap: 7px;
+  margin: 22px 0 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.odb-tx-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.odb-tx-filters button {
+  flex: 0 0 auto;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .035);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.odb-tx-filters button:hover,
+.odb-tx-filters button.is-active {
+  border-color: rgba(232, 201, 106, .48);
+  background: rgba(232, 201, 106, .12);
+  color: var(--gold);
+}
+
+.odb-tx-list {
+  border-top: 1px solid rgba(255, 255, 255, .1);
+}
+
+.odb-tx-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .075);
+}
+
+.odb-tx-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.odb-tx-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.odb-tx-icon.is-ticket_sale,
+.odb-tx-icon.is-installment {
+  background: rgba(107, 240, 160, .11);
+  color: var(--live);
+}
+
+.odb-tx-icon.is-fee {
+  background: rgba(197, 160, 255, .12);
+  color: #c5a0ff;
+}
+
+.odb-tx-icon.is-withdrawal {
+  background: rgba(232, 201, 106, .12);
+  color: var(--gold);
+}
+
+.odb-tx-main {
+  min-width: 0;
+}
+
+.odb-tx-main strong,
+.odb-tx-main p,
+.odb-tx-main small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.odb-tx-main strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.odb-tx-main p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.odb-tx-main small {
+  margin-top: 5px;
+  color: rgba(154, 148, 160, .68);
+  font-size: 10px;
+}
+
+.odb-tx-value {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
+}
+
+.odb-tx-value > strong {
+  font-family: var(--font-h);
+  font-size: 14px;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+
+.odb-tx-value > strong.is-credit {
+  color: var(--live);
+}
+
+.odb-tx-value > strong.is-debit,
+.odb-tx-value > strong.is-returned {
+  color: var(--gold);
+}
+
+.odb-tx-value > strong.is-fee,
+.odb-tx-value > strong.is-info {
+  color: #c5a0ff;
+}
+
+.odb-tx-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: capitalize;
+}
+
+.odb-tx-status.is-success {
+  background: rgba(107, 240, 160, .11);
+  color: var(--live);
+}
+
+.odb-tx-status.is-failed,
+.odb-tx-status.is-rejected,
+.odb-tx-status.is-expired {
+  background: rgba(224, 92, 92, .12);
+  color: var(--danger);
+}
+
+.odb-tx-status.is-processing,
+.odb-tx-status.is-pending,
+.odb-tx-status.is-awaiting_otp {
+  background: rgba(232, 201, 106, .12);
+  color: var(--gold);
+}
+
+.odb-tx-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 42px 18px 28px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.odb-tx-empty svg {
+  width: 25px;
+  height: 25px;
+  margin-bottom: 4px;
+  color: var(--gold);
+}
+
+.odb-tx-empty strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.odb-tx-empty span {
+  font-size: 12px;
+}
+
+@media (max-width: 620px) {
+  .odb-transactions {
+    padding: 18px 15px;
+  }
+
+  .odb-tx-head {
+    display: block;
+  }
+
+  .odb-tx-head .odb-link {
+    margin-top: 13px;
+  }
+
+  .odb-tx-summary {
+    gap: 7px;
+  }
+
+  .odb-tx-summary-card {
+    padding: 12px 10px;
+  }
+
+  .odb-tx-summary-card span {
+    font-size: 9px;
+  }
+
+  .odb-tx-summary-card strong {
+    font-size: 16px;
+  }
+
+  .odb-tx-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .odb-tx-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .odb-tx-value {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+  }
+}

@@ -115,6 +115,7 @@ const EMPTY = {
   salesTrend: [],
   ticketMix: [],
   capacity: {},
+  transactions: [],
 };
 
 /* ── Normalize API response defensively ─────────────────────── */
@@ -181,6 +182,7 @@ export default function OrganizerDashboard() {
           salesTrend: Array.isArray(res?.salesTrend) ? res.salesTrend : [],
           ticketMix: Array.isArray(res?.ticketMix) ? res.ticketMix : [],
           capacity: res?.capacity || {},
+          transactions: Array.isArray(res?.transactions) ? res.transactions : [],
         };
       });
 
@@ -222,7 +224,7 @@ export default function OrganizerDashboard() {
     navigate("/login", { replace: true });
   }
 
-  const { organizer, stats, events, salesTrend, ticketMix, capacity } = data;
+  const { organizer, stats, events, salesTrend, ticketMix, capacity, transactions } = data;
 
   return (
     <Shell
@@ -306,6 +308,7 @@ export default function OrganizerDashboard() {
           </section>
 
           <OrganizerDashboardVisuals stats={stats} events={events} salesTrend={salesTrend} ticketMix={ticketMix} capacity={capacity} />
+          <TransactionHistory transactions={transactions} />
 
           {/* ── QUICK ACTIONS ── */}
           <section className="odb-section">
@@ -523,6 +526,124 @@ function EventRow({ event, onView }) {
     </article>
   );
 }
+
+function transactionDate(value) {
+  if (!value) return "Date unavailable";
+  return new Date(value).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function transactionStatus(status) {
+  return String(status || "PENDING").toLowerCase().replace(/_/g, " ");
+}
+
+function transactionSubtitle(transaction) {
+  if (transaction.type === "WITHDRAWAL") {
+    const account = transaction.accountLast4 ? " ····" + transaction.accountLast4 : "";
+    return (transaction.bankName || "Bank account") + account + " · Receive " + fmtMoney(transaction.netAmount || 0) + (transaction.transferFee ? " · Transfer fee " + fmtMoney(transaction.transferFee) : "");
+  }
+  if (transaction.type === "FEE") {
+    const parts = [];
+    if (transaction.platformFee) parts.push("Tictify " + fmtMoney(transaction.platformFee));
+    if (transaction.processingFee) parts.push("Processing " + fmtMoney(transaction.processingFee));
+    return (transaction.eventTitle || "Ticket payment") + (parts.length ? " · " + parts.join(" · ") : "");
+  }
+  const ticket = transaction.ticketType ? transaction.ticketType + " · " : "";
+  const quantity = transaction.quantity ? transaction.quantity + " ticket" + (transaction.quantity === 1 ? "" : "s") : "Ticket";
+  return ticket + quantity + (transaction.type === "INSTALLMENT" ? " · Deposit received" : " · Wallet credited");
+}
+
+function transactionAmount(transaction) {
+  if (transaction.type === "TICKET_SALE") return "+" + fmtMoney(transaction.amount || 0);
+  if (transaction.type === "WITHDRAWAL") {
+    return transaction.direction === "RETURNED" ? "+" + fmtMoney(transaction.amount || 0) : "−" + fmtMoney(transaction.amount || 0);
+  }
+  return fmtMoney(transaction.amount || 0);
+}
+
+function TransactionHistory({ transactions = [] }) {
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState("ALL");
+  const filters = [
+    { id: "ALL", label: "All" },
+    { id: "SALES", label: "Ticket sales" },
+    { id: "WITHDRAWALS", label: "Withdrawals" },
+    { id: "FEES", label: "Fees" },
+  ];
+  const salesTotal = transactions
+    .filter((item) => item.type === "TICKET_SALE" && item.status === "SUCCESS")
+    .reduce((total, item) => total + Number(item.amount || 0), 0);
+  const withdrawalTotal = transactions
+    .filter((item) => item.type === "WITHDRAWAL" && item.direction === "DEBIT")
+    .reduce((total, item) => total + Number(item.amount || 0), 0);
+  const feeTotal = transactions.reduce((total, item) => {
+    if (item.type === "FEE" && item.status !== "FAILED") return total + Number(item.amount || 0);
+    if (item.type === "WITHDRAWAL" && item.direction === "DEBIT") return total + Number(item.transferFee || 0);
+    return total;
+  }, 0);
+  const visible = transactions
+    .filter((item) => {
+      if (filter === "SALES") return item.type === "TICKET_SALE" || item.type === "INSTALLMENT";
+      if (filter === "WITHDRAWALS") return item.type === "WITHDRAWAL";
+      if (filter === "FEES") return item.type === "FEE" || (item.type === "WITHDRAWAL" && Number(item.transferFee || 0) > 0);
+      return true;
+    })
+    .slice(0, 12);
+
+  return (
+    <section className="odb-section odb-transactions" aria-labelledby="odb-transactions-title">
+      <div className="odb-section-head odb-tx-head">
+        <div>
+          <p className="odb-kicker">Account ledger</p>
+          <h2 className="odb-section-title" id="odb-transactions-title">Transaction history</h2>
+          <p className="odb-tx-description">Ticket income, payout activity, and payment fees in one view.</p>
+        </div>
+        <button className="odb-link" onClick={() => navigate("/organizer/sales")}>Open sales <Icon name="arrowRight" /></button>
+      </div>
+
+      <div className="odb-tx-summary">
+        <div className="odb-tx-summary-card is-income"><span>Ticket sales</span><strong>{fmtMoney(salesTotal)}</strong></div>
+        <div className="odb-tx-summary-card is-outgoing"><span>Withdrawals</span><strong>{fmtMoney(withdrawalTotal)}</strong></div>
+        <div className="odb-tx-summary-card is-fee"><span>Fees recorded</span><strong>{fmtMoney(feeTotal)}</strong></div>
+      </div>
+
+      <div className="odb-tx-filters" role="tablist" aria-label="Filter transaction history">
+        {filters.map((item) => (
+          <button type="button" key={item.id} role="tab" aria-selected={filter === item.id} className={filter === item.id ? "is-active" : ""} onClick={() => setFilter(item.id)}>{item.label}</button>
+        ))}
+      </div>
+
+      {visible.length ? (
+        <div className="odb-tx-list">
+          {visible.map((transaction) => (
+            <article className="odb-tx-row" key={transaction.id}>
+              <span className={"odb-tx-icon is-" + transaction.type.toLowerCase()}>
+                <Icon name={transaction.type === "WITHDRAWAL" ? "wallet" : transaction.type === "FEE" ? "info" : "ticket"} />
+              </span>
+              <div className="odb-tx-main">
+                <strong>{transaction.title}</strong>
+                <p>{transactionSubtitle(transaction)}</p>
+                <small>{transactionDate(transaction.createdAt)}{transaction.reference ? " · Ref " + String(transaction.reference).slice(-12) : ""}</small>
+              </div>
+              <div className="odb-tx-value">
+                <strong className={"is-" + transaction.direction.toLowerCase()}>{transactionAmount(transaction)}</strong>
+                <span className={"odb-tx-status is-" + String(transaction.status || "PENDING").toLowerCase()}>{transactionStatus(transaction.status)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="odb-tx-empty"><Icon name="ticket" /><strong>No transactions yet</strong><span>Your ticket sales and withdrawals will appear here.</span></div>
+      )}
+    </section>
+  );
+}
+
 
 function DashSkeleton() {
   return (
