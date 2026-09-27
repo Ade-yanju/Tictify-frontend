@@ -9,6 +9,7 @@ import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -333,7 +334,8 @@ function Stat({ label, value, highlight }) {
 
 function SalesSkeleton() {
   return (
-    <div className="tks-skels" aria-hidden="true">
+    <div className="tks-skels">
+      <TictifyLoader compact label="Loading sales data…" />
       <div className="tks-skel-grid">
         {Array.from({ length: 6 }).map((_, i) => (
           <div className="tks-skel" style={{ height: 92 }} key={i} />

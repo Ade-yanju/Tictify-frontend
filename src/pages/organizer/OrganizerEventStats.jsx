@@ -7,6 +7,7 @@ import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 import OrganizerEventAnalytics from "../../components/OrganizerEventAnalytics";
 
 function injectStyles(id, content) {
@@ -116,7 +117,9 @@ export default function OrganizerEventStats() {
     >
       {/* ================= LOADING — skeleton shimmer ================= */}
       {loading && (
-        <section className="oes-grid" aria-hidden="true">
+        <>
+          <TictifyLoader compact label="Loading event performance…" />
+          <section className="oes-grid">
           {[0, 1, 2].map((i) => (
             <article className="oes-card oes-skel" key={i}>
               <div className="oes-skel-banner" />
@@ -133,6 +136,7 @@ export default function OrganizerEventStats() {
             </article>
           ))}
         </section>
+        </>
       )}
 
       {error && !loading && (

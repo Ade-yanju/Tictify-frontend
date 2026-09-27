@@ -7,6 +7,7 @@ import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -31,10 +32,18 @@ const NIGERIAN_BANKS = [
   { code: "057", name: "Zenith Bank" },
 ];
 
+const OTP_TTL_MS = 10 * 60 * 1000;
 /* This is only a display estimate. The backend calculates and stores the
    final fee, which is the source of truth for every withdrawal. */
 function getTransferCharge(amount) {
   return amount > 0 ? 100 : 0;
+}
+
+function formatOtpCountdown(seconds) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, "0");
+  const remaining = String(safeSeconds % 60).padStart(2, "0");
+  return `${minutes}:${remaining}`;
 }
 
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
@@ -109,10 +118,12 @@ export default function WithdrawRevenue() {
     open: false,
     withdrawalId: null,
     message: "",
+    expiresAt: null,
   });
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSecondsLeft, setOtpSecondsLeft] = useState(0);
 
   async function loadBalance() {
     try {
@@ -169,6 +180,21 @@ export default function WithdrawRevenue() {
     loadWithdrawalHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!otpStep.open || !otpStep.expiresAt) {
+      setOtpSecondsLeft(0);
+      return undefined;
+    }
+
+    const updateCountdown = () => {
+      setOtpSecondsLeft(Math.max(0, Math.ceil((otpStep.expiresAt - Date.now()) / 1000)));
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [otpStep.open, otpStep.expiresAt]);
 
   // Fixed: Ensure the input value is always a clean number string (no commas)
   function updateField(e) {
@@ -228,12 +254,17 @@ export default function WithdrawRevenue() {
         // Keep the form filled so a re-request is painless if the code expires.
         setOtp("");
         setOtpError("");
+        const serverExpiresAt = Date.parse(data.otpExpiresAt || "");
+        const expiresAt = Number.isFinite(serverExpiresAt)
+          ? serverExpiresAt
+          : Date.now() + OTP_TTL_MS;
         setOtpStep({
           open: true,
           withdrawalId: data.withdrawalId,
           message:
             data.message ||
             "We sent a 6-digit confirmation code to your email.",
+          expiresAt,
         });
       } else {
         // Legacy path (no OTP required) — original success behavior
@@ -261,7 +292,8 @@ export default function WithdrawRevenue() {
   }
 
   function closeOtpStep() {
-    setOtpStep({ open: false, withdrawalId: null, message: "" });
+    setOtpStep({ open: false, withdrawalId: null, message: "", expiresAt: null });
+    setOtpSecondsLeft(0);
     setOtp("");
     setOtpError("");
   }
@@ -313,6 +345,11 @@ export default function WithdrawRevenue() {
     e.preventDefault();
     if (otp.length !== 6) {
       setOtpError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    if (otpSecondsLeft <= 0) {
+      setOtpError("This code has expired. Request the withdrawal again.");
       return;
     }
 
@@ -377,10 +414,10 @@ export default function WithdrawRevenue() {
     >
       {(loading || loadingBalance) && (
         <div className="wdr-overlay">
-          <div className="wdr-processing">
-            <div className="wdr-spinner" />
-            <p>Processing...</p>
-          </div>
+          <TictifyLoader
+            fullScreen
+            label={loadingBalance ? "Loading your balance…" : "Sending your withdrawal securely…"}
+          />
         </div>
       )}
 
@@ -420,9 +457,11 @@ export default function WithdrawRevenue() {
             <div className="wdr-modal-icon" aria-hidden="true">
               <Icon name="mail" />
             </div>
-            <h3>Check your email</h3>
+            <h3>Confirm your withdrawal</h3>
             <p>{otpStep.message}</p>
+            <label className="wdr-otp-label" htmlFor="wdr-withdrawal-otp">6-digit security code</label>
             <input
+              id="wdr-withdrawal-otp"
               className="wdr-input wdr-otp-input"
               type="text"
               inputMode="numeric"
@@ -446,7 +485,7 @@ export default function WithdrawRevenue() {
             <button
               type="submit"
               className="wdr-btn wdr-btn-gold wdr-otp-confirm"
-              disabled={otpLoading || otp.length !== 6}
+              disabled={otpLoading || otp.length !== 6 || otpSecondsLeft <= 0}
             >
               {otpLoading ? "Confirming..." : "Confirm withdrawal"}
             </button>
@@ -458,8 +497,15 @@ export default function WithdrawRevenue() {
             >
               Cancel
             </button>
-            <p className="wdr-otp-note">
-              The code expires in 10 minutes. No money moves without it.
+            <p className={"wdr-otp-note " + (otpSecondsLeft > 0 && otpSecondsLeft <= 60 ? "is-urgent" : "") + (otpSecondsLeft === 0 ? " is-expired" : "")}>
+              <Icon name="clock" size={15} />
+              <span>
+                {otpSecondsLeft > 0 ? (
+                  <>Code expires in <strong>{formatOtpCountdown(otpSecondsLeft)}</strong>. No money moves until you confirm.</>
+                ) : (
+                  <>This code has expired. Request the withdrawal again.</>
+                )}
+              </span>
             </p>
           </form>
         </div>
@@ -733,15 +779,35 @@ button { cursor:pointer; }
 }
 
 /* ── OTP confirmation step ── */
-.wdr-modal.is-otp { border-color:rgba(232,201,106,.38); background:linear-gradient(180deg, rgba(232,201,106,.09), var(--surface) 60%); }
-.wdr-modal.is-otp h3 { color:var(--gold); }
-.wdr-modal.is-otp .wdr-modal-icon { background:var(--gold-dim); color:var(--gold); }
-.wdr-modal.is-otp .wdr-otp-input { display:block; width:100%; max-width:260px; margin:0 auto 16px; padding:14px 10px; text-align:center; font-family:var(--font-h); font-weight:700; font-size:clamp(22px,7vw,28px); letter-spacing:.35em; text-indent:.35em; font-variant-numeric:tabular-nums; }
-.wdr-modal.is-otp .wdr-otp-input::placeholder { color:rgba(139,136,126,.45); letter-spacing:.35em; }
-.wdr-modal .wdr-otp-error { margin:-2px 0 16px; padding:10px 14px; background:rgba(224,92,92,.12); border:1px solid rgba(224,92,92,.3); border-radius:var(--r-sm); color:var(--danger); font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
-.wdr-otp-confirm { width:100%; }
-.wdr-otp-cancel { width:100%; margin-top:10px; padding:8px; background:none; border:none; color:var(--muted); font-size:13.5px; font-weight:500; transition:color .2s; }
-.wdr-otp-cancel:hover { color:var(--text); }
+.wdr-modal.is-otp { width:min(100%, 480px) !important; padding:30px !important; border:1px solid #e4d8f2 !important; border-radius:24px !important; background:#fff !important; box-shadow:0 28px 80px rgba(38,17,68,.22), 0 4px 18px rgba(38,17,68,.08) !important; color:#2d203b !important; text-align:left !important; }
+.wdr-modal.is-otp .wdr-modal-icon { width:56px; height:56px; margin:0 0 20px; border:1px solid #e5d5fb; border-radius:16px; background:linear-gradient(145deg,#f0e5ff,#faf7ff) !important; color:#7418ed !important; }
+.wdr-modal.is-otp .wdr-modal-icon svg { width:24px; height:24px; }
+.wdr-modal.is-otp h3 { margin:0 0 9px; color:#2d203b !important; font-family:var(--font-h); font-size:clamp(22px,4vw,28px); font-weight:800; letter-spacing:-.035em; line-height:1.12; text-align:left; }
+.wdr-otp-label { display:block; margin:0 0 8px; color:#4a3b58; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.wdr-modal.is-otp > p { margin:0 0 24px !important; color:#81758e !important; font-size:13.5px; line-height:1.65; text-align:left; }
+.wdr-modal.is-otp .wdr-otp-input { display:block !important; width:100% !important; max-width:none !important; height:66px !important; margin:0 0 18px !important; padding:0 16px !important; border:1px solid #dfd2ed !important; border-radius:14px !important; background:#fbfaff !important; color:#30213f !important; text-align:center; font-family:var(--font-h); font-weight:800; font-size:clamp(25px,7vw,32px) !important; letter-spacing:.48em; text-indent:.48em; font-variant-numeric:tabular-nums; outline:none !important; box-shadow:none !important; transition:border-color .2s, box-shadow .2s, background .2s; }
+.wdr-modal.is-otp .wdr-otp-input:focus { border-color:#8c43ea !important; background:#fff !important; box-shadow:0 0 0 4px rgba(116,24,237,.11) !important; }
+.wdr-modal.is-otp .wdr-otp-input::placeholder { color:#b8a9c5; letter-spacing:.48em; opacity:1; }
+.wdr-modal .wdr-otp-error { margin:-2px 0 16px !important; padding:10px 12px; border:1px solid #f0bdc8; border-radius:10px; background:#fff3f5; color:#b33650 !important; font-size:12px !important; line-height:1.45 !important; overflow-wrap:anywhere; }
+.wdr-otp-confirm { display:block !important; width:100% !important; min-height:49px; border:0 !important; border-radius:11px !important; background:#7418ed !important; color:#fff !important; font-size:13px !important; box-shadow:0 10px 22px rgba(116,24,237,.2) !important; }
+.wdr-otp-confirm:hover:not(:disabled) { background:#5d08cf !important; box-shadow:0 13px 26px rgba(116,24,237,.27) !important; }
+.wdr-otp-confirm:disabled { background:#d9c8ed !important; color:#fff !important; opacity:1 !important; box-shadow:none !important; }
+.wdr-otp-cancel { display:block !important; width:100% !important; min-height:40px; margin:9px 0 0 !important; padding:8px !important; border:1px solid #e2d8eb !important; border-radius:10px !important; background:#fff !important; color:#756681 !important; font-size:12.5px !important; font-weight:700 !important; transition:background .2s, border-color .2s, color .2s; }
+.wdr-otp-cancel:hover:not(:disabled) { border-color:#cdb9e3 !important; background:#faf7ff !important; color:#4c3760 !important; }
 .wdr-otp-cancel:disabled { opacity:.5; cursor:not-allowed; }
-.wdr-modal .wdr-otp-note { margin:14px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; }
+.wdr-modal .wdr-otp-note { display:flex; align-items:flex-start; gap:8px; margin:18px 0 0 !important; padding-top:15px; border-top:1px solid #eee8f4; color:#8d8099 !important; font-size:11.5px !important; line-height:1.5 !important; }
+.wdr-otp-note svg { flex:0 0 auto; margin-top:1px; color:#8c43ea; }
+.wdr-otp-note strong { color:#5d4a6d; font-weight:800; }
+.wdr-otp-note.is-urgent { color:#b9652b !important; }
+.wdr-otp-note.is-urgent svg { color:#c4752f; }
+.wdr-otp-note.is-expired { color:#b33650 !important; }
+.wdr-otp-note.is-expired svg { color:#d14c63; }
+@media (max-width:480px) {
+  .wdr-modal.is-otp { padding:22px 18px !important; border-radius:18px !important; }
+  .wdr-modal.is-otp .wdr-modal-icon { width:48px; height:48px; margin-bottom:16px; border-radius:14px; }
+  .wdr-modal.is-otp h3 { font-size:21px; }
+  .wdr-modal.is-otp .wdr-otp-input { height:58px !important; letter-spacing:.34em; text-indent:.34em; }
+  .wdr-modal.is-otp .wdr-otp-input::placeholder { letter-spacing:.34em; }
+}
+
 `;

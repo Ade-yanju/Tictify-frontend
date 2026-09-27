@@ -18,6 +18,7 @@ import "./styles/organizer-create-event.css";
 import "./styles/organizer-screen-upgrade.css";
 import "./styles/organizer-overlay-upgrade.css";
 import "./styles/organizer-ops-layout.css";
+import "./styles/tictify-loader.css";
 import "./styles/home-hero-upgrade.css";
 import "./styles/home-landing-polish.css";
 import "./styles/organizer-transaction-history.css";

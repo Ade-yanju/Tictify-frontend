@@ -1,8 +1,22 @@
 /* Final alignment pass for the organizer operations screens. */
+:is(.orgx-main) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
 .orgx-page-intro {
-  width: 100%;
-  max-width: 1120px;
-  margin: 0 auto 28px;
+  width: min(100%, 1120px) !important;
+  max-width: 1120px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  margin-bottom: 28px !important;
+}
+/* Shared content rail: the page heading and its body begin on the same vertical axis. */
+.orgx-main > :is(.ins-wrap, .ref-wrap, .wdr-stage, .sct-stage, .ses-grid, .mev-grid, .tks-kpis, .oes-grid) {
+  width: min(100%, 1120px) !important;
+  max-width: 1120px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
 }
 .orgx-page-kicker {
   margin: 0 0 8px;

@@ -1,0 +1,102 @@
+/* Shared product loading state. The mark gently zooms in and out so the
+   interface feels alive without resorting to an indeterminate spinner. */
+.tictify-loader {
+  display: grid;
+  justify-items: center;
+  gap: 13px;
+  min-width: 190px;
+  color: #4a3b58;
+  font-family: var(--font-b, "DM Sans", sans-serif);
+  text-align: center;
+}
+
+.tictify-loader.is-fullscreen {
+  min-width: min(250px, calc(100vw - 48px));
+  padding: 26px 30px;
+  border: 1px solid rgba(228, 216, 242, .9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 24px 70px rgba(47, 24, 73, .16);
+}
+
+.tictify-loader-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #7418ed;
+}
+
+.tictify-loader-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #7418ed, #a247f3);
+  color: #fff;
+  box-shadow: 0 9px 22px rgba(116, 24, 237, .22);
+  animation: tictifyLoaderZoom 1.35s ease-in-out infinite;
+}
+
+.tictify-loader-wordmark {
+  font-family: var(--font-h, "Syne", sans-serif);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.055em;
+}
+
+.tictify-loader-zoom {
+  position: relative;
+  width: 124px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eee6f7;
+}
+
+.tictify-loader-zoom span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7418ed, #c16af7);
+  animation: tictifyLoaderProgress 1.35s ease-in-out infinite;
+}
+
+.tictify-loader p {
+  margin: 0;
+  color: #8d8099;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tictify-loader.is-compact {
+  min-width: 0;
+  gap: 8px;
+}
+
+.tictify-loader.is-compact .tictify-loader-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.tictify-loader.is-compact .tictify-loader-wordmark { font-size: 17px; }
+.tictify-loader.is-compact .tictify-loader-zoom { width: 88px; height: 3px; }
+.tictify-loader.is-compact p { font-size: 11px; }
+
+@keyframes tictifyLoaderZoom {
+  0%, 100% { transform: scale(.88); opacity: .72; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes tictifyLoaderProgress {
+  0% { transform: translateX(-150%); }
+  50% { transform: translateX(125%); }
+  100% { transform: translateX(270%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tictify-loader-mark,
+  .tictify-loader-zoom span { animation: none; }
+}

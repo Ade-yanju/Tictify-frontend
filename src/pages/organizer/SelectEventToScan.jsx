@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 import { getToken } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -89,7 +90,9 @@ export default function SelectEventToScan() {
     >
       {/* ================= LOADING — skeleton shimmer ================= */}
       {loading && (
-        <div className="ses-grid" aria-hidden="true">
+        <>
+          <TictifyLoader compact label="Loading your events…" />
+          <div className="ses-grid">
           {[0, 1, 2].map((i) => (
             <div className="ses-card ses-skel" key={i}>
               <div className="ses-skel-banner" />
@@ -101,6 +104,7 @@ export default function SelectEventToScan() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* ================= ERROR ================= */}

@@ -9,6 +9,7 @@ import { getToken } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 import ShareSheet from "../../components/ShareSheet";
 import { buyOnWhatsAppUrl } from "../../utils/whatsapp";
 
@@ -327,16 +328,19 @@ export default function MyEvents() {
 
       {/* LOADING SKELETON */}
       {loading && (
-        <section className="mev-grid" aria-hidden="true">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div className="mev-skel-card" key={i}>
-              <div className="mev-skel mev-skel-banner" />
-              <div className="mev-skel" style={{ height: 18, width: "70%" }} />
-              <div className="mev-skel" style={{ height: 13, width: "50%" }} />
-              <div className="mev-skel" style={{ height: 34 }} />
-            </div>
-          ))}
-        </section>
+        <>
+          <TictifyLoader compact label="Loading your events…" />
+          <section className="mev-grid" aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div className="mev-skel-card" key={i}>
+                <div className="mev-skel mev-skel-banner" />
+                <div className="mev-skel" style={{ height: 18, width: "70%" }} />
+                <div className="mev-skel" style={{ height: 13, width: "50%" }} />
+                <div className="mev-skel" style={{ height: 34 }} />
+              </div>
+            ))}
+          </section>
+        </>
       )}
 
       {/* EMPTY */}

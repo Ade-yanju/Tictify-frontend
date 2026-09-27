@@ -25,6 +25,7 @@ import { getToken } from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -428,10 +429,7 @@ export default function ScanTicket() {
 
       {processing && (
         <div className="sct-overlay">
-          <div className="sct-processing">
-            <div className="sct-spinner" />
-            <p>Verifying ticket…</p>
-          </div>
+          <TictifyLoader fullScreen label="Verifying ticket securely…" />
         </div>
       )}
 

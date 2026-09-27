@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerDashboardVisuals from "../../components/OrganizerDashboardVisualsLive";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -647,7 +648,8 @@ function TransactionHistory({ transactions = [] }) {
 
 function DashSkeleton() {
   return (
-    <div className="odb-skels" aria-hidden="true">
+    <div className="odb-skels">
+      <TictifyLoader compact label="Loading your dashboard…" />
       <div className="odb-skel" style={{ height: 60, maxWidth: 420 }} />
       <div className="odb-skel" style={{ height: 168 }} />
       <div className="odb-skel-grid">

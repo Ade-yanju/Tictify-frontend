@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
+import TictifyLoader from "../../components/TictifyLoader";
 import { getToken } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -959,10 +960,7 @@ export default function CreateEvent() {
 function LoadingModal() {
   return (
     <div className="cev-overlay">
-      <div className="cev-modal">
-        <div className="cev-spinner" />
-        <p className="cev-modal-text">Publishing event…</p>
-      </div>
+      <TictifyLoader fullScreen label="Publishing your event securely…" />
     </div>
   );
 }

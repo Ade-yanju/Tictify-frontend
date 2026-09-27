@@ -148,8 +148,8 @@
 
 .orgx-main {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 30px clamp(22px, 4vw, 52px) 72px;
 }
 
