@@ -157,7 +157,24 @@ export default function AdminDashboard() {
   if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
 
   const stats = data?.stats || {};
-  const monthlyData = analytics?.monthlyRevenue || [];
+  /* The analytics endpoint historically exposed revenueByMonth while this
+     dashboard expected monthlyRevenue. Normalize both shapes here so the
+     chart remains compatible with existing deployments and older responses. */
+  const revenueRows = analytics?.monthlyRevenue || analytics?.revenueByMonth || [];
+  const feeRows = analytics?.platformFeesByMonth || [];
+  const monthlyData = revenueRows.map((row) => {
+    const matchingFees = feeRows.find(
+      (fee) => String(fee._id) === String(row._id),
+    );
+
+    return {
+      ...row,
+      totalRevenue: Number(row.totalRevenue ?? row.total ?? row.revenue ?? 0),
+      platformFees: Number(
+        row.platformFees ?? matchingFees?.platformFees ?? matchingFees?.total ?? 0,
+      ),
+    };
+  });
   const salesByEvent = data?.salesByEvent || [];
   const recentSales = data?.recentSales || [];
 

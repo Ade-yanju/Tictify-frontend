@@ -44,7 +44,7 @@ export function whatsappBuyEnabled() {
  * @param {string} [promo]  affiliate code to attribute the sale to
  * @returns {string|null}   null when unconfigured or unidentifiable
  */
-export function buyOnWhatsAppUrl(event, promo) {
+export function buyOnWhatsAppUrl(event, promo, coHostToken) {
   const number = botNumber();
   if (!number) return null;
 
@@ -54,14 +54,18 @@ export function buyOnWhatsAppUrl(event, promo) {
   const key = event?.slug || event?._id;
   if (!key) return null;
 
-  const text = promo ? `event ${key} ref ${promo}` : `event ${key}`;
+  const host = /^[A-Za-z0-9_-]{20,100}/.test(String(coHostToken || "")) ? String(coHostToken) : "";
+  const parts = ["event " + key];
+  if (host) parts.push("host " + host);
+  if (promo) parts.push("ref " + promo);
+  const text = parts.join(" ");
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
 
 /* One line to append to shared text, so the WhatsApp option travels
    with every forward instead of living only on the web page. Returns
    "" when unconfigured — callers can concatenate unconditionally. */
-export function whatsappBuyLine(event, promo) {
-  const url = buyOnWhatsAppUrl(event, promo);
+export function whatsappBuyLine(event, promo, coHostToken) {
+  const url = buyOnWhatsAppUrl(event, promo, coHostToken);
   return url ? `\n\nPrefer WhatsApp? Buy in chat:\n${url}` : "";
 }

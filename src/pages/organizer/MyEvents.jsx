@@ -12,6 +12,7 @@ import OrganizerChrome from "../../components/OrganizerChrome";
 import TictifyLoader from "../../components/TictifyLoader";
 import ShareSheet from "../../components/ShareSheet";
 import { buyOnWhatsAppUrl } from "../../utils/whatsapp";
+import OrganizerCohostModal from "../../components/OrganizerCohostModal";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -107,6 +108,7 @@ export default function MyEvents() {
   const [shareEvent, setShareEvent] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [promoEvent, setPromoEvent] = useState(null);
+  const [cohostEvent, setCohostEvent] = useState(null);
   const [exportingId, setExportingId] = useState(null);
   const [errorNotice, setErrorNotice] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
@@ -263,6 +265,13 @@ export default function MyEvents() {
         />
       )}
 
+      {cohostEvent && (
+        <OrganizerCohostModal
+          event={cohostEvent}
+          onClose={() => setCohostEvent(null)}
+        />
+      )}
+
       {shareEvent && (
         <ShareSheet
           url={`${window.location.origin}/events/${shareEvent.slug || shareEvent._id}`}
@@ -375,6 +384,7 @@ export default function MyEvents() {
                 ? avail.remaining
                 : Math.max(0, capacity - sold);
             const tiers = avail?.tiers || [];
+            const ownerControls = event.organizerRole !== "CO_HOST";
             const pct =
               capacity > 0
                 ? Math.min(100, Math.round((sold / capacity) * 100))
@@ -452,11 +462,19 @@ export default function MyEvents() {
                     Share
                   </button>
 
+                  {ownerControls && (<>
                   <button
                     className="mev-abtn mev-abtn-tool"
                     onClick={() => setPromoEvent(event)}
                   >
                     Promoter link
+                  </button>
+
+                  <button
+                    className="mev-abtn mev-abtn-tool mev-abtn-cohost"
+                    onClick={() => setCohostEvent(event)}
+                  >
+                    Co-hosts
                   </button>
 
                   <button
@@ -524,6 +542,7 @@ export default function MyEvents() {
                       Delete
                     </button>
                   )}
+                  </>)}
                 </div>
               </article>
             );

@@ -170,9 +170,16 @@ export default function EventDetails() {
 
   /* ── Promoter ref capture (?ref=CODE → sessionStorage) ── */
   useEffect(() => {
-    const ref = new URLSearchParams(window.location.search).get("ref");
-    if (ref && /^[A-Za-z0-9_-]{2,30}$/.test(ref)) {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    const host = params.get("host");
+    if (ref && /^[A-Za-z0-9_-]{2,30}/.test(ref)) {
       sessionStorage.setItem("tictify_ref", ref.toUpperCase());
+    }
+    if (host && /^[A-Za-z0-9_-]{20,100}/.test(host)) {
+      sessionStorage.setItem("tictify_host", host);
+    } else {
+      sessionStorage.removeItem("tictify_host");
     }
   }, []);
 
@@ -307,6 +314,9 @@ export default function EventDetails() {
     { slug: event.slug, _id: event._id },
     typeof sessionStorage !== "undefined"
       ? sessionStorage.getItem("tictify_ref")
+      : null,
+    typeof sessionStorage !== "undefined"
+      ? sessionStorage.getItem("tictify_host")
       : null,
   );
   /* The arrow rides only on the branch that actually advances — the

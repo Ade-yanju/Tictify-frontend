@@ -25,6 +25,8 @@ import "./styles/organizer-transaction-history.css";
 import "./styles/organizer-profile.css";
 import "./styles/organizer-ledger-preview.css";
 import "./styles/public-events-upgrade.css";
+import "./styles/organizer-cohosts.css";
+import "./styles/organizer-cohost-accept.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

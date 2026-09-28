@@ -35,6 +35,7 @@ import WithdrawRevenue from "../pages/organizer/WithdrawRevenue";
 import OrganizerEventStats from "../pages/organizer/OrganizerEventStats";
 import OrganizerReferrals from "../pages/organizer/OrganizerReferrals";
 import OrganizerInsights from "../pages/organizer/OrganizerInsights";
+import AcceptCohostInvite from "../pages/organizer/AcceptCohostInvite";
 import SelectEventToScan from "../pages/organizer/SelectEventToScan";
 /* ================= ADMIN ================= */
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -167,6 +168,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <OrganizerRoute>
                 <WithdrawRevenue />
+              </OrganizerRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/organizer/cohost/accept/:token"
+          element={
+            <ProtectedRoute>
+              <OrganizerRoute>
+                <AcceptCohostInvite />
               </OrganizerRoute>
             </ProtectedRoute>
           }

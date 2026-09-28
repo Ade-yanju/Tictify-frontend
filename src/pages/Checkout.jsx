@@ -361,6 +361,7 @@ export default function Checkout() {
      for a dedicated account, anything else gets a Paystack link. */
   async function initiate(method) {
     const promoterRef = sessionStorage.getItem("tictify_ref");
+    const coHostToken = sessionStorage.getItem("tictify_host");
     const res = await fetch(
       `${import.meta.env.VITE_API_URL}/api/payments/initiate`,
       {
@@ -374,6 +375,7 @@ export default function Checkout() {
           email,
           payMethod: method,
           ...(promoterRef ? { promoter: promoterRef } : {}),
+          ...(coHostToken ? { coHostToken } : {}),
           ...(quote?.discount?.code ? { discountCode: quote.discount.code } : {}),
         }),
       },
@@ -385,6 +387,7 @@ export default function Checkout() {
 
   async function initiateInstallmentPayment() {
     const promoterRef = sessionStorage.getItem("tictify_ref");
+    const coHostToken = sessionStorage.getItem("tictify_host");
     const res = await fetch(
       `${import.meta.env.VITE_API_URL}/api/installments/initiate`,
       {
@@ -397,6 +400,7 @@ export default function Checkout() {
           name,
           email,
           ...(promoterRef ? { promoter: promoterRef } : {}),
+          ...(coHostToken ? { coHostToken } : {}),
           ...(quote?.discount?.code ? { discountCode: quote.discount.code } : {}),
         }),
       },
