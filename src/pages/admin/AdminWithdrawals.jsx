@@ -70,10 +70,7 @@ export default function AdminWithdrawals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [processingId, setProcessingId] = useState(null);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [actionError, setActionError] = useState("");
 
   async function loadWithdrawals() {
     const token = getToken();
@@ -103,41 +100,6 @@ export default function AdminWithdrawals() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  async function handleAction(id, action) {
-    if (processingId) return;
-
-    setProcessingId(id);
-    setActionError("");
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/admin/withdrawals/${id}/${action}`,
-        {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${getToken()}` },
-        }
-      );
-
-      /* The backend keeps provider diagnostics private and returns a safe
-         queue message. Detailed reconciliation data remains server-side. */
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Action failed");
-
-      setSuccessMessage(data.message || `Withdrawal ${action}d successfully!`);
-      setTimeout(() => setSuccessMessage(""), 5000);
-
-      setSelectedWithdrawal(null);
-      await loadWithdrawals();
-    } catch (err) {
-      // Inline banner — a failed action must NOT eject the admin
-      // to the full-page error screen (their session is fine)
-      setActionError(err.message || "Action failed. Please try again.");
-      setSelectedWithdrawal(null);
-      await loadWithdrawals();
-    } finally {
-      setProcessingId(null);
-    }
-  }
-
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
 
@@ -146,6 +108,7 @@ export default function AdminWithdrawals() {
   );
 
   const stats = {
+    awaitingOtp: withdrawals.filter((w) => w.status === "AWAITING_OTP").length,
     pending: withdrawals.filter((w) => w.status === "PENDING").length,
     processing: withdrawals.filter((w) => w.status === "PROCESSING").length,
     successful: withdrawals.filter((w) => w.status === "SUCCESS").length,
@@ -161,34 +124,19 @@ export default function AdminWithdrawals() {
       <Shell
         active="/admin/withdrawals"
         title="Withdrawal Requests"
-        subtitle="Automatic payout monitoring"
+        subtitle="Read-only automatic payout logs"
         navigate={navigate}
         onLogout={() => { logout(); navigate("/login"); }}
       >
         {/* Stats Cards */}
         <section className="awd-kpis">
-          <StatCard label="Pending" value={stats.pending} tone="gold" icon={"clock"} />
+          <StatCard label="Awaiting confirmation" value={stats.awaitingOtp} tone="gold" icon={"clock"} />
+          <StatCard label="Queued for automatic retry" value={stats.pending} tone="gold" icon={"clock"} />
           <StatCard label="Processing" value={stats.processing} tone="live" icon={"checkCircle"} />
           <StatCard label="Successful to banks" value={`₦${stats.settledAmount.toLocaleString()}`} tone="live" icon={"bank"} />
-          <StatCard label="Rejected" value={stats.rejected} tone="danger" icon={"closeCircle"} />
+          <StatCard label="Historical rejected" value={stats.rejected} tone="danger" icon={"closeCircle"} />
           <StatCard label="Total Amount" value={`₦${stats.totalAmount.toLocaleString()}`} tone="gold" icon={"coins"} />
         </section>
-
-        {/* Success Message */}
-        {successMessage && (
-          <div className="awd-success">
-            <span>{successMessage}</span>
-            <button className="awd-success-close" onClick={() => setSuccessMessage("")}>×</button>
-          </div>
-        )}
-
-        {/* Action feedback — provider diagnostics stay server-side */}
-        {actionError && (
-          <div className="awd-action-err" role="alert">
-            <span>{actionError}</span>
-            <button className="awd-action-err-close" onClick={() => setActionError("")}>×</button>
-          </div>
-        )}
 
         {/* Filter */}
         <section className="awd-filter">
@@ -290,8 +238,6 @@ export default function AdminWithdrawals() {
         <WithdrawalModal
           withdrawal={selectedWithdrawal}
           onClose={() => setSelectedWithdrawal(null)}
-          onReject={() => handleAction(selectedWithdrawal._id, "reject")}
-          isProcessing={processingId === selectedWithdrawal._id}
         />
       )}
     </>
@@ -403,12 +349,12 @@ function StatusBadge({ status }) {
   );
 }
 
-function WithdrawalModal({ withdrawal, onClose, onReject, isProcessing }) {
+function WithdrawalModal({ withdrawal, onClose }) {
   return (
     <div className="awd-modal" onClick={onClose}>
       <div className="awd-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="awd-modal-head">
-          <h2 className="awd-modal-title">Review Withdrawal Request</h2>
+          <h2 className="awd-modal-title">Withdrawal details</h2>
           <button className="awd-modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -456,16 +402,9 @@ function WithdrawalModal({ withdrawal, onClose, onReject, isProcessing }) {
         </div>
 
         <div className="awd-modal-foot">
-          <button className="awd-btn-ghost" onClick={onClose} disabled={isProcessing}>
-            Cancel
+          <button className="awd-btn-ghost" onClick={onClose}>
+            Close
           </button>
-          {withdrawal.status === "PENDING" && (
-            <>
-              <button className="awd-btn-danger" onClick={onReject} disabled={isProcessing}>
-                {isProcessing ? "..." : "Emergency refund"}
-              </button>
-            </>
-          )}
         </div>
       </div>
     </div>
@@ -585,10 +524,6 @@ button, input, select { font-family:var(--font-b); }
 .awd-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(18px,2.2vw,24px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
 
 /* ── Success alert ── */
-.awd-success { background:rgba(107,240,160,.1); border:1px solid rgba(107,240,160,.4); color:var(--live); padding:13px 18px; border-radius:var(--r-sm); display:flex; justify-content:space-between; align-items:center; gap:12px; font-weight:600; font-size:14px; animation:awd-fade .3s ease; }
-.awd-success-close { background:none; border:none; color:var(--live); font-size:20px; cursor:pointer; line-height:1; }
-.awd-action-err { background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.4); color:var(--danger); padding:13px 18px; border-radius:var(--r-sm); display:flex; justify-content:space-between; align-items:center; gap:12px; font-weight:600; font-size:14px; animation:awd-fade .3s ease; }
-.awd-action-err-close { background:none; border:none; color:var(--danger); font-size:20px; cursor:pointer; line-height:1; }
 
 /* ── Filter ── */
 .awd-filter { display:flex; flex-direction:column; gap:10px; }
@@ -650,11 +585,9 @@ button, input, select { font-family:var(--font-b); }
 .awd-modal-foot { padding:clamp(18px,3vw,24px); border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; position:sticky; bottom:0; background:var(--surface); }
 .awd-btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text); padding:11px 20px; border-radius:999px; cursor:pointer; font-weight:600; font-size:13.5px; transition:border-color .2s; }
 .awd-btn-ghost:hover:not(:disabled) { border-color:var(--border-h); }
-.awd-btn-danger { background:rgba(224,92,92,.12); border:1px solid rgba(224,92,92,.45); color:var(--danger); padding:11px 20px; border-radius:999px; cursor:pointer; font-weight:700; font-size:13.5px; transition:background .2s; }
-.awd-btn-danger:hover:not(:disabled) { background:rgba(224,92,92,.22); }
 .awd-btn-gold { background:var(--gold); border:none; color:#080910; padding:12px 22px; border-radius:999px; cursor:pointer; font-weight:700; font-size:13.5px; transition:transform .2s, box-shadow .2s; }
 .awd-btn-gold:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
-.awd-btn-ghost:disabled, .awd-btn-danger:disabled, .awd-btn-gold:disabled { opacity:.5; cursor:not-allowed; }
+.awd-btn-ghost:disabled, .awd-btn-gold:disabled { opacity:.5; cursor:not-allowed; }
 
 /* ── Loading / skeleton ── */
 .awd-loading { min-height:100svh; background:var(--bg); color:var(--text); padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:18px; max-width:1280px; margin:0 auto; font-family:var(--font-b); }
