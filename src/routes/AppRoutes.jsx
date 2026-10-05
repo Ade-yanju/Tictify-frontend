@@ -43,6 +43,7 @@ import AdminOrganizers from "../pages/admin/AdminOrganizers";
 import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
 import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
+import AdminDailyReport from "../pages/admin/AdminDailyReport";
 import AdminAmbassadors from "../pages/admin/AdminAmbassadors";
 import AdminAffiliates from "../pages/admin/AdminAffiliates";
 import AdminFeedback from "../pages/admin/AdminFeedback";
@@ -238,6 +239,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <AdminRoute>
                 <AdminSalesAnalytics />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/daily-report"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminDailyReport />
               </AdminRoute>
             </ProtectedRoute>
           }

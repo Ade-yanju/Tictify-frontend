@@ -43,6 +43,7 @@ const NAV = [
   { label: "Organizers", path: "/admin/organizers", icon: "users" },
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
+  { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
   {
     label: "Ambassadors",
     path: "/admin/ambassadors",
