@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getToken, getUser } from "../services/authService";
 import OrganizerShell from "../components/OrganizerShell";
 
 const CATEGORIES = ["GENERAL", "BUG", "FEATURE", "PAYMENT", "OTHER"];
 
+function createSubmissionKey() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function Feedback() {
   const user = getUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const submittingRef = useRef(false);
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -18,6 +24,7 @@ export default function Feedback() {
   });
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [submissionKey, setSubmissionKey] = useState(createSubmissionKey);
 
   const closeFeedback = () => {
     if (new URLSearchParams(location.search).get("source") === "event-created") {
@@ -35,6 +42,8 @@ export default function Feedback() {
 
   async function submit(event) {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSending(true);
     setMessage("");
 
@@ -46,15 +55,17 @@ export default function Feedback() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, submissionKey }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "Could not send feedback.");
       setMessage("Thanks — your feedback was received.");
       setForm((current) => ({ ...current, message: "" }));
+      setSubmissionKey(createSubmissionKey());
     } catch (error) {
       setMessage(error.message || "Could not send feedback.");
     } finally {
+      submittingRef.current = false;
       setSending(false);
     }
   }

@@ -201,6 +201,7 @@ export default function AdminFeedback() {
                   <span className="afb-role">{pretty(item.role || "guest")}</span>
                   <span>{pretty(item.category || "GENERAL")}</span>
                   <span>{item.rating ? `${item.rating}/5 rating` : "No rating"}</span>
+                  {item.duplicateCount > 1 && <span className="afb-duplicate-count">{item.duplicateCount} identical submissions grouped</span>}
                   <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
                 </div>
 
@@ -278,7 +279,7 @@ const CSS = `
 .afb-person h2 { color:var(--text); font:700 15px/1.2 var(--font-h); overflow-wrap:anywhere; }.afb-person p { color:var(--muted); font-size:12px; margin-top:4px; overflow-wrap:anywhere; }
 .afb-status { flex:none; padding:5px 9px; border-radius:999px; border:1px solid var(--border); font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
 .afb-status.is-new { color:var(--gold); background:var(--gold-dim); border-color:rgba(232,201,106,.3); }.afb-status.is-reviewed { color:var(--info); background:var(--info-dim); border-color:rgba(107,168,245,.3); }.afb-status.is-resolved { color:var(--live); background:var(--live-dim); border-color:rgba(91,227,154,.3); }
-.afb-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:17px 0 14px; color:var(--muted); font-size:11.5px; }.afb-meta span:not(:last-of-type)::after { content:"·"; color:var(--text-dim); margin-left:8px; }.afb-role { color:var(--gold); font-weight:700; }.afb-meta time { margin-left:auto; font-size:11px; }
+.afb-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:17px 0 14px; color:var(--muted); font-size:11.5px; }.afb-meta span:not(:last-of-type)::after { content:"·"; color:var(--text-dim); margin-left:8px; }.afb-role { color:var(--gold); font-weight:700; }.afb-meta time { margin-left:auto; font-size:11px; }.afb-duplicate-count { color:var(--info); font-weight:700; }
 .afb-message { color:var(--text-2); font-size:14px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; flex:1; }
 .afb-card-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--border); margin-top:18px; padding-top:15px; }.afb-foot-label { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
 .afb-empty { padding:70px 24px; border:1px dashed var(--border); border-radius:var(--r-lg); text-align:center; background:var(--card); }.afb-empty-icon { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 15px; border-radius:16px; color:var(--live); background:var(--live-dim); font-size:22px; font-weight:800; }.afb-empty h2 { font:700 18px var(--font-h); }.afb-empty p { color:var(--muted); margin-top:7px; font-size:13px; }
