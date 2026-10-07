@@ -72,6 +72,9 @@ export default function AdminWithdrawals() {
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedWithdrawal, setSelectedWithdrawal] = useState(null);
+  const [processingId, setProcessingId] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   async function loadWithdrawals() {
     const token = getToken();
@@ -101,6 +104,35 @@ export default function AdminWithdrawals() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
+  async function handleReject(withdrawal) {
+    if (!withdrawal?._id || processingId) return;
+    if (!window.confirm("Reject this queued withdrawal and return the held funds to the organizer wallet?")) return;
+
+    setProcessingId(withdrawal._id);
+    setActionError("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/withdrawals/${withdrawal._id}/reject`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "Could not reject withdrawal");
+
+      setSelectedWithdrawal(null);
+      setSuccessMessage(data.message || "Withdrawal rejected and funds returned.");
+      await loadWithdrawals();
+    } catch (err) {
+      setActionError(err.message || "Could not reject withdrawal.");
+    } finally {
+      setProcessingId("");
+    }
+  }
+
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
 
@@ -125,11 +157,13 @@ export default function AdminWithdrawals() {
       <Shell
         active="/admin/withdrawals"
         title="Withdrawal Requests"
-        subtitle="Read-only automatic payout logs"
+        subtitle="Automatic payout logs and queue controls"
         navigate={navigate}
         onLogout={() => { logout(); navigate("/login"); }}
       >
         {/* Stats Cards */}
+        {successMessage && <div className="awd-alert awd-alert-success" role="status">{successMessage}</div>}
+        {actionError && <div className="awd-alert awd-alert-error" role="alert">{actionError}</div>}
         <section className="awd-kpis">
           <StatCard label="Awaiting confirmation" value={stats.awaitingOtp} tone="gold" icon={"clock"} />
           <StatCard label="Queued for automatic retry" value={stats.pending} tone="gold" icon={"clock"} />
@@ -239,6 +273,9 @@ export default function AdminWithdrawals() {
         <WithdrawalModal
           withdrawal={selectedWithdrawal}
           onClose={() => setSelectedWithdrawal(null)}
+          onReject={handleReject}
+          isProcessing={processingId === selectedWithdrawal._id}
+          actionError={actionError}
         />
       )}
     </>
@@ -350,7 +387,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function WithdrawalModal({ withdrawal, onClose }) {
+function WithdrawalModal({ withdrawal, onClose, onReject, isProcessing, actionError }) {
   return (
     <div className="awd-modal" onClick={onClose}>
       <div className="awd-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -400,9 +437,20 @@ function WithdrawalModal({ withdrawal, onClose }) {
               <Detail label="SWIFT Code" value={withdrawal.bankDetails?.swiftCode} />
             </Section>
           )}
+
+          {actionError && <p className="awd-modal-error" role="alert">{actionError}</p>}
         </div>
 
         <div className="awd-modal-foot">
+          {withdrawal.status === "PENDING" && (
+            <button
+              className="awd-btn-danger"
+              onClick={() => onReject(withdrawal)}
+              disabled={isProcessing}
+            >
+              {isProcessing ? "Rejecting…" : "Reject & refund"}
+            </button>
+          )}
           <button className="awd-btn-ghost" onClick={onClose}>
             Close
           </button>
@@ -552,6 +600,12 @@ button, input, select { font-family:var(--font-b); }
 .awd-card-foot { padding:12px; border-top:1px solid var(--border); text-align:center; background:var(--gold-dim); }
 .awd-hint { font-size:12px; color:var(--gold); font-weight:600; }
 
+/* ── Admin actions ── */
+.awd-alert { border-radius:var(--r-sm); padding:13px 16px; font-size:13px; line-height:1.5; }
+.awd-alert-success { color:var(--live); background:rgba(107,240,160,.08); border:1px solid rgba(107,240,160,.28); }
+.awd-alert-error, .awd-modal-error { color:#ffaaa8; background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.35); }
+.awd-modal-error { border-radius:var(--r-sm); padding:11px 12px; font-size:13px; line-height:1.5; }
+
 /* ── Badges ── */
 .awd-badge { padding:5px 12px; border-radius:999px; font-weight:700; font-size:11px; letter-spacing:.06em; white-space:nowrap; }
 .awd-badge.is-pending { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,201,106,.35); }
@@ -589,6 +643,9 @@ button, input, select { font-family:var(--font-b); }
 .awd-btn-gold { background:var(--gold); border:none; color:#080910; padding:12px 22px; border-radius:999px; cursor:pointer; font-weight:700; font-size:13.5px; transition:transform .2s, box-shadow .2s; }
 .awd-btn-gold:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 30px var(--gold-glo); }
 .awd-btn-ghost:disabled, .awd-btn-gold:disabled { opacity:.5; cursor:not-allowed; }
+.awd-btn-danger { background:rgba(224,92,92,.14); border:1px solid rgba(224,92,92,.55); color:#ffaaa8; padding:11px 20px; border-radius:999px; cursor:pointer; font-weight:700; font-size:13.5px; transition:background .2s, border-color .2s; }
+.awd-btn-danger:hover:not(:disabled) { background:rgba(224,92,92,.24); border-color:var(--danger); }
+.awd-btn-danger:disabled { opacity:.55; cursor:not-allowed; }
 
 /* ── Loading / skeleton ── */
 .awd-loading { min-height:100svh; background:var(--bg); color:var(--text); padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:18px; max-width:1280px; margin:0 auto; font-family:var(--font-b); }

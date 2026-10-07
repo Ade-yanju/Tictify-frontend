@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import PageVisitTracker from "../components/PageVisitTracker";
 
 /* ================= PUBLIC ================= */
 import Home from "../pages/Home";
@@ -56,6 +57,7 @@ import AdminRoute from "./AdminRoute";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
+      <PageVisitTracker />
       <Routes>
         {/* ========= PUBLIC ========= */}
         <Route path="/" element={<Home />} />

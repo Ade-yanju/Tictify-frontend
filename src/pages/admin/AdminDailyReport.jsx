@@ -66,6 +66,7 @@ export default function AdminDailyReport() {
 
   const totals = report?.totals || {};
   const rows = report?.rows || [];
+  const visitorDetails = report?.visitorDetails || [];
   const refreshedAt = report?.refreshedAt
     ? new Date(report.refreshedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })
     : "—";
@@ -117,6 +118,7 @@ export default function AdminDailyReport() {
             <Metric label="Amount collected" value={money(totals.grossCollected)} detail="Successful guest payments" />
             <Metric label="Platform fees gained" value={money(totals.platformFees)} detail="Tictify fee on ticket sales" tone="gold" />
             <Metric label="Affiliate commissions" value={money(totals.affiliatePaid)} detail={`${number(totals.affiliatePayments)} commission credits`} tone="purple" />
+            <Metric label="Page visits" value={number(totals.pageVisits)} detail={`${number(totals.uniqueVisitors)} unique IPs in range`} tone="blue" />
           </section>
 
           <section className="dfr-insight">
@@ -149,6 +151,8 @@ export default function AdminDailyReport() {
                     <th>Platform gain</th>
                     <th>Affiliate paid</th>
                     <th>Installment payments</th>
+                    <th>Page visits</th>
+                    <th>Unique IPs</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -161,6 +165,8 @@ export default function AdminDailyReport() {
                       <td data-label="Platform gain" className="dfr-gold">{money(row.platformFees)}</td>
                       <td data-label="Affiliate paid" className="dfr-purple">{money(row.affiliatePaid)}</td>
                       <td data-label="Installment payments">{number(row.installmentPayments)}<small>{number(row.installmentTicketOrders)} completed</small></td>
+                      <td data-label="Page visits">{number(row.pageVisits)}</td>
+                      <td data-label="Unique IPs">{number(row.uniqueVisitors)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -173,9 +179,42 @@ export default function AdminDailyReport() {
                     <th className="dfr-gold">{money(totals.platformFees)}</th>
                     <th className="dfr-purple">{money(totals.affiliatePaid)}</th>
                     <th>{number(totals.installmentPayments)}</th>
+                    <th>{number(totals.pageVisits)}</th>
+                    <th>{number(totals.uniqueVisitors)}</th>
                   </tr>
                 </tfoot>
               </table>
+            </div>
+          </section>
+
+          <section className="dfr-card">
+            <div className="dfr-card-head">
+              <div>
+                <h2>Visitor details</h2>
+                <p>Route activity grouped by IP address for the selected date range. This data is visible to admins only.</p>
+              </div>
+            </div>
+            <div className="dfr-table-wrap">
+              {visitorDetails.length === 0 ? (
+                <p className="dfr-empty">No page visits recorded for this date range.</p>
+              ) : (
+                <table className="dfr-table dfr-visitors-table">
+                  <thead>
+                    <tr><th>Date</th><th>IP address</th><th>Page</th><th>Visits</th><th>Last seen</th></tr>
+                  </thead>
+                  <tbody>
+                    {visitorDetails.map((visitor) => (
+                      <tr key={`${visitor.date}-${visitor.ip}-${visitor.path}`}>
+                        <td className="dfr-date">{new Date(`${visitor.date}T12:00:00`).toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td data-label="IP address" className="dfr-ip">{visitor.ip}</td>
+                        <td data-label="Page" className="dfr-path">{visitor.path}</td>
+                        <td data-label="Visits">{number(visitor.visits)}</td>
+                        <td data-label="Last seen">{visitor.lastVisitedAt ? new Date(visitor.lastVisitedAt).toLocaleString("en-NG") : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
         </>
@@ -209,16 +248,17 @@ const CSS = `
   .dfr-loading { min-height:260px; display:grid; place-items:center; color:#8b887e; gap:10px; }
   .dfr-spinner { width:20px; height:20px; border:2px solid rgba(255,255,255,.16); border-top-color:#e8c96a; border-radius:50%; animation:dfr-spin .8s linear infinite; }
   @keyframes dfr-spin { to { transform:rotate(360deg); } }
-  .dfr-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+  .dfr-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:18px; }
   .dfr-metric { min-width:0; padding:20px; background:#0d0f16; border:1px solid rgba(255,255,255,.08); border-radius:16px; }
   .dfr-metric span,.dfr-metric small { display:block; color:#8b887e; font-size:12px; }
   .dfr-metric strong { display:block; color:#6bf0a0; font:800 clamp(21px,2.5vw,30px)/1.1 Syne,sans-serif; margin:12px 0 8px; overflow-wrap:anywhere; }
-  .dfr-metric.is-gold strong { color:#e8c96a; }.dfr-metric.is-purple strong { color:#c28cff; }
+  .dfr-metric.is-gold strong { color:#e8c96a; }.dfr-metric.is-purple strong { color:#c28cff; }.dfr-metric.is-blue strong { color:#8dc8ff; }
   .dfr-insight { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:16px 18px; border:1px solid rgba(194,140,255,.2); background:rgba(194,140,255,.06); border-radius:14px; margin-bottom:18px; }
   .dfr-insight strong,.dfr-insight span { display:block; }.dfr-insight strong { font-size:14px; }.dfr-insight span,.dfr-insight p { color:#9d94aa; font-size:12px; margin-top:5px; }.dfr-insight p { max-width:520px; line-height:1.5; margin:0; }
   .dfr-card { background:#0d0f16; border:1px solid rgba(255,255,255,.08); border-radius:18px; overflow:hidden; }
   .dfr-card-head { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; padding:21px 22px; border-bottom:1px solid rgba(255,255,255,.08); }.dfr-card-head h2 { font:700 18px Syne,sans-serif; }.dfr-card-head p { color:#8b887e; font-size:12px; margin-top:6px; }.dfr-live { color:#6bf0a0; font-size:12px; display:flex; gap:7px; align-items:center; }.dfr-live i { width:7px; height:7px; border-radius:50%; background:#6bf0a0; box-shadow:0 0 0 4px rgba(107,240,160,.12); }
   .dfr-table-wrap { overflow:auto; }.dfr-table { width:100%; min-width:900px; border-collapse:collapse; font-size:13px; }.dfr-table th { color:#8b887e; font-size:10px; text-transform:uppercase; letter-spacing:.08em; text-align:left; padding:14px 18px; white-space:nowrap; }.dfr-table td { padding:15px 18px; border-top:1px solid rgba(255,255,255,.06); color:#f0ede8; white-space:nowrap; }.dfr-table tbody tr:hover { background:rgba(255,255,255,.025); }.dfr-table td small { display:block; color:#77746d; font-size:11px; margin-top:4px; }.dfr-date { color:#d9d2c4!important; font-weight:700; }.dfr-gold { color:#e8c96a!important; }.dfr-purple { color:#c28cff!important; }.dfr-table tfoot th { color:#f0ede8; background:rgba(255,255,255,.035); padding:16px 18px; white-space:nowrap; }
+  .dfr-visitors-table { min-width:760px; }.dfr-ip { color:#8dc8ff!important; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.02em; }.dfr-path { color:#cfc5d8!important; max-width:260px; overflow:hidden; text-overflow:ellipsis; }.dfr-empty { padding:28px 22px; color:#8b887e; font-size:13px; }
   @media(max-width:900px){.dfr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.dfr-head{align-items:flex-start;flex-direction:column;}.dfr-head-meta{text-align:left;}.dfr-insight{align-items:flex-start;flex-direction:column;}}
   @media(max-width:520px){.dfr-kpis{grid-template-columns:1fr;}.dfr-toolbar label{flex:1;min-width:132px;}.dfr-button{width:100%;}.dfr-card-head{padding:18px;}}
   @media(prefers-reduced-motion:reduce){.dfr-spinner{animation:none;}}

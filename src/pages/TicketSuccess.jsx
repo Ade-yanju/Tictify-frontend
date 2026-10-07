@@ -83,6 +83,7 @@ export default function TicketSuccess() {
   const [sendingEmail, setSendingEmail] = useState(false);
   // null | "sent" | "unavailable" | "error"
   const [emailStatus, setEmailStatus] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(true);
 
   /* ── load ticket ── */
   useEffect(() => {
@@ -501,11 +502,20 @@ export default function TicketSuccess() {
             Browse more events <Icon name="arrowRight" />
           </button>
         </footer>
-        <section style={{ marginTop: 24, padding: 18, borderRadius: 14, background: "rgba(232,201,106,.08)", textAlign: "center" }} aria-label="Feedback invitation">
-          <strong>How was your booking experience?</strong>
-          <p style={{ margin: "8px 0 12px", opacity: .75 }}>Your feedback helps us improve. It only takes a minute and is optional.</p>
-          <button className="ts-btn ts-btn-outline" onClick={() => navigate("/feedback")}>Share feedback</button>
-        </section>
+        {showFeedback && (
+          <section style={{ position: "relative", marginTop: 24, padding: 18, paddingRight: 52, borderRadius: 14, background: "rgba(232,201,106,.08)", textAlign: "center" }} aria-label="Feedback invitation">
+            <button
+              type="button"
+              onClick={() => setShowFeedback(false)}
+              aria-label="Dismiss feedback invitation"
+              title="Dismiss"
+              style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(255,255,255,.2)", background: "rgba(0,0,0,.16)", color: "inherit", fontSize: 22, lineHeight: 1, cursor: "pointer" }}
+            >×</button>
+            <strong>How was your booking experience?</strong>
+            <p style={{ margin: "8px 0 12px", opacity: .75 }}>Your feedback helps us improve. It only takes a minute and is optional.</p>
+            <button className="ts-btn ts-btn-outline" onClick={() => navigate("/feedback")}>Share feedback</button>
+          </section>
+        )}
       </article>
 
       {/* ── email modal ── */}
