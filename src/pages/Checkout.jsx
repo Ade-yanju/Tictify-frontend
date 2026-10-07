@@ -1101,7 +1101,7 @@ export default function Checkout() {
                           <p className="ck-sum-caption">
                             {purchaseMode === "installment"
                               ? "Charged once and included in your ticket balance"
-                              : "Instant QR delivery, fraud protection &amp; support"}
+                              : "Instant QR delivery, fraud protection & support"}
                           </p>
                         </div>
                         <div className="ck-sum-fee">
@@ -1121,6 +1121,17 @@ export default function Checkout() {
                               : "Charged by our payment partner Paystack"}
                           </p>
                         </div>
+                        {purchaseMode !== "installment" && (
+                          <div className="ck-sum-fees-total">
+                            <span>Total fees</span>
+                            <strong>
+                              ₦{(
+                                Number(quote.platformFee || 0) +
+                                Number(quote.processingFee || 0)
+                              ).toLocaleString()}
+                            </strong>
+                          </div>
+                        )}
                       </>
                     )}
                   </>
@@ -1570,8 +1581,12 @@ img.ck-bimg-front { position:relative; z-index:1; object-fit:contain; }
 .ck-sum-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:13.5px; color:var(--muted); }
 .ck-sum-val { color:var(--text); font-weight:500; text-align:right; }
 .ck-num { font-variant-numeric:tabular-nums; }
-.ck-sum-fee { display:grid; gap:4px; }
-.ck-sum-caption { font-size:11.5px; color:var(--muted); opacity:.72; line-height:1.5; }
+.ck-sum-fee { display:grid; gap:5px; padding:12px 13px; background:#f7f3ea; border:1px solid #e3d9c8; border-radius:12px; }
+.ck-sum-fee .ck-sum-row { color:#655b70; }
+.ck-sum-fee .ck-sum-val { color:#21152c; font-weight:700; }
+.ck-sum-caption { font-size:11.5px; color:#655b70; opacity:1; line-height:1.5; }
+.ck-sum-fees-total { display:flex; justify-content:space-between; gap:12px; padding:10px 13px; border-top:1px dashed #cbbda9; color:#21152c; font-size:13px; font-weight:700; }
+.ck-sum-fees-total strong { font-variant-numeric:tabular-nums; }
 .ck-sum-divider { height:1px; background:var(--border); margin-bottom:16px; }
 .ck-assure { display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; color:var(--muted); margin-bottom:16px; text-align:center; line-height:1.5; }
 .ck-assure svg { width:13px; height:13px; color:var(--gold); flex-shrink:0; }
