@@ -41,6 +41,7 @@ const NAV = [
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
+  { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },
   {
     label: "Ambassadors",
     path: "/admin/ambassadors",
@@ -428,6 +429,7 @@ function FinanceOverview({ finance, loading, error, onRetry, navigate }) {
         <div className="adb-finance-actions">
           {error && <span className="adb-finance-muted">{error}</span>}
           <button className="adb-finance-refresh" onClick={() => navigate("/admin/withdrawals")}>Settlements</button>
+          <button className="adb-finance-refresh" onClick={() => navigate("/admin/paystack-activity")}>Paystack activity</button>
           <button className="adb-finance-refresh" onClick={onRetry}>Refresh</button>
         </div>
       </div>

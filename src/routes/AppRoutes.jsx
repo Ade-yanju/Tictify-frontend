@@ -45,6 +45,7 @@ import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
 import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
 import AdminDailyReport from "../pages/admin/AdminDailyReport";
+import AdminPaystackActivity from "../pages/admin/AdminPaystackActivity";
 import AdminAmbassadors from "../pages/admin/AdminAmbassadors";
 import AdminAffiliates from "../pages/admin/AdminAffiliates";
 import AdminFeedback from "../pages/admin/AdminFeedback";
@@ -252,6 +253,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <AdminRoute>
                 <AdminDailyReport />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/paystack-activity"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminPaystackActivity />
               </AdminRoute>
             </ProtectedRoute>
           }

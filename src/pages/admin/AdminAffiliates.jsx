@@ -26,6 +26,7 @@ const NAV = [
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
+  { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },
   { label: "Ambassadors", path: "/admin/ambassadors", icon: "graduation" },
   { label: "Affiliates", path: "/admin/affiliates", icon: "percent" },
   { label: "Feedback", path: "/admin/feedback", icon: "mail" },
