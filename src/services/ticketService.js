@@ -1,4 +1,4 @@
-import { getToken } from "./authService";
+import { getScanToken } from "./authService";
 
 const API = `${import.meta.env.VITE_API_URL || "https://tictify-backend.onrender.com"}/api/tickets`;
 
@@ -12,7 +12,7 @@ function networkError(message) {
 }
 
 export async function scanTicket(code, eventId, opts = {}) {
-  const token = getToken();
+  const token = opts.token || getScanToken();
 
   let res;
   try {
@@ -49,8 +49,7 @@ export async function scanTicket(code, eventId, opts = {}) {
 }
 
 /* Offline gate: cached guest list for local validation */
-export async function fetchGateManifest(eventId) {
-  const token = getToken();
+export async function fetchGateManifest(eventId, token = getScanToken()) {
   const res = await fetch(`${API}/gate/manifest/${eventId}`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => {
@@ -62,8 +61,7 @@ export async function fetchGateManifest(eventId) {
 }
 
 /* Offline gate: replay queued admits, get per-item reconciliation */
-export async function syncGateAdmits(eventId, admits) {
-  const token = getToken();
+export async function syncGateAdmits(eventId, admits, token = getScanToken()) {
   const res = await fetch(`${API}/gate/sync/${eventId}`, {
     method: "POST",
     headers: {

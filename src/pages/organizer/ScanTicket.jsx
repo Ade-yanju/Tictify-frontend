@@ -21,20 +21,16 @@ import {
   getPending,
   markSynced,
 } from "../../services/gateOffline";
-import { getToken } from "../../services/authService";
+import {
+  getToken,
+  getGateToken,
+  getGateStaff,
+  clearGateSession,
+} from "../../services/authService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "../../components/Icon";
 import OrganizerChrome from "../../components/OrganizerChrome";
 import TictifyLoader from "../../components/TictifyLoader";
-
-function injectStyles(id, content) {
-  if (typeof document !== "undefined" && !document.getElementById(id)) {
-    const el = document.createElement("style");
-    el.id = id;
-    el.innerHTML = content;
-    document.head.appendChild(el);
-  }
-}
 
 /* ── Nav icons (inline, dependency-free) ─────────────────── */
 
@@ -48,15 +44,29 @@ const NAV = [
 ];
 
 /* ── App shell: sidebar ≥1024px, blurred top bar below ───── */
-function Shell({ active, title, subtitle, children }) {
-  return (
-    <OrganizerChrome active={active} title={title} subtitle={subtitle} legacyPrefix="sct">
-      {children}
-    </OrganizerChrome>
-  );
+function Shell({ active, title, subtitle, standalone = false, eventId, children }) {
+  if (standalone) {
+    return (
+      <div className="gate-shell">
+        <header className="gate-shell-header">
+          <div><strong>Tictify gate</strong><span>Scanner access</span></div>
+          <div className="gate-shell-actions">
+            <span>{getGateStaff()?.name || "Gate staff"}</span>
+            <button type="button" onClick={() => { clearGateSession(); window.location.href = `/gate/login?event=${encodeURIComponent(eventId || "")}`; }}>Log out</button>
+          </div>
+        </header>
+        <main className="gate-shell-main">
+          <header className="gate-shell-intro"><p>Event scanner</p><h1>{title}</h1><span>{subtitle}</span></header>
+          {children}
+        </main>
+        <style>{`.gate-shell{min-height:100svh;background:#080910;color:#f0ede8;font-family:'DM Sans',sans-serif}.gate-shell-header{min-height:64px;padding:14px clamp(18px,4vw,42px);display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #ffffff14;background:#0d0f16}.gate-shell-header strong{display:block;font:800 19px Syne,sans-serif;color:#e8c96a}.gate-shell-header span{display:block;color:#7a7870;font-size:11px;margin-top:2px}.gate-shell-actions{display:flex;align-items:center;gap:14px}.gate-shell-actions>span{color:#aaa7a0;font-size:13px}.gate-shell-actions button{border:1px solid #ffffff20;background:transparent;border-radius:999px;color:#f0ede8;padding:8px 13px}.gate-shell-main{max-width:760px;margin:0 auto;padding:clamp(24px,5vw,52px) 18px}.gate-shell-intro{margin-bottom:26px}.gate-shell-intro p{color:#e8c96a;font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:700}.gate-shell-intro h1{font:800 clamp(26px,4vw,36px) Syne,sans-serif;margin:8px 0}.gate-shell-intro span{color:#aaa7a0;font-size:14px;line-height:1.6}@media(max-width:480px){.gate-shell-header{align-items:flex-start}.gate-shell-actions{display:block;text-align:right}.gate-shell-actions>span{display:block;margin-bottom:7px}}`}</style>
+      </div>
+    );
+  }
+  return <OrganizerChrome active={active} title={title} subtitle={subtitle} legacyPrefix="sct">{children}</OrganizerChrome>;
 }
 
-export default function ScanTicket() {
+export default function ScanTicket({ standalone = false }) {
 
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -98,7 +108,10 @@ export default function ScanTicket() {
     if (!eventId) return;
     if (!silent) setManifestState("loading");
     try {
-      const data = await fetchGateManifest(eventId);
+      const data = await fetchGateManifest(
+        eventId,
+        standalone ? getGateToken() : getToken(),
+      );
       const { record } = await saveManifest(eventId, data);
       setManifestInfo({
         eventTitle: data.eventTitle,
@@ -148,6 +161,7 @@ export default function ScanTicket() {
           at: p.at,
           deviceId: p.deviceId,
         })),
+        standalone ? getGateToken() : getToken(),
       );
       const results = resp.results || [];
       // admitted + already are both durably recorded server-side
@@ -191,7 +205,9 @@ export default function ScanTicket() {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/tickets/gate/${eventId}`,
         {
-          headers: { Authorization: `Bearer ${getToken()}` },
+          headers: {
+            Authorization: `Bearer ${standalone ? getGateToken() : getToken()}`,
+          },
         },
       );
       if (!res.ok) return; // keep last values
@@ -204,25 +220,34 @@ export default function ScanTicket() {
 
   useEffect(() => {
     if (!eventId) return;
-    fetchGate();
+    const firstFetch = window.setTimeout(fetchGate, 0);
     const interval = setInterval(fetchGate, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(firstFetch);
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   /* ================= GUARD ================= */
   useEffect(() => {
-    if (!eventId) {
-      navigate("/organizer/scan/select", { replace: true });
+    if (standalone && !getGateToken()) {
+      navigate(`/gate/login?event=${encodeURIComponent(eventId || "")}`, { replace: true });
+      return;
     }
-  }, [eventId, navigate]);
+    if (!eventId) {
+      navigate(standalone ? "/gate/login" : "/organizer/scan/select", { replace: true });
+    }
+  }, [eventId, navigate, standalone]);
 
   /* ================= ARM OFFLINE GATE ================= */
   useEffect(() => {
     if (!eventId) return;
-    loadManifest();
-    refreshQueued();
-    flushQueue({ announce: false }); // clear any leftover queue on entry
+    const firstSync = window.setTimeout(() => {
+      loadManifest();
+      refreshQueued();
+      flushQueue({ announce: false }); // clear any leftover queue on entry
+    }, 0);
 
     const goOnline = () => {
       setOnline(true);
@@ -232,6 +257,7 @@ export default function ScanTicket() {
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
     return () => {
+      window.clearTimeout(firstSync);
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
     };
@@ -274,7 +300,7 @@ export default function ScanTicket() {
           await handleScan(decodedText);
         },
       );
-    } catch (err) {
+    } catch {
       await stopCamera();
       setModal({
         type: "error",
@@ -291,7 +317,9 @@ export default function ScanTicket() {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
       }
-    } catch {}
+    } catch {
+      /* Camera teardown can race with browser permission prompts. */
+    }
     scannerRef.current = null;
     setScanning(false);
     activeScanRef.current = false;
@@ -354,6 +382,7 @@ export default function ScanTicket() {
       const res = await scanTicket(trimmed, eventId, {
         clientScanId,
         deviceId: deviceIdRef.current,
+        token: standalone ? getGateToken() : getToken(),
       });
 
       // keep the local manifest baseline fresh + never re-send this scan
@@ -422,6 +451,8 @@ export default function ScanTicket() {
       active="scan"
       title="Scan Tickets"
       subtitle="Point the camera at a guest's QR code to validate entry"
+      standalone={standalone}
+      eventId={eventId}
     >
       {modal && (
         <Modal {...modal} onClose={() => setModal(null)} />

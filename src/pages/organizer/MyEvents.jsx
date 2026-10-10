@@ -13,6 +13,7 @@ import TictifyLoader from "../../components/TictifyLoader";
 import ShareSheet from "../../components/ShareSheet";
 import { buyOnWhatsAppUrl } from "../../utils/whatsapp";
 import OrganizerCohostModal from "../../components/OrganizerCohostModal";
+import GateStaffModal from "../../components/GateStaffModal";
 
 function injectStyles(id, content) {
   if (typeof document !== "undefined" && !document.getElementById(id)) {
@@ -109,6 +110,7 @@ export default function MyEvents() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [promoEvent, setPromoEvent] = useState(null);
   const [cohostEvent, setCohostEvent] = useState(null);
+  const [gateStaffEvent, setGateStaffEvent] = useState(null);
   const [exportingId, setExportingId] = useState(null);
   const [errorNotice, setErrorNotice] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
@@ -269,6 +271,13 @@ export default function MyEvents() {
         <OrganizerCohostModal
           event={cohostEvent}
           onClose={() => setCohostEvent(null)}
+        />
+      )}
+
+      {gateStaffEvent && (
+        <GateStaffModal
+          event={gateStaffEvent}
+          onClose={() => setGateStaffEvent(null)}
         />
       )}
 
@@ -475,6 +484,13 @@ export default function MyEvents() {
                     onClick={() => setCohostEvent(event)}
                   >
                     Co-hosts
+                  </button>
+
+                  <button
+                    className="mev-abtn mev-abtn-tool mev-abtn-cohost"
+                    onClick={() => setGateStaffEvent(event)}
+                  >
+                    Gate staff
                   </button>
 
                   <button

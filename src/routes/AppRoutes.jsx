@@ -18,6 +18,7 @@ import About from "../pages/About";
 import Contact from "../pages/Contact";
 import Feedback from "../pages/Feedback";
 import AffiliateDashboard from "../pages/AffiliateDashboard";
+import GateLogin from "../pages/GateLogin";
 /* ================= AUTH ================= */
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -81,6 +82,8 @@ export default function AppRoutes() {
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/become-affiliate" element={<BecomeAffiliate />} />
         <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
+        <Route path="/gate/login" element={<GateLogin />} />
+        <Route path="/gate/scan" element={<ScanTicket standalone />} />
 
         {/* ========= AUTH ========= */}
         <Route path="/login" element={<Login />} />

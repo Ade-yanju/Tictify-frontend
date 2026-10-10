@@ -93,6 +93,39 @@ export function getToken() {
   return localStorage.getItem("token");
 }
 
+/* Gate sessions live in their own storage keys so a scanner device never
+   overwrites an organiser session (and a gate token cannot be used as one). */
+export function getGateToken() {
+  return localStorage.getItem("gateToken");
+}
+
+export function getScanToken() {
+  return getToken() || getGateToken();
+}
+
+export function getGateStaff() {
+  const stored = localStorage.getItem("gateStaff");
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    localStorage.removeItem("gateStaff");
+    return null;
+  }
+}
+
+export function setGateSession(result) {
+  localStorage.setItem("gateToken", result.token);
+  localStorage.setItem("gateStaff", JSON.stringify(result.staff || {}));
+  localStorage.setItem("gateEvent", JSON.stringify(result.event || {}));
+}
+
+export function clearGateSession() {
+  localStorage.removeItem("gateToken");
+  localStorage.removeItem("gateStaff");
+  localStorage.removeItem("gateEvent");
+}
+
 export function getUser() {
   const stored = localStorage.getItem("user");
   if (!stored) return null;
