@@ -5,6 +5,7 @@ import "./index.css";
 /* Design system — tokens, type scale, button ranks, focus states.
    Imported once here so no page needs its own :root block. */
 import "./styles/system.css";
+import "./styles/readability.css";
 import "./styles/auth.css";
 import "./styles/organizer.css";
 import "./styles/organizer-exact.css";

@@ -32,6 +32,7 @@ const NAV = [
   { label: "Events", path: "/admin/events", icon: "calendar" },
   { label: "Organizers", path: "/admin/organizers", icon: "users" },
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
+  { label: "Installment plans", path: "/admin/installments", icon: "ticket" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
   { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },
@@ -453,7 +454,7 @@ function FinanceSection({ finance, loading, error, onRetry }) {
           <FinKpi
             label="Platform fees"
             value={naira(s.platformFees)}
-            sub="your % on sales"
+            sub="₦50 + 2% of paid order subtotal"
           />
           <FinKpi
             label="Affiliate memberships"

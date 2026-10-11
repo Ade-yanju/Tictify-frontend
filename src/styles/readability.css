@@ -1,0 +1,100 @@
+/* Readability baseline
+   Keep the dark visual language, but make the information easy to scan at
+   normal viewing distance. Admin pages have several legacy, page-local style
+   blocks, so the admin rules below intentionally set a clear minimum size. */
+
+body {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* Several older pages still redeclare these variables in runtime-injected
+   styles. Keep the readable contrast level consistent across those pages. */
+:root {
+  --text: #F2EFE9 !important;
+  --text-2: #C9C5BC !important;
+  --muted: #AAA69D !important;
+  --text-dim: #77736B !important;
+}
+
+body :where(input, select, textarea, button) {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+body :where(p, li, td, th, label, small) {
+  line-height: 1.6;
+}
+
+body :where(input, select, textarea) {
+  min-height: 44px;
+}
+
+/* The admin UI uses a handful of independent legacy shells. Treat them as
+   one product so captions and controls remain readable on every admin page. */
+:where(
+  .adm-shell,
+  .adb-page,
+  .aev-page,
+  .aor-page,
+  .awd-page,
+  .asa-page,
+  .aam-page,
+  .aaf-page,
+  .afb-page
+) {
+  font-size: 1rem;
+}
+
+:where(
+  .adm-shell,
+  .adb-page,
+  .aev-page,
+  .aor-page,
+  .awd-page,
+  .asa-page,
+  .aam-page,
+  .aaf-page,
+  .afb-page
+) :where(p, li, td, th, label, small, .dfr-subtitle, .psa-subtitle) {
+  font-size: max(0.875rem, 0.875em) !important;
+  line-height: 1.55;
+}
+
+:where(
+  .adm-shell,
+  .adb-page,
+  .aev-page,
+  .aor-page,
+  .awd-page,
+  .asa-page,
+  .aam-page,
+  .aaf-page,
+  .afb-page
+) :where(button, input, select, textarea) {
+  font-size: 1rem !important;
+  line-height: 1.45;
+}
+
+:where(
+  .adm-shell,
+  .adb-page,
+  .aev-page,
+  .aor-page,
+  .awd-page,
+  .asa-page,
+  .aam-page,
+  .aaf-page,
+  .afb-page
+) :where(.adm-link, .adb-nav-item, .aev-nav-item, .aor-nav-item, .awd-nav-item, .asa-nav-item, .aam-nav-item, .aaf-nav-item) {
+  min-height: 46px;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-2: #E1DDD4 !important;
+    --muted: #C7C2B8 !important;
+    --border: rgba(255, 255, 255, 0.18) !important;
+    --border-h: rgba(255, 255, 255, 0.3) !important;
+  }
+}

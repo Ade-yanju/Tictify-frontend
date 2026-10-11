@@ -46,9 +46,9 @@
      Four levels. Two (--text/--muted) could not express
      "secondary heading" vs "caption" vs "disabled". */
   --text: #F2EFE9;
-  --text-2: #B9B5AC; /* secondary: subheads, meta */
-  --muted: #8B887E; /* tertiary: captions, placeholders */
-  --text-dim: #5C5A54; /* disabled */
+  --text-2: #C9C5BC; /* secondary: subheads, meta */
+  --muted: #AAA69D; /* tertiary: captions, placeholders */
+  --text-dim: #77736B; /* disabled */
   --on-gold: #0A0B12; /* text on a gold fill */
 
   /* ── Status ────────────────────────────────────────────────────
@@ -86,9 +86,9 @@
   --t-h3: 1.25rem;
   --t-h4: 1.0625rem;
   --t-body-lg: 1.0625rem;
-  --t-body: 0.9375rem;
-  --t-sm: 0.8125rem;
-  --t-xs: 0.6875rem; /* eyebrows, chips */
+  --t-body: 1rem;
+  --t-sm: 0.9375rem;
+  --t-xs: 0.75rem; /* eyebrows, chips */
 
   --lh-tight: 1.05; /* display */
   --lh-snug: 1.25; /* headings */
@@ -161,7 +161,7 @@ body {
   background: var(--ink-900);
   color: var(--text);
   font-family: var(--font-b);
-  font-size: var(--t-body);
+  font-size: 1rem;
   line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

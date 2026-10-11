@@ -24,6 +24,7 @@ const NAV = [
   { label: "Events", path: "/admin/events", icon: "calendar" },
   { label: "Organizers", path: "/admin/organizers", icon: "users" },
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
+  { label: "Installment plans", path: "/admin/installments", icon: "ticket" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
   { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },
@@ -237,12 +238,13 @@ export default function AdminOrganizers() {
 /* ══════════════════════════════════════════════════════════
    BROADCAST COMPOSE MODAL
 ══════════════════════════════════════════════════════════ */
-const DEFAULT_SUBJECT = "New on Tictify: what's improved for you";
+const DEFAULT_SUBJECT = "Lower Tictify fees: now ₦50 + 2% on paid orders";
 const DEFAULT_BODY = `Hi [First Name],
 
 Thanks for being part of Tictify. We've shipped a lot lately to help you sell more and get paid faster, and I wanted to make sure you're getting the most out of it:
 
 - You keep the full ticket price — the platform and payment fees are added on top and paid by the guest.
+- Our platform fee is now just ₦50 + 2% of the paid order subtotal, reduced from the previous rate. The fee is shown clearly to guests at checkout.
 - Withdraw your earnings to your Nigerian bank account, protected by an email verification code so no one can move your funds without you.
 - Sell right up to the gate — fast, secure QR entry, including offline scanning when the venue network is weak.
 - Promoter and affiliate links, plus discount and early-bird codes, to push your sales harder.

@@ -42,6 +42,7 @@ const NAV = [
   { label: "Events", path: "/admin/events", icon: "calendar" },
   { label: "Organizers", path: "/admin/organizers", icon: "users" },
   { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
+  { label: "Installment plans", path: "/admin/installments", icon: "ticket" },
   { label: "Analytics", path: "/admin/sales", icon: "bars" },
   { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
   { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },

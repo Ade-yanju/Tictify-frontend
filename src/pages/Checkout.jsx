@@ -1093,7 +1093,7 @@ export default function Checkout() {
                       <>
                         <div className="ck-sum-fee">
                           <div className="ck-sum-row">
-                            <span>Service fee</span>
+                            <span>Tictify service fee (₦50 + 2%)</span>
                             <span className="ck-sum-val ck-num">
                               ₦{Number(quote.platformFee || 0).toLocaleString()}
                             </span>

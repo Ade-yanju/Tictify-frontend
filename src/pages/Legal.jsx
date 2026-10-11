@@ -93,8 +93,9 @@ export default function Legal() {
 
           <h3>4. Fees</h3>
           <p>
-            Ticket buyers pay the ticket price plus a Tictify service fee and a payment-processing
-            fee — every fee is itemized at checkout before payment. Organizers receive the full
+            Ticket buyers pay the ticket price plus a Tictify service fee of ₦50 + 2% of the ticket
+            subtotal and a payment-processing fee — every fee is itemized at checkout before payment.
+            Organizers receive the full
             ticket price. Withdrawals to bank accounts carry a small bank-transfer fee shown
             before the request is confirmed. Affiliate membership costs a one-time fee shown at
             signup. All fees are stated in Nigerian Naira (₦).

@@ -43,6 +43,7 @@ import SelectEventToScan from "../pages/organizer/SelectEventToScan";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminOrganizers from "../pages/admin/AdminOrganizers";
 import AdminWithdrawals from "../pages/admin/AdminWithdrawals";
+import AdminInstallments from "../pages/admin/AdminInstallments";
 import AdminEvents from "../pages/admin/AdminEvents";
 import AdminSalesAnalytics from "../pages/admin/AdminSalesAnalytics";
 import AdminDailyReport from "../pages/admin/AdminDailyReport";
@@ -212,6 +213,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <AdminRoute>
                 <AdminWithdrawals />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/installments"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminInstallments />
               </AdminRoute>
             </ProtectedRoute>
           }

@@ -712,7 +712,7 @@ function Pricing() {
             <span className="tf-price-tag">Most popular</span>
             <h3>Paid events</h3>
             <div className="tf-price">
-              3% + ₦80<span>/ticket sold</span>
+              ₦50 + 2%<span>/paid order</span>
             </div>
             <ul>
               <li>Everything in Free</li>

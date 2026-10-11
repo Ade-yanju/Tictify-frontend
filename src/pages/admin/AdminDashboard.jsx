@@ -5,22 +5,8 @@
 ═══════════════════════════════════════════════════════════ */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminShell from "../../components/AdminShell";
 import Icon from "../../components/Icon";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 import { getToken, logout } from "../../services/authService";
 
 function injectStyles(id, content) {
@@ -32,41 +18,6 @@ function injectStyles(id, content) {
   }
 }
 
-/* ── Icons (inline, dependency-free) ─────────────────────── */
-
-const NAV = [
-  { label: "Dashboard", path: "/admin/dashboard", icon: "grid" },
-  { label: "Events", path: "/admin/events", icon: "calendar" },
-  { label: "Organizers", path: "/admin/organizers", icon: "users" },
-  { label: "Withdrawals", path: "/admin/withdrawals", icon: "wallet" },
-  { label: "Analytics", path: "/admin/sales", icon: "bars" },
-  { label: "Daily reports", path: "/admin/daily-report", icon: "calendar" },
-  { label: "Paystack activity", path: "/admin/paystack-activity", icon: "wallet" },
-  {
-    label: "Ambassadors",
-    path: "/admin/ambassadors",
-    icon: (
-      <Icon name="graduation" />
-    ),
-  },
-  {
-    label: "Affiliates",
-    path: "/admin/affiliates",
-    icon: (
-      <Icon name="percent" />
-    ),
-  },
-  { label: "Feedback", path: "/admin/feedback", icon: "mail" },
-];
-
-const TOOLTIP_STYLE = {
-  background: "#0d0f16",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 12,
-  color: "#F0EDE8",
-  fontSize: 13,
-};
-
 /* ══════════════════════════════════════════════════════════
    PAGE
 ══════════════════════════════════════════════════════════ */
@@ -74,12 +25,6 @@ export default function AdminDashboard() {
   injectStyles("tictify-admin-dashboard-css", CSS);
   const navigate = useNavigate();
   const [data, setData] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [installments, setInstallments] = useState([]);
-  const [finance, setFinance] = useState(null);
-  const [financeLoading, setFinanceLoading] = useState(true);
-  const [financeError, setFinanceError] = useState("");
-  const [financeRetry, setFinanceRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -92,25 +37,15 @@ export default function AdminDashboard() {
 
     async function load() {
       try {
-        const [dashRes, chartRes, installmentRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/installments/admin/list`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        if (!dashRes.ok || !chartRes.ok) {
+        if (!response.ok) {
           throw new Error("Session expired or unauthorized");
         }
 
-        setData(await dashRes.json());
-        setAnalytics(await chartRes.json());
-        if (installmentRes.ok) setInstallments(await installmentRes.json());
+        setData(await response.json());
       } catch (err) {
         setError(err.message || "Unable to load dashboard");
       } finally {
@@ -121,80 +56,19 @@ export default function AdminDashboard() {
     load();
   }, [navigate]);
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    let cancelled = false;
-    setFinanceLoading(true);
-    setFinanceError("");
-
-    async function loadFinance() {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/admin/finance`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-
-        if (!response.ok) throw new Error("Unable to load platform finance");
-
-        const json = await response.json();
-        if (!cancelled) setFinance(json);
-      } catch (err) {
-        if (!cancelled) {
-          setFinanceError(err.message || "Unable to load platform finance");
-        }
-      } finally {
-        if (!cancelled) setFinanceLoading(false);
-      }
-    }
-
-    loadFinance();
-    return () => {
-      cancelled = true;
-    };
-  }, [financeRetry]);
-
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen error={error} onLogout={() => { logout(); navigate("/login"); }} />;
 
   const stats = data?.stats || {};
-  /* The analytics endpoint historically exposed revenueByMonth while this
-     dashboard expected monthlyRevenue. Normalize both shapes here so the
-     chart remains compatible with existing deployments and older responses. */
-  const revenueRows = analytics?.monthlyRevenue || analytics?.revenueByMonth || [];
-  const feeRows = analytics?.platformFeesByMonth || [];
-  const monthlyData = revenueRows.map((row) => {
-    const matchingFees = feeRows.find(
-      (fee) => String(fee._id) === String(row._id),
-    );
-
-    return {
-      ...row,
-      totalRevenue: Number(row.totalRevenue ?? row.total ?? row.revenue ?? 0),
-      platformFees: Number(
-        row.platformFees ?? matchingFees?.platformFees ?? matchingFees?.total ?? 0,
-      ),
-    };
-  });
-  const salesByEvent = data?.salesByEvent || [];
   const recentSales = data?.recentSales || [];
 
-  // Prepare pie chart data
-  const eventStatusData = [
-    { name: "Live", value: stats.liveEvents || 0, color: "#6BF0A0" },
-    { name: "Ended", value: stats.endedEvents || 0, color: "#E05C5C" },
-    { name: "Scheduled", value: stats.scheduledEvents || 0, color: "#E8C96A" },
-  ];
-
   return (
-    <Shell
-      active="/admin/dashboard"
-      title="Admin Dashboard"
-      subtitle="Welcome back, Administrator"
-      navigate={navigate}
-      onLogout={() => { logout(); navigate("/login"); }}
-    >
+    <AdminShell active="/admin/dashboard">
+      <div className="adb-content">
+        <header className="adb-phead">
+          <h1 className="adb-title">Admin dashboard</h1>
+          <p className="adb-subtitle">Welcome back, Administrator. Here is the current platform overview.</p>
+        </header>
       {/* KPI Grid */}
       <section className="adb-kpis">
         <KPICard label="Total Revenue" value={`₦${(stats.revenue || 0).toLocaleString()}`} icon={"coins"} />
@@ -205,163 +79,38 @@ export default function AdminDashboard() {
         <KPICard label="Pending Withdrawals" value={`₦${(stats.pendingAmount || 0).toLocaleString()}`} icon={"clock"} />
       </section>
 
-      <FinanceOverview
-        finance={finance}
-        loading={financeLoading}
-        error={financeError}
-        onRetry={() => setFinanceRetry((value) => value + 1)}
-        navigate={navigate}
-      />
-
-      {/* Charts Section */}
-      <section className="adb-charts">
-        {/* Revenue Chart */}
-        <div className="adb-card">
-          <h3 className="adb-card-title">Revenue Trend</h3>
-          {monthlyData.length === 0 ? (
-            <ChartEmptyState message="Revenue data will appear here once tickets start selling" />
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="_id" stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
-                <YAxis stroke="#8B887E" tick={{ fill: "#8B887E", fontSize: 12 }} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ color: "#8B887E", fontSize: 13 }} />
-                <Line type="monotone" dataKey="totalRevenue" stroke="#E8C96A" strokeWidth={2} name="Revenue" dot={{ fill: "#E8C96A", r: 3 }} />
-                <Line type="monotone" dataKey="platformFees" stroke="#6BF0A0" strokeWidth={2} name="Fees" dot={{ fill: "#6BF0A0", r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
+      <section className="adb-focus-note">
+        <div>
+          <p className="adb-eyebrow">Admin overview</p>
+          <h2 className="adb-section-title">Your key numbers are ready</h2>
+          <p>Use the focused workspaces below when you need charts, reports, provider activity or payment follow-up.</p>
         </div>
-
-        {/* Event Status Pie */}
-        <div className="adb-card">
-          <h3 className="adb-card-title">Event Status Distribution</h3>
-          {eventStatusData.every((d) => d.value === 0) ? (
-            <ChartEmptyState message="Event status breakdown will appear once events are hosted" />
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={eventStatusData} cx="50%" cy="50%" labelLine={false} label={(entry) => entry.name} outerRadius={100}>
-                  {eventStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#0d0f16" />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        <button className="adb-focus-link" type="button" onClick={() => navigate("/admin/sales")}>Open analytics <span aria-hidden="true">→</span></button>
       </section>
-
-      {/* Sales by event */}
-      <SalesByEvent rows={salesByEvent} />
 
       {/* Recent activity */}
       <RecentActivity rows={recentSales} />
 
-      <InstallmentOverview rows={installments} />
-
-      {/* Quick Actions */}
       <section className="adb-actions-section">
-        <h3 className="adb-section-title">Quick Actions</h3>
+        <div>
+          <p className="adb-eyebrow">Workspaces</p>
+          <h2 className="adb-section-title">Choose what you want to manage</h2>
+        </div>
         <div className="adb-actions">
-          <ActionCard title="Manage Withdrawals" desc="Monitor automatic payouts" icon={"wallet"} onClick={() => navigate("/admin/withdrawals")} />
-          <ActionCard title="View Events" desc="Monitor all events" icon={"calendar"} onClick={() => navigate("/admin/events")} />
-          <ActionCard title="Organizers" desc="Manage organizers" icon={"users"} onClick={() => navigate("/admin/organizers")} />
-          <ActionCard title="Sales Analytics" desc="View detailed analytics" icon={"bars"} onClick={() => navigate("/admin/sales")} />
-          <ActionCard title="Feedback Inbox" desc="Review community feedback" icon={"mail"} onClick={() => navigate("/admin/feedback")} />
+          <ActionCard title="Events" desc="Monitor and manage events" icon={"calendar"} onClick={() => navigate("/admin/events")} />
+          <ActionCard title="Organizers" desc="Manage organizer accounts" icon={"users"} onClick={() => navigate("/admin/organizers")} />
+          <ActionCard title="Withdrawals" desc="Review payout requests" icon={"wallet"} onClick={() => navigate("/admin/withdrawals")} />
+          <ActionCard title="Analytics" desc="Explore revenue and sales" icon={"bars"} onClick={() => navigate("/admin/sales")} />
+          <ActionCard title="Installments" desc="Track reserved payment plans" icon={"ticket"} onClick={() => navigate("/admin/installments")} />
+          <ActionCard title="Feedback" desc="Review community feedback" icon={"mail"} onClick={() => navigate("/admin/feedback")} />
         </div>
       </section>
-    </Shell>
-  );
-}
-
-/* ================= APP SHELL ================= */
-
-function Shell({ active, title, subtitle, navigate, onLogout, children }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const go = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-
-  const navButtons = NAV.map((n) => (
-    <button
-      key={n.path}
-      className={`adb-nav-item ${active === n.path ? "is-active" : ""}`}
-      onClick={() => go(n.path)}
-    >
-      <Icon name={n.icon} />
-      <span>{n.label}</span>
-    </button>
-  ));
-
-  return (
-    <div className="adb-page">
-      <aside className="adb-sidebar">
-        <div className="adb-mark">Tic<em>tify</em></div>
-        <nav className="adb-nav">{navButtons}</nav>
-        <button className="adb-logout" onClick={onLogout}>
-          {"signOut"}
-          <span>Logout</span>
-        </button>
-      </aside>
-
-      <div className="adb-body">
-        <header className="adb-topbar">
-          <div className="adb-mark">Tic<em>tify</em></div>
-          <button
-            className={`adb-burger ${menuOpen ? "is-open" : ""}`}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </header>
-
-        <div className={`adb-drawer ${menuOpen ? "is-open" : ""}`}>
-          {navButtons}
-          <button className="adb-logout" onClick={onLogout}>
-            {"signOut"}
-            <span>Logout</span>
-          </button>
-        </div>
-
-        <div className="adb-content">
-          <header className="adb-phead">
-            <h1 className="adb-title">{title}</h1>
-            <p className="adb-subtitle">{subtitle}</p>
-          </header>
-          {children}
-        </div>
       </div>
-    </div>
+    </AdminShell>
   );
 }
 
 /* ================= COMPONENTS ================= */
-
-function ChartEmptyState({ message }) {
-  return (
-    <div className="adb-chart-empty">
-      <div className="adb-chart-empty-icon">{"bars"}</div>
-      <p>{message}</p>
-    </div>
-  );
-}
 
 function KPICard({ label, value, icon, trend }) {
   return (
@@ -372,216 +121,6 @@ function KPICard({ label, value, icon, trend }) {
         <h3 className="adb-kpi-value">{value}</h3>
         {trend && <p className="adb-kpi-trend">{trend}</p>}
       </div>
-    </div>
-  );
-}
-
-const formatNaira = (value) => `₦${Number(value || 0).toLocaleString()}`;
-
-function FinanceMetric({ label, value, detail, tone = "" }) {
-  return (
-    <div className={`adb-finance-metric ${tone ? `is-${tone}` : ""}`}>
-      <p className="adb-finance-metric-label">{label}</p>
-      <strong className="adb-finance-metric-value">{value}</strong>
-      {detail && <span className="adb-finance-metric-detail">{detail}</span>}
-    </div>
-  );
-}
-
-function FinanceOverview({ finance, loading, error, onRetry, navigate }) {
-  if (loading && !finance) {
-    return (
-      <section className="adb-finance">
-        <div className="adb-finance-skeleton adb-skel" />
-      </section>
-    );
-  }
-
-  if (!finance) {
-    return (
-      <section className="adb-finance">
-        <div className="adb-finance-head">
-          <div>
-            <h2 className="adb-section-title">Platform money flow</h2>
-            <p className="adb-finance-muted">{error || "Finance data is unavailable."}</p>
-          </div>
-          <button className="adb-finance-refresh" onClick={onRetry}>Retry</button>
-        </div>
-      </section>
-    );
-  }
-
-  const paystack = finance.paystack || {};
-  const flow = finance.cashFlow || {};
-  const ledger = paystack.ledger || [];
-  const settlements = finance.settlements || [];
-  const balanceAvailable = paystack.balance != null;
-
-  return (
-    <section className="adb-finance">
-      <div className="adb-finance-head">
-        <div>
-          <h2 className="adb-section-title">Platform money flow</h2>
-          <p className="adb-finance-muted">
-            Live Paystack balance alongside Tictify’s recorded inflows and payouts.
-          </p>
-        </div>
-        <div className="adb-finance-actions">
-          {error && <span className="adb-finance-muted">{error}</span>}
-          <button className="adb-finance-refresh" onClick={() => navigate("/admin/withdrawals")}>Settlements</button>
-          <button className="adb-finance-refresh" onClick={() => navigate("/admin/paystack-activity")}>Paystack activity</button>
-          <button className="adb-finance-refresh" onClick={onRetry}>Refresh</button>
-        </div>
-      </div>
-
-      <div className="adb-finance-grid">
-        <div className={`adb-finance-balance ${balanceAvailable ? "" : "is-unavailable"}`}>
-          <div className="adb-finance-balance-top">
-            <span className="adb-finance-balance-label">Paystack available balance</span>
-            <Icon name="wallet" />
-          </div>
-          <strong className="adb-finance-balance-value">
-            {balanceAvailable ? formatNaira(paystack.balance) : "Unavailable"}
-          </strong>
-          <p className="adb-finance-balance-note">
-            {balanceAvailable ? (
-              <>
-                {paystack.balanceFetchedAt && (
-                  <>Updated {new Date(paystack.balanceFetchedAt).toLocaleTimeString()}. </>
-                )}
-                Settled NGN funds currently available for transfers.
-                {paystack.error && <> Ledger status: {paystack.error}</>}
-              </>
-            ) : (
-              paystack.error || "Paystack balance is unavailable."
-            )}
-          </p>
-        </div>
-
-        <div className="adb-finance-metrics">
-          <FinanceMetric
-            label="Recorded money in"
-            value={formatNaira(flow.moneyIn)}
-            detail="Successful sales + affiliate joins, all time"
-            tone="positive"
-          />
-          <FinanceMetric
-            label="Recorded money out"
-            value={formatNaira(flow.moneyOut)}
-            detail="Approved/paid payouts + refunds, all time"
-            tone="negative"
-          />
-          <FinanceMetric
-            label="Recent Paystack in"
-            value={formatNaira(paystack.recentMoneyIn)}
-            detail={`Positive movements in latest ${ledger.length} entries`}
-            tone="positive"
-          />
-          <FinanceMetric
-            label="Recent Paystack out"
-            value={formatNaira(paystack.recentMoneyOut)}
-            detail={`Negative movements in latest ${ledger.length} entries`}
-            tone="negative"
-          />
-          <FinanceMetric
-            label="Wallets held"
-            value={formatNaira(finance.walletLiabilities)}
-            detail="Funds still owed to organizers/partners"
-          />
-        </div>
-      </div>
-
-      <SettlementAccounts rows={settlements} navigate={navigate} />
-
-      <div className="adb-finance-ledger">
-        <div className="adb-finance-ledger-head">
-          <div>
-            <h3 className="adb-card-title">Recent Paystack account activity</h3>
-            <p className="adb-finance-muted">Provider ledger entries, newest first.</p>
-          </div>
-          {paystack.ledgerMeta?.total != null && (
-            <span className="adb-finance-muted">{Number(paystack.ledgerMeta.total).toLocaleString()} total entries</span>
-          )}
-        </div>
-
-        {ledger.length === 0 ? (
-          <p className="adb-finance-empty">No Paystack ledger entries were returned.</p>
-        ) : (
-          <div className="adb-finance-ledger-table-wrap">
-            <table className="adb-finance-ledger-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Source</th>
-                  <th>Reason</th>
-                  <th className="adb-num">Movement</th>
-                  <th className="adb-num">Balance after</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledger.slice(0, 8).map((entry) => {
-                  const incoming = entry.difference >= 0;
-                  return (
-                    <tr key={entry.id || `${entry.createdAt}-${entry.difference}`}>
-                      <td data-label="Date">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}</td>
-                      <td data-label="Source">{entry.source}</td>
-                      <td data-label="Reason">{entry.reason || "—"}</td>
-                      <td data-label="Movement" className={`adb-num adb-finance-movement ${incoming ? "is-in" : "is-out"}`}>
-                        {incoming ? "+" : "−"}{formatNaira(Math.abs(entry.difference))}
-                      </td>
-                      <td data-label="Balance after" className="adb-num">{formatNaira(entry.balance)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function SettlementAccounts({ rows, navigate }) {
-  return (
-    <div className="adb-settlements">
-      <div className="adb-settlements-head">
-        <div>
-          <h3 className="adb-card-title">Recent settlement destinations</h3>
-          <p className="adb-finance-muted">Where approved or completed payouts are being sent.</p>
-        </div>
-        <button className="adb-finance-refresh" onClick={() => navigate("/admin/withdrawals")}>View all</button>
-      </div>
-
-      {rows.length === 0 ? (
-        <p className="adb-finance-empty">No approved settlements yet.</p>
-      ) : (
-        <div className="adb-settlements-grid">
-          {rows.map((settlement) => (
-            <article className="adb-settlement" key={settlement.id}>
-              <div className="adb-settlement-top">
-                <div>
-                  <strong>{settlement.bankName || "Bank account"}</strong>
-                  <p>{settlement.accountName || "Account holder not provided"}</p>
-                </div>
-                <StatusChip status={settlement.status} />
-              </div>
-              <div className="adb-settlement-account">•••• {settlement.accountLast4 || "—"}</div>
-              <div className="adb-settlement-money">
-                <span>Amount to bank</span>
-                <strong>₦{Number(settlement.amountToBank || 0).toLocaleString()}</strong>
-              </div>
-              <div className="adb-settlement-meta">
-                <span>Requested ₦{Number(settlement.requestedAmount || 0).toLocaleString()}</span>
-                <span>Fee ₦{Number(settlement.transferFee || 0).toLocaleString()}</span>
-              </div>
-              {settlement.paystackReference && (
-                <p className="adb-settlement-reference">{settlement.paystackReference}</p>
-              )}
-            </article>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -620,49 +159,6 @@ function StatusChip({ status }) {
   return <span className={`adb-chip adb-chip-${cls}`}>{key || "—"}</span>;
 }
 
-function SalesByEvent({ rows }) {
-  return (
-    <section className="adb-sbe">
-      <h3 className="adb-section-title">Sales by event</h3>
-      {rows.length === 0 ? (
-        <div className="adb-empty">
-          <div className="adb-empty-icon">{"ticket"}</div>
-          <p>No sales yet — per-event revenue appears here once tickets start selling.</p>
-        </div>
-      ) : (
-        <div className="adb-table-wrap">
-          <table className="adb-table">
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Organizer</th>
-                <th className="adb-num">Tickets sold</th>
-                <th className="adb-num">Remaining</th>
-                <th className="adb-num">Revenue (₦)</th>
-                <th className="adb-num">Platform fee (₦)</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r._id}>
-                  <td data-label="Event"><strong className="adb-td-strong">{r.title}</strong></td>
-                  <td data-label="Organizer">{r.organizerName}</td>
-                  <td data-label="Tickets sold" className="adb-num">{(r.ticketsSold || 0).toLocaleString()}</td>
-                  <td data-label="Remaining" className="adb-num">{r.remaining == null ? "—" : r.remaining.toLocaleString()}</td>
-                  <td data-label="Revenue (₦)" className="adb-num adb-gold">₦{(r.revenue || 0).toLocaleString()}</td>
-                  <td data-label="Platform fee (₦)" className="adb-num">₦{(r.platformFees || 0).toLocaleString()}</td>
-                  <td data-label="Status"><StatusChip status={r.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function RecentActivity({ rows }) {
   return (
     <section className="adb-activity">
@@ -697,44 +193,6 @@ function RecentActivity({ rows }) {
   );
 }
 
-function InstallmentOverview({ rows }) {
-  const active = rows.filter((row) => ["RESERVED", "PARTIALLY_PAID"].includes(row.status));
-  const paid = rows.filter((row) => row.status === "PAID");
-  const outstanding = active.reduce((sum, row) => sum + Number(row.amountRemaining || 0), 0);
-  return (
-    <section className="adb-sbe">
-      <div className="adb-finance-head">
-        <div>
-          <h3 className="adb-section-title">Installment reservations</h3>
-          <p className="adb-finance-muted">Deposits, reserved inventory and balances still owed by guests.</p>
-        </div>
-        <div className="adb-finance-muted">{active.length} active · {paid.length} completed · ₦{outstanding.toLocaleString()} outstanding</div>
-      </div>
-      {rows.length === 0 ? (
-        <div className="adb-empty"><p>No installment reservations yet.</p></div>
-      ) : (
-        <div className="adb-table-wrap">
-          <table className="adb-table">
-            <thead><tr><th>Event</th><th>Organizer</th><th>Guest</th><th className="adb-num">Paid</th><th className="adb-num">Balance</th><th>Status</th></tr></thead>
-            <tbody>
-              {rows.slice(0, 100).map((row) => (
-                <tr key={row._id}>
-                  <td data-label="Event"><strong className="adb-td-strong">{row.event?.title || row.eventTitle}</strong></td>
-                  <td data-label="Organizer">{row.organizer?.name || row.organizer?.email || "—"}</td>
-                  <td data-label="Guest">{row.email}</td>
-                  <td data-label="Paid" className="adb-num adb-gold">₦{Number(row.amountPaid || 0).toLocaleString()}</td>
-                  <td data-label="Balance" className="adb-num">₦{Number(row.amountRemaining || 0).toLocaleString()}</td>
-                  <td data-label="Status"><StatusChip status={row.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function LoadingScreen() {
   injectStyles("tictify-admin-dashboard-css", CSS);
   return (
@@ -748,15 +206,7 @@ function LoadingScreen() {
           <div key={i} className="adb-skel" style={{ height: 96 }} />
         ))}
       </div>
-      <div className="adb-skel-row adb-skel-row-wide">
-        <div className="adb-skel" style={{ height: 320 }} />
-        <div className="adb-skel" style={{ height: 320 }} />
-      </div>
-      <div className="adb-skel-row">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="adb-skel" style={{ height: 130 }} />
-        ))}
-      </div>
+      <div className="adb-skel" style={{ height: 128 }} />
     </div>
   );
 }
@@ -780,18 +230,6 @@ function ErrorScreen({ error, onLogout }) {
 ══════════════════════════════════════════════════════════ */
 const CSS = `
 
-*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-:root {
-  --bg:#080910; --surface:#0d0f16; --card:rgba(255,255,255,0.04);
-  --border:rgba(255,255,255,0.08); --border-h:rgba(255,255,255,0.18);
-  --gold:#E8C96A; --gold-dim:rgba(232,201,106,0.12); --gold-glo:rgba(232,201,106,0.22);
-  --text:#F0EDE8; --muted:#8B887E; --danger:#E05C5C; --live:#6BF0A0;
-  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif;
-  --r:20px; --r-sm:12px;
-}
-body { background:var(--bg); color:var(--text); font-family:var(--font-b); -webkit-font-smoothing:antialiased; overflow-x:clip; }
-button, input, select { font-family:var(--font-b); }
-
 @keyframes adb-spin { to { transform:rotate(360deg); } }
 @keyframes adb-shimmer { from { background-position:200% 0; } to { background-position:-200% 0; } }
 @keyframes adb-fade { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
@@ -813,7 +251,7 @@ button, input, select { font-family:var(--font-b); }
 .adb-body { flex:1; min-width:0; display:flex; flex-direction:column; }
 .adb-topbar { display:none; }
 .adb-drawer { display:none; }
-.adb-content { width:100%; max-width:1280px; margin:0 auto; padding:clamp(16px,3vw,40px); display:flex; flex-direction:column; gap:clamp(20px,3vw,32px); }
+.adb-content { width:100%; max-width:1280px; margin:0 auto; padding:0; display:flex; flex-direction:column; gap:clamp(20px,3vw,32px); }
 .adb-title { font-family:var(--font-h); font-weight:800; font-size:clamp(24px,3.2vw,34px); letter-spacing:-.02em; line-height:1.1; }
 .adb-subtitle { color:var(--muted); font-size:14px; margin-top:6px; }
 
@@ -827,6 +265,13 @@ button, input, select { font-family:var(--font-b); }
 .adb-kpi-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
 .adb-kpi-value { font-family:var(--font-h); font-weight:700; font-size:clamp(18px,2.2vw,24px); font-variant-numeric:tabular-nums; margin-top:6px; word-break:break-word; }
 .adb-kpi-trend { font-size:12px; color:var(--live); font-weight:600; margin-top:4px; }
+
+/* ── Dashboard focus panel ── */
+.adb-focus-note { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:22px 24px; border:1px solid rgba(232,201,106,.24); border-radius:var(--r); background:linear-gradient(110deg,rgba(232,201,106,.12),rgba(255,255,255,.03)); }
+.adb-eyebrow { margin-bottom:7px; color:var(--gold); font-size:13px !important; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.adb-focus-note p:last-child { max-width:720px; color:var(--text-2); margin-top:7px; }
+.adb-focus-link { flex:0 0 auto; display:inline-flex; align-items:center; gap:10px; min-height:46px; padding:11px 16px; border:1px solid var(--gold); border-radius:999px; background:var(--gold); color:var(--on-gold); font-weight:800; cursor:pointer; }
+.adb-focus-link span { font-size:1.3em; line-height:1; }
 
 /* ── Platform finance ── */
 .adb-finance { display:flex; flex-direction:column; gap:16px; animation:adb-fade .4s ease both; }

@@ -96,7 +96,8 @@ export default function About() {
           </ul>
           <p>
             Importantly, organizers keep the full ticket price they set. Tictify&apos;s service
-            fee and the payment-processing fee are added on top at checkout and paid by the guest,
+            fee (₦50 + 2% of the ticket subtotal) and the payment-processing fee are added on top
+            at checkout and paid by the guest,
             so the price you set is the amount that reaches your wallet.
           </p>
         </section>
